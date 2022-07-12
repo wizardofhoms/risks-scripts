@@ -39,6 +39,11 @@ Note that all new commands require different positional arguments, which are doc
 * `_risq` completion file:
 * Adds completion bridging for pass subcommands
 
+### Other enhancements
+
+* The SSH tomb also comes with a special `ssh-add` executable script, so that if you get to have multiple SSH keypairs
+in your `~/.ssh/` directory, all of them will be added when the identity is opened.
+
 ## Install one-liners
 
 For `_risks` in `VaultVM` (used as standalone here, adapt the paths if used as AppVM):
@@ -60,4 +65,34 @@ sudo cp QubesIncoming/joe-dvq/risq /usr/local/bin/risq && sudo chmod +x /usr/loc
 sudo mkdir -p /usr/local/share/zsh/site-functions
 sudo cp QubesIncoming/joe-dvq/_risq /usr/local/share/zsh/site-functions/_risq
 ```
+
+## New workflow
+
+### General workflow
+
+In order to perform everything from scratch, the process will consist in these commands:
+* `risks format sdcard /dev/xvdi` to prepare the hush drive
+* `risks format backup /dev/xvdj` to prepare the backup
+
+Then, to generate a full identity
+* `risks new identity "John Doe" john.doe@proton.me "1 year" /dev/xvdj` where "1 year" is the expiry of the GPG subkeys,
+and "/dev/xvdj" is the path to the -unmounted but attached- backup drive.
+Note that this will thus automatically perform a backup of the newly generated identity, as well as of the hush.img
+
+Finally, to open the complete identity and its associated data stores (GPG/SSH/pass):
+* `risks open identity John_Doe` (the identities are autocompleted when completion scripts are installed)
+
+### Command: risks new identity
+
+* The process is quite long, so don't panic ! It will end up at some point.
+* You must NOT mount the hush partition when generating an identity. The script will do it.
+* The GPG passphrase is generated and stored into a script variable, so you don't have access to it.
+You only have to input the SSL key passphrase, at various steps. 
+* Since the GPG passphrase is generated in a variable, the script also takes care of copying it at
+various points in the clipboard. So when you are prompted with an interactive menu to enter it 
+(when creating the tombs, for instance), just paste it as you would do normally.
+* You also have, naturally, to input the hush partition and backup cryptsetup passphrases at some point.
+
+### Command: risks new backup/tomb
+* These commands are simpler, and the process is shorter. You still have to enter your passphrase at some point.
 
