@@ -38,12 +38,14 @@ pass_show()
 {
 	local seconds=45
 	local output=$(qvm-pass ${@} | head -n 1)
-	if echo ${output} | grep "^mpw " &> /dev/null; then
-		if command -v mpw &> /dev/null; then
+	if echo ${output} | grep "^spectre" &> /dev/null; then
+	#if echo ${output} | grep "^mpw " &> /dev/null; then
+		if command -v spectre &> /dev/null; then
+		#if command -v mpw &> /dev/null; then
 			# mpw is launched and the password is stored in $password
 			local password=$(eval $output)
 		else
-			echo "mpw is not installed"
+			echo "spectre is not installed"
 			exit 1
 		fi
 	else
@@ -60,6 +62,35 @@ pass_show()
 	echo "Press CTRL+SHIFT+C to share the clipboard with another qube"
 	echo "In the other qube, press CTRL+SHIFT+v and then CTRL+V to use the clipboard content"
 	echo "Local clipboard will be erased is ${seconds} seconds"
+	( sleep ${seconds}; echo -n "" |xclip -selection clipboard;) &
+}
+
+# automatically clear clipboard after 1 (n) password paste events
+pass_show_once()
+{
+        local uses=1
+	local output=$(qvm-pass ${@} | head -n 1)
+	if echo ${output} | grep "^spectre" &> /dev/null; then
+	#if echo ${output} | grep "^mpw " &> /dev/null; then
+		if command -v spectre &> /dev/null; then
+		#if command -v mpw &> /dev/null; then
+			# mpw is launched and the password is stored in $password
+			local password=$(eval $output)
+		else
+			echo "spectre is not installed"
+			exit 1
+		fi
+	else
+			local password=${output}
+	fi
+
+	# shows the content of the password file but the password
+	qvm-pass ${@} | tail -n +2
+
+	#copies the password to clipboard
+	echo -n "${password}" | xclip -selection clipboard -loops ${uses}
+	echo "Password has been saved in clipboard"
+	echo "Local clipboard will be erased after ${uses} uses"
 	( sleep ${seconds}; echo -n "" |xclip -selection clipboard;) &
 }
 
@@ -110,21 +141,23 @@ case ${action} in
 		arguments=${arguments[@]:4} 		#removes "pass" from the arguments
 
 		case "${resource}" in
-			copy|cp) shift;				qvm-pass "${arguments}" ;;
-			delete|rm|remove) shift;	qvm-pass "${arguments}" ;;
-			edit) shift;				qvm-pass "${arguments}" ;;
-			find|search) shift;			qvm-pass "${arguments}" ;;
-			generate) shift;			qvm-pass "${arguments}" ;;
-			git) shift;					qvm-pass "${arguments}" ;;
-			grep) shift;				qvm-pass "${arguments}" ;;
-			help|--help) shift;			qvm-pass "${arguments}" ;;
-			init) shift;				qvm-pass "${arguments}" ;;
-			insert|add) shift;			qvm-pass "${arguments}" ;;
-			ls|list) shift;				qvm-pass "${arguments}" ;;
-			rename|mv) shift;			qvm-pass "${arguments}" ;;
-			show) shift;				pass_show "${arguments}";;
-			version|--version) shift;	qvm-pass "${arguments}" ;;
-			*)							pass_show "${arguments}"
+			copy|cp) shift;				qvm-pass ${arguments} ;;
+			delete|rm|remove) shift;	        qvm-pass ${arguments} ;;
+			edit) shift;				qvm-pass ${arguments} ;;
+			find|search) shift;			qvm-pass ${arguments} ;;
+			generate) shift;			qvm-pass ${arguments} ;;
+			git) shift;				qvm-pass ${arguments} ;;
+			grep) shift;				qvm-pass ${arguments} ;;
+			help|--help) shift;			qvm-pass ${arguments} ;;
+			init) shift;				qvm-pass ${arguments} ;;
+			insert|add) shift;			qvm-pass ${arguments} ;;
+			ls|list) shift;				qvm-pass ${arguments} ;;
+			rename|mv) shift;			qvm-pass ${arguments} ;;
+			show) shift;				pass_show_once ${arguments};;
+			# show) shift;				pass_show ${arguments};;
+			version|--version) shift;	        qvm-pass ${arguments} ;;
+			*)					pass_show_once ${arguments}
+			# *)					pass_show ${arguments}
 		esac
 	;;
 

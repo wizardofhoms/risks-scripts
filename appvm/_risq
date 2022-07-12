@@ -1,0 +1,38 @@
+#compdef risq
+#autoload
+
+_risq() {
+        local cmd
+        if (( CURRENT > 2 )); then
+                cmd=${words[2]}
+                # Set the context for the subcommand
+                curcontext="${curcontext%:*:*}:risq-$cmd"
+                # Narrow the range of words we are looking at to exclude `pass`
+                (( CURRENT-- ))
+                shift words
+                # Run the completion for the subcommand
+                case "${cmd}" in
+                        # Tomb
+                        open|close)
+                                _list 
+                                ;;
+                        pass)
+                                _normal -p $service
+                                ;;
+                esac
+        else
+                local -a subcmds
+                subcmds=(
+                        'open:Open tomb'
+                        'close:Close tomb'
+                        'pass:Use pass commands'
+                )
+
+                _describe -t commands 'commands' subcmds
+        fi
+}
+
+# don't run the completion function when being source-ed or eval-ed
+if [ "$funcstack[1]" = "_risq" ]; then
+        _risq
+fi
