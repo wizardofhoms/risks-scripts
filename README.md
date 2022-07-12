@@ -15,13 +15,11 @@ creating the various identities and associated datastores, this fork has bundled
 commands:
 
 * `risks new`:
-
 * `backup`      - Create a new backup of the current data, including currently active identities
 * `tomb`        - Create a new tomb for a given identity, with a given name
 * `identity`    - All-in-one command to create an identity GPG/SSH/pass and automatic backup of it.
 
 * `risks format`:
-
 * `sdcard <path>`   - Overwrites, cleans, cryptsetups and filesytem formats an SDCARD to be used as hush
 * `backup <path>`   - Overwrites, cleans, cryptsetups and filesytem formats a USB drive to be used as backup 
 
@@ -32,7 +30,6 @@ Note that all new commands require different positional arguments, which are doc
 ### Completions
 
 * `_risks` completion file:
-
 * Completion for all subcommands
 * File completion for device paths (eg. `/dev/xvdi`) needed by `format backup/sdcard` or `new identity` commands 
 * Detailed completion messaging for commands like `risks new identity`, which require several arguments.
@@ -40,7 +37,6 @@ Note that all new commands require different positional arguments, which are doc
 * Automatic completion of `hush` for `risks ro|rw|mount|umount` commands
 
 * `_risq` completion file:
-
 * Adds completion bridging for pass subcommands
 
 ## Install one-liners
