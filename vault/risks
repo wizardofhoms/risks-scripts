@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env zsh
 
 # exit value: 0	-> all good
 # exit value: 1	-> error
@@ -6,15 +6,27 @@
 
 # DEFAULTS
 
+prg=$(basename "$0")
+typeset -H _TTY
+
+# Remove verbose errors when * don't yield any match in ZSH
+setopt +o nomatch
+
+## 0 - Required programs 
+
+#sudo apt install wipe cryptsetup pass gnupg2 e2fsprogs steghide xclip \ 
+#   libsodium23 libtinfo5 dosfstools haveged rng-tools tomb xkcdpass pwgen \
+#   socat ncurses pinentry-curses ssh-askpass-gnome 
+
 usage()
 {
-	echo "Usage: $0 action resource identity"
+	echo "Usage: $prg action resource identity"
 	echo ""
 	echo "action: list"
 	echo "        |_ coffins"
 	echo "        |_ tombs"
 	echo ""
-	echo "action: mount | rw | ro"
+	echo "action: umount | mount | rw | ro"
 	echo "        |_ hush"
 	echo ""
 	echo "action: open | close"
@@ -22,27 +34,82 @@ usage()
 	echo "        |_ tomb-type <identity>"
 	echo "        |_ identity <identity>"
 	echo ""
+	echo "action: slam"
+	echo ""
 	echo "action: gpgpass <identity>"
 	echo ""
+	echo "action: format"
+	echo "        |_ sdcard|hush <sdcard_drive>"
+	echo "        |_ backup <backup_drive>"
+	echo ""
+	echo "action: new"
+	echo "        |_ identity <name> <email> <key_expiry> <backup_drive>"
+	echo "        |_ tomb   <name> <email> <label> <size>"
+	echo "        |_ backup <backup_drive>"
+	echo ""
+        echo ""
 	echo "Ex.:"
-	echo "$0 open gpg <identity>"
-	echo "$0 open ssh <identity>"
-	echo "$0 open pass <identity>"
-	echo "$0 open identity <identity>  #opens gpg coffin, pass tomb and ssh tomb all in once"
-	echo "$0 close identity <identity>  #closes gpg coffin, pass tomb and ssh tomb all in once"
+        echo ""
+	echo "$prg format sdcard /dev/xvdi              # SDcard stores data to be used by risks"
+        echo "$prg format backup /dev/xvdj              # Pendrive (another USB) stores the backups"
+        echo ""
+	echo "$prg new identity 'John Doe' john.doe@mail.com '1 year' /dev/xvdj"
+	echo "$prg new tomb 'John Doe' john.doe@mail.com Data 100             # Data expressed in MB"
+	echo "$prg new tomb John_Doe john.doe@mail.com Data 100               # Also works without spaces"
+	echo "$prg new backup John_Doe john.doe@mail.com /dev/xvdj            # Also applies to this"
+        echo ""
+	echo "$prg open ssh <identity>"
+	echo "$prg open pass <identity>"
+        echo ""
+	echo "$prg open gpg <identity>"
+	echo "$prg open ssh <identity>"
+	echo "$prg open pass <identity>"
+	echo "$prg open identity <identity>   #opens gpg coffin, pass tomb and ssh tomb all in once"
+	echo "$prg close identity <identity>  #closes gpg coffin, pass tomb and ssh tomb all in once"
+        echo ""
+	echo "$prg slam         # Closes all active/open identities and unmounts hush partition"
+        echo ""
 }
+
+# usage()
+# {
+#         echo "Usage: $0 action resource identity"
+#         echo ""
+#         echo "action: list"
+#         echo "        |_ coffins"
+#         echo "        |_ tombs"
+#         echo ""
+#         echo "action: mount | rw | ro"
+#         echo "        |_ hush"
+#         echo ""
+#         echo "action: open | close"
+#         echo "        |_ coffin|gpg <identity>"
+#         echo "        |_ tomb-type <identity>"
+#         echo "        |_ identity <identity>"
+#         echo ""
+#         echo "action: gpgpass <identity>"
+#         echo ""
+#         echo "Ex.:"
+#         echo "$0 open gpg <identity>"
+#         echo "$0 open ssh <identity>"
+#         echo "$0 open pass <identity>"
+#         echo "$0 open identity <identity>  #opens gpg coffin, pass tomb and ssh tomb all in once"
+#         echo "$0 close identity <identity>  #closes gpg coffin, pass tomb and ssh tomb all in once"
+# }
+
+# ------------------------------------------ Utilities -------------------------------------------- #
 
 # Checks if a global var has been configured.
 # Parameter: ${1}: global var name
 global_var_check()
 {
 	#echo "var name: ${1}, var value ${!1}"
-	if [ -z ${!1} ]; then
+	# if [[ -z ${!1} ]]; then # Bash
+        if [[ -z ${(P)${1}} ]]; then # ZSH
 		echo "Something is wrong with your global var: ${1} is not defined"
 		echo "Check your ~/.bashrc"
 		exit 2
 	fi
-
 }
 
 # Plays sounds
@@ -74,6 +141,124 @@ play_sound()
 	esac
 }
 
+# Logging
+# Check whether a commandline option is set.
+#
+# Synopsis: option_is_set -flag [out]
+#
+# First argument is the commandline flag (e.g., "-s").
+# If the second argument is present and set to 'out', print out the
+# result: either 'set' or 'unset' (useful for if conditions).
+#
+# Return 0 if is set, 1 otherwise
+option_is_set() {
+	local -i r	 # the return code (0 = set, 1 = unset)
+
+	[[ -n ${(k)OPTS[$1]} ]];
+	r=$?
+
+	[[ $2 == "out" ]] && {
+		[[ $r == 0 ]] && { print 'set' } || { print 'unset' }
+	}
+
+	return $r;
+}
+
+# Messaging function with pretty coloring
+function _msg() {
+        local progname="$2"
+	local msg="$3"
+	local i
+	command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
+	for i in {3..${#}}; do
+		msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
+	done
+
+	local command="print -P"
+	local pchars=""
+	local pcolor="normal"
+	local fd=2
+	local -i returncode
+
+	case "$1" in
+		inline)
+			command+=" -n"; pchars=" > "; pcolor="yellow"
+			;;
+		message)
+			pchars=" . "; pcolor="white"
+			;;
+		verbose)
+			pchars="[D]"; pcolor="blue"
+			;;
+		success)
+			pchars="(*)"; pcolor="green"
+			;;
+		warning)
+			pchars="[W]"; pcolor="yellow"
+			;;
+		failure)
+			pchars="[E]"; pcolor="red"
+			returncode=1
+			;;
+		print)
+			progname=""
+			fd=1
+			;;
+		*)
+			pchars="[F]"; pcolor="red"
+			msg="Developer oops!  Usage: _msg MESSAGE_TYPE \"MESSAGE_CONTENT\""
+			returncode=127
+			;;
+	esac
+
+	[[ -n $_MSG_FD_OVERRIDE ]] && fd=$_MSG_FD_OVERRIDE
+
+	if [[ -t $fd ]]; then
+	       [[ -n "$progname" ]] && progname="$fg[magenta]$progname$reset_color"
+	       [[ -n "$pchars" ]] && pchars="$fg_bold[$pcolor]$pchars$reset_color"
+	       msg="$fg[$pcolor]$msg$reset_color"
+	fi
+
+	${=command} "${progname}" "${pchars}" "${msg}" >&$fd
+	return $returncode
+}
+
+function _message() {
+	local notice="message"
+	[[ "$1" = "-n" ]] && shift && notice="inline"
+	option_is_set -q || _msg "$notice" $@
+	return 0
+}
+
+function _verbose() {
+	option_is_set -D && _msg verbose $@
+	return 0
+}
+
+function _success() {
+	option_is_set -q || _msg success $@
+	return 0
+}
+
+function _warning() {
+	option_is_set -q || _msg warning $@
+	return 1
+}
+
+function _failure() {
+	typeset -i exitcode=${exitv:-1}
+	option_is_set -q || _msg failure $@
+	# be sure we forget the secrets we were told
+	exit $exitcode
+}
+
+function _print() {
+	option_is_set -q || _msg print $@
+	return 0
+}
+
+# ----------------------------------------- Hush Partition ---------------------------------------- #
+
 # Checks if the "hush partition" has been seen by kernel and returns 0 if true
 is_partition_mapper_present()
 {
@@ -100,13 +285,13 @@ mount_hush()
 	global_var_check "SDCARD_QUIET"
 
 	if ! is_partition_mapper_present ; then
-		echo "Device mapper /dev/${SDCARD_ENC_PART_MAPPER} not found."
-		echo "Be sure you have attached your hush partition."
+		_failure "hush" "Device mapper /dev/${SDCARD_ENC_PART_MAPPER} not found."
+		_failure "hush" "Be sure you have attached your hush partition."
 		exit 1
 	fi
 
 	if is_hush_mounted ; then
-		echo "Sdcard already mounted"
+		_message "hush" "Sdcard already mounted"
 		play_sound
 		exit 0
 	fi
@@ -114,7 +299,7 @@ mount_hush()
 	if ! is_luks_mapper_present ; then
 		# decrypts the "hush partition": it will ask for passphrase
 		if ! sudo cryptsetup open --type luks ${SDCARD_ENC_PART} ${SDCARD_ENC_PART_MAPPER} ; then
-			echo "The hush partition ${SDCARD_ENC_PART} can not be decrypted"
+			_failure "hush" "The hush partition ${SDCARD_ENC_PART} can not be decrypted"
 			exit 1
 		fi
 	fi
@@ -126,15 +311,17 @@ mount_hush()
 
 	# mounts the "hush partition" in read-only mode by default
 	if ! sudo mount -o ro /dev/mapper/${SDCARD_ENC_PART_MAPPER} ${HUSH_DIR} ; then
-		echo "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be mounted on ${HUSH_DIR}"
+		_failure "hush" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be mounted on ${HUSH_DIR}"
 		exit 1
 	fi
 
 
 	play_sound "plugged"
 
-	echo -e "\nSDCARD has been mounted read-only. To give write permissions, use:"
-	echo -e "$0 rw hush\n"
+        echo
+	_success "hush" "SDCARD has been mounted read-only. To give write permissions, use:"
+	_success "hush" "$0 rw hush"
+        echo
 }
 
 umount_hush()
@@ -169,7 +356,6 @@ umount_hush()
 	echo -e "\nSDCARD is ready to be detached from this qube"
 }
 
-
 ro_hush()
 {
 	global_var_check "SDCARD_ENC_PART"
@@ -197,14 +383,14 @@ rw_hush()
 	global_var_check "HUSH_DIR"
 
 	if ! is_hush_mounted ; then
-		echo "SDCARD is not mounted"
+                _failure "hush (rw)" "SDCARD is not mounted"
 		exit 1
 	fi
 
 	mount_option="remount,rw"
 
 	if ! sudo mount -o ${mount_option} /dev/mapper/${SDCARD_ENC_PART_MAPPER} ${HUSH_DIR} &> /dev/null ; then
-		echo "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with write permissions"
+		_failure "hush" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with write permissions"
 		exit 1
 	fi
 
@@ -217,15 +403,6 @@ rw_hush()
 	echo "###################################"
 }
 
-get_tomb_mapper(){
-	ls -1 /dev/mapper/tomb.* &> /dev/null
-	if [[ $? -eq 0 ]]; then
-		ls -1 /dev/mapper/tomb.* | grep ${1}
-	else
-		echo "none"
-	fi
-}
-
 is_luks_open()
 {
 	ls /dev/mapper/${1} &> /dev/null
@@ -235,6 +412,690 @@ is_luks_mounted()
 {
 	mount | grep "^${1}" &> /dev/null
 }
+
+get_tomb_mapper()
+{
+	ls -1 /dev/mapper/tomb.* &> /dev/null
+	if [[ $? -eq 0 ]]; then
+		ls -1 /dev/mapper/tomb.* | grep ${1}
+	else
+		echo "none"
+	fi
+}
+
+# ----------------------------------------- GPG utilities ---------------------------------------- #
+
+# Create a RAMDisk and setup the GPG directory in it, with configuration files
+init_gpg()
+{
+        local RAMDISK="${HOME}/.gnupg"
+
+        ## 0 - RAMDisk Setup 
+        _success "ramdisk" "0) Setting up RAMDisk and GPG backend" 
+        ## Creating
+        _message 'ramdisk' 'Creating directory & setting permissions'
+        local RAMDISK="${HOME}/.gnupg"
+        rm -fR ${RAMDISK}
+        mkdir ${RAMDISK}
+        sudo mount -t tmpfs -o size=10m ramdisk ${RAMDISK} || _failure "Failed to mount tmp fs on ramdisk"
+        sudo chown ${USER} ${RAMDISK} || _failure "Failed to set ownership to ${RAMDISK}"
+        sudo chmod 0700 ${RAMDISK} || _failure "Failed to change mod 0700 to ${RAMDISK}"
+        ## Testing
+        _message "ramdisk" "Testing"
+        mount | grep ramdisk
+        echo
+        _message "ramdisk" "Previous command should look like this:"
+        echo
+        echo "ramdisk on /home/user/ramdisk type tmpfs (rw,relatime,size=10240k)"
+        echo "ramdisk on /rw/home/user/ramdisk type tmpfs (rw,relatime,size=10240k)"
+        echo 
+        _message "ramdisk" "Testing creation/deletion of files"
+        touch "${RAMDISK}/delme"
+        rm "${RAMDISK}/delme"
+
+        # Configuration files
+        _message "gpg" "Writing default GPG configuration file"
+        cat >"${RAMDISK}/gpg.conf" <<EOF
+# Avoid information leaked
+no-emit-version
+no-comments
+export-options export-minimal
+
+# Options for keys listing
+keyid-format 0xlong
+with-fingerprint
+with-keygrip
+with-subkey-fingerprint
+
+# Displays the validity of the keys
+list-options show-uid-validity
+verify-options show-uid-validity
+
+# Limits preferred algorithms
+personal-cipher-preferences AES256
+personal-digest-preferences SHA512
+default-preference-list SHA512 SHA384 SHA256 SHA224 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed
+
+# Options for asymmetric encryption
+cipher-algo AES256
+digest-algo SHA512
+cert-digest-algo SHA512
+compress-algo ZLIB
+disable-cipher-algo 3DES
+weak-digest SHA1
+
+# Options for symmetric encryption
+s2k-cipher-algo AES256
+s2k-digest-algo SHA512
+s2k-mode 3
+s2k-count 65011712
+EOF
+
+}
+
+# Create key pairs for a given identity, based on a premade batch file
+gen_gpg_keys()
+{
+        local name="$1"
+        local email="$2"
+        local expiry="$3"
+        local passphrase="$4"
+
+        local RAMDISK="${HOME}/.gnupg"
+
+        ## 1 - GPG Batch file setup 
+        _success "gpg" "1) GPG Batch file setup & primary key generation"
+
+        # Output the identity batch file with values
+        _message "gpg" "Writing GPG batch file to ramdisk"
+        cat >${RAMDISK}/primary_key_unattended <<EOF
+%echo Generating EDDSA key (Ed25519 curve)
+Key-Type: eddsa 
+Key-Curve: Ed25519 
+Key-Usage: sign
+Key-Length: 4096
+Name-Real: ${name} 
+Name-Email: ${email} 
+Expire-Date: 0
+Passphrase: ${passphrase} 
+%commit
+%echo done
+EOF
+
+        # Generate key and get rid of batch file
+        _message "gpg" "Generating key from batch file"
+        gpg --batch --gen-key ${RAMDISK}/primary_key_unattended || _failure "Failed to generate keys from batch file"
+        _message "gpg" "Deleting batch file"
+        wipe -f ${RAMDISK}/primary_key_unattended || _failure "Failed to wipe batch file: contains the identity passphrase"
+        _message "gpg" "Listing keys:"
+        local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
+        _warning "gpg" "Primary key fingerprint: ${fingerprint}"
+
+        ## 2 - Subjeys creation 
+        _success "subkeys" "2) Encryption and signature subkey-pairs creation"
+        _message "subkeys" "Generating encryption subkey-pair"
+        local expiry_date="$(date +"%Y-%m-%d" --date="${expiry}")" 
+        echo "$passphrase" | gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --quick-add-key ${fingerprint} cv25519 encr ${expiry_date} \
+                || _failure "Failed to generate encryption subkey-pair"
+
+        _message "subkeys" "Generating signature subkey-pair"
+        echo "$passphrase" | gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --quick-add-key ${fingerprint} ed25519 sign ${expiry_date} \
+                || _failure "Failed to generate signature subkey-pair"
+
+        _message "subkeys" "Generating authentication subkey-pair"
+        echo "$passphrase" | gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --quick-add-key ${fingerprint} ed25519 auth ${expiry_date} \
+                || _warning "subkeys" "Failed to generate authentication subkey-pair" \
+                _warning "subkeys" "Continuing identity creation since this key is not absolutely necessary"
+
+        _message "gpg" "Directory structure:"
+        tree ${RAMDISK} 
+        echo
+}
+
+# Generate the SSL key needed for encrypting various files and passphrases
+gen_ssl_key()
+{
+        local IDENTITY="$1" 
+        local passphrase="$2"
+        local HUSH_DIR="${HOME}/.hush"
+
+        _success "SSL" "3) SSL key creation"
+        _message "SSL" "Mounting hush partition"
+        mount_hush 
+        rw_hush 
+        _message "SSL" "Checking SDCard is mounted:"
+        mount | grep hush
+        echo
+        _message "SSL" "Output should look like:"
+        echo
+        echo "/dev/mapper/hush on /home/user/.hush type ext4 (rw,relatime,data=ordered)"
+        echo "/dev/mapper/hush on /rw/home/user/.hush type ext4 (rw,relatime,data=ordered)"
+        echo
+        _warning "SSL" "If the output was empty, please run:"
+        _warning "SSL" " in dom0:   attach_hush_to vault"
+        _warning "SSL" " in vault:  risks mount hush"
+        echo
+
+        _message "SSL" "Generating SSL key with passphrase"
+        if [[ ! -d ${HUSH_DIR} ]]; then
+                _message "coffin" "Creating directory ${HUSH_DIR}"
+                mkdir -p ${HUSH_DIR}
+        fi
+        echo "$passphrase" | openssl enc -aes-256-cbc -a -pbkdf2 > ${HUSH_DIR}/${IDENTITY}-gpg.ssl \
+                || _failure "SSL" "Failed to generate SSL key"
+        _message "SSL" "Protecting key from accidental changes/deletion"
+        sudo chattr +i ${HUSH_DIR}/${IDENTITY}-gpg.ssl
+}
+
+# Generates, setup and formats a LUKS partition to be used as a coffin identity files
+gen_coffin() 
+{
+        local IDENTITY="$1" 
+        local HUSH_DIR="${HOME}/.hush"
+
+        _success "coffin" "4) Coffin creation"
+
+        ## Key
+        _message "coffin (key)" "Generating coffin key (compatible with QRCode printing)"
+        pwgen -y -s -C 64 > ${HUSH_DIR}/${IDENTITY}-gpg.key || _failure "coffin (key)" "Failed to generate coffin key"
+        _message "coffin (key)" "Protecting against deletions"
+        sudo chattr +i ${HUSH_DIR}/${IDENTITY}-gpg.key
+        _message "coffin (key)" "Testing immutability of key file"
+        lsattr ${HUSH_DIR}
+        echo
+        _message "coffin (key)" "Output should look like:"
+        echo
+        echo "—-i———e—- /home/user/.hush/joe-gpg.key"
+        echo
+
+        ## Creation
+        _message "coffin" "Creating the coffin container (50MB)"
+        if [[ ! -d ${GRAVEYARD} ]]; then
+                _message "coffin" "Creating directory ${GRAVEYARD}"
+                mkdir -p ${GRAVEYARD}
+        fi
+        dd if=/dev/urandom of=${GRAVEYARD}/${IDENTITY}-gpg.coffin bs=1M count=50
+        _message "coffin" "Laying the coffin inside the container"
+        sudo cryptsetup -v -q --cipher aes-xts-plain64 --master-key-file ${HUSH_DIR}/${IDENTITY}-gpg.key \
+                --key-size 512 --hash sha512 --iter-time 5000 --use-random \
+                luksFormat ${GRAVEYARD}/${IDENTITY}-gpg.coffin ${HUSH_DIR}/${IDENTITY}-gpg.key \
+                || _failure "coffin" "Failed to lay setup and format the coffin LUKS filesystem"
+        _message "coffin" "Testing the coffin"
+        sudo cryptsetup luksDump ${GRAVEYARD}/${IDENTITY}-gpg.coffin || _failure "coffin" "Failed to dump coffin LUKS filesystem"
+        echo
+        _warning "coffin" "Normally, we should see the UUID of the coffin, and only key configured for it" -b
+        echo
+
+        ##  Setup 
+        _success "coffin" "5) Setup"
+        _message "coffin (setup)" "Opening the coffin for setup"
+        sudo cryptsetup open --type luks ${GRAVEYARD}/${IDENTITY}-gpg.coffin coffin-${IDENTITY}-gpg --key-file ${HUSH_DIR}/${IDENTITY}-gpg.key \
+                || _failure "coffin" "Failed to open the coffin LUKS filesystem"
+
+        _message "coffin (setup)" "Testing coffin status"
+        sudo cryptsetup status coffin-${IDENTITY}-gpg || _warning "coffin" "Failed to get status of coffin LUKS filesystem"
+        echo
+
+        ## Filesystem
+        _message "coffin (setup)" "Formatting the coffin filesystem (ext4)"
+        sudo mkfs.ext4 -m 0 -L ${IDENTITY}-gpg /dev/mapper/coffin-${IDENTITY}-gpg \
+                || _failure "coffin (setup)" "Failed to make ext4 filesystem on coffin partition"
+}
+
+# A rather complete function performing several important, but quite unrelated, tasks:
+# - Moves the GPG keyring of an identity into its coffin
+# - Checks visually that files are where expected 
+# - Removes the private keys from the keyring that is used daily
+cleanup_gpg_init()
+{
+        local IDENTITY="$1"
+        local email="$2"
+        local RAMDISK="${HOME}/.gnupg"
+        local HUSH_DIR="${HOME}/.hush"
+        local TMP="/tmp/${IDENTITY}-gpg"
+
+        # Making tmp directory
+        _message "coffin (setup)" "Creating temp directory and mounting coffin"
+        mkdir ${TMP}
+        sudo mount /dev/mapper/coffin-${IDENTITY}-gpg ${TMP} || _failure "coffin (setup)" "Failed to mount coffin partition on ${TMP}"       
+        sudo chown ${USER} ${TMP}
+        _message "coffin (setup)" "Testing coffin filesystem"
+        mount | grep ${IDENTITY}-gpg
+
+        ## Moving GPG data into the coffin, and closing again
+        _message "coffin (setup)" "Copying GPG files in coffin"
+        cp -fR ${RAMDISK}/* ${TMP} || _warning "coffin (setup)" "Failed to copy one or more files into coffin"
+        _message "coffin (setup)" "Setting GPG files immutable"
+        sudo chattr +i ${TMP}/private-keys-v1.d/*
+        sudo chattr +i ${TMP}/openpgp-revocs.d/*
+        _message "coffin (setup)" "Closing coffin"
+        sudo umount ${TMP} || _warning "coffin (setup)" "Failed to unmount tmp directory ${TMP}"
+        sudo cryptsetup close /dev/mapper/coffin-${IDENTITY}-gpg || _failure "coffin (setup)" "Failed to close LUKS filesystem for identity"
+
+        # Clearing RAMDisk
+        _message "ramdisk" "Wiping and unmounting ramdisk"
+        sudo wipe -rf ${RAMDISK} || _warning "ramdisk" "Failed to wipe ${RAMDISK} directory"
+        sudo umount ${RAMDISK}  || _warning "ramdisk" "Failed to unmount ramdisk ${RAMDISK}"
+
+        ## 5 - Final checks 
+        _success "coffin" "5) Final checks"
+        _message "coffin (checks)" "Checking directory contents"
+        tree ${HUSH_DIR} ${GRAVEYARD}
+        echo
+        _message "coffin (checks)" "Should look like this:"
+        echo
+        echo " /home/user/.hush"
+        echo "├── joe-gpg.key"
+        echo
+        echo "/home/user/.graveyard"
+        echo "├── joe-gpg.coffin"
+        echo
+        _message "coffin (checks)" "Final test, opening and closing coffin for ${IDENTITY}"
+        open_coffin ${IDENTITY}
+        close_coffin ${IDENTITY}
+
+        ## 6 - Removing GPG private keys 
+        _success "GPG cleanup" "6) Removing GPG private keys"
+
+        local TOMB_LABEL="GPG"
+        local TOMB_SIZE=15
+
+        _message "GPG cleanup" "Creating tomb file for identity ${IDENTITY}"
+        new_tomb "${IDENTITY}" "${email}" ${TOMB_LABEL} ${TOMB_SIZE} 
+        _message "GPG cleanup" "Opening tomb file"
+        open_tomb ${TOMB_LABEL} ${IDENTITY}
+        local KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
+        _message "GPG cleanup" "Keygrip: ${KEYGRIP}"
+        _message "GPG cleanup" "Copying private data to tomb"
+        _message "GPG cleanup" "Private keys"
+        cp ${RAMDISK}/private-keys-v1.d/${KEYGRIP} ${HOME}/.tomb/${TOMB_LABEL}/
+        _message "GPG cleanup" "Revocation certificates"
+        cp ${RAMDISK}/openpgp-revocs.d/${fingerprint}.rev ${HOME}/.tomb/${TOMB_LABEL}/
+        _message "GPG cleanup" "Wiping corresponding files"
+        sudo chattr -i ${RAMDISK}/private-keys-v1.d/${KEYGRIP}
+        wipe -rf ${RAMDISK}/private-keys-v1.d/${KEYGRIP}
+        sudo chattr -i ${RAMDISK}/openpgp-revocs.d/${fingerprint}.rev
+        wipe -rf ${RAMDISK}/openpgp-revocs.d/${fingerprint}.rev
+        dd if=/dev/random of=${RAMDISK}/delme
+        rm ${RAMDISK}/delme
+        _message "GPG cleanup" "Printing GPG keyring. Should have 'sec#' instead of 'pub'"
+        gpg -K
+        _message "GPG cleanup" "Closing GPG tomb file"
+        close_tomb ${TOMB_LABEL} ${IDENTITY}
+}
+
+# Generate SSH keypair and sets up scripts for loading multiple keypairs
+gen_ssh_keys()
+{
+        local IDENTITY="$1"
+        local email="$2"
+
+        _success "8) SSH Initialization "
+        _message "SSH" "Creating tomb file for SSH"
+        new_tomb "${IDENTITY}" "${email}" ssh 20 
+        open_tomb ssh ${IDENTITY}
+
+        # Write multi-key loading script
+        _message "SSH" "Writing multiple SSH-keypairs loading script (ssh-add)"
+        cat >"${HOME}/.ssh/ssh-add" <<'EOF'
+#!/usr/bin/env bash
+#
+# Autostart SSH-agent and autoload all private keys in ~/.ssh directory
+#
+# How to use:
+# - Place this scripts in ~/.bashrc. (We did not here, instead we use a .desktop autostart pointing to here).
+# - If ssh-agent is not filled by any private keys, passphrase prompts will show up for each private keys
+#
+
+# register ssh key
+env=~/.ssh/agent.env
+
+agent_load_env () { test -f "$env" && . "$env" >| /dev/null ; }
+
+agent_start () {
+    (umask 077; ssh-agent >| "$env")
+    . "$env" >| /dev/null ; }
+
+agent_load_env
+
+# agent_run_state: 0=agent running w/ key; 1=agent w/o key; 2= agent not running
+agent_run_state=$(ssh-add -l >| /dev/null 2>&1; echo $?)
+
+if [ ! "$SSH_AUTH_SOCK" ] || [ $agent_run_state = 2 ]; then
+    agent_start
+    # this will load all private keys in ~/.ssh directory if agent not running
+    find ~/.ssh/ -type f -exec grep -l "PRIVATE" {} \; | xargs ssh-add &> /dev/null
+elif [ "$SSH_AUTH_SOCK" ] && [ $agent_run_state = 1 ]; then
+    # this will load all private keys in ~/.ssh directory if agent is not filled with any private key
+    find ~/.ssh/ -type f -exec grep -l "PRIVATE" {} \; | xargs ssh-add &> /dev/null
+fi
+
+unset env
+EOF
+        chmod +x "${HOME}/.ssh/ssh-add" || _warning "SSH" "Failed to make ssh-add custom script executable"
+        
+        # Generate keys
+        _message "SSH" "Generating keys for identity"
+        ssh-keygen -t ed25519 -b 4096 -C "${email}" -N "" -f ${HOME}/.ssh/id_ed25519 # No passphrase
+        _message "SSH" "Making keys immutable"
+        sudo chattr +i ${HOME}/.ssh/id_ed25519*
+        _message "SSH" "Closing SSH tomb file"
+        close_tomb ssh ${IDENTITY}
+}
+
+# ------------------------------------------- Format -------------------------------------------- #
+
+# Easily cleanup, format, luks-encrypt and filesystem setup onto an SDCard
+# to be used as a store for the various identities' data (excluding backup).
+format_sdcard()
+{
+        local sd_drive="$1"                     # Device file
+        local sd_ext4_drive="$sd_drive"1        # Dumb partition
+        local sd_enc_part="$sd_drive"2          # Encrypted partition
+        local mapper="hush"                     
+        local mount_point="$HOME/.hush"
+
+        # 1 - Cleanup & partitions 
+        _message "1) SDCard cleanup & partitioning"
+        _message "disk setup" "Cleaning drive"
+        sudo dd if=/dev/urandom of=${sd_drive} bs=1M status=progress && sync 
+        _message "disk setup" "Creating partitions"
+        sudo fdisk -u ${sd_drive} <<EOF
+n
+p
+1
+
++7.3GB
+n
+p
+2
+
+
+w
+EOF
+        if [ "$?" -ne 0 ]; then _failure "hush" "Failed to format partitions"; fi
+
+        # Automounting the first partition on any OS
+        _message "disk setup" "Making 1st partition mountable by default for all OS (fat32)"
+        sudo mkfs.vfat -F 32 -n DATA ${sd_ext4_drive} || _failure "hush" "Failed to make vfat32 filesystem"
+
+        # 2 - Hush partition setup 
+        _success "2) Hush partition setup" 
+        _message "hush" "Creating directory ${mount_point}"
+        mkdir ${mount_point} &> /dev/null
+        _message "hush" "Creating LUKS filesystem"
+        sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 --hash sha512 --iter-time 5000 --use-random luksFormat ${sd_enc_part} \
+                || _failure "hush" "Failed to format drive with LUKS"
+
+        _message "hush" "Checking LUKS partition status"
+        sudo cryptsetup open --type luks ${sd_enc_part} ${mapper} || _failure "hush" "Failed to open LUKS drive"
+        sudo cryptsetup status ${mapper}                            
+        _message "hush" "Formatting and mounting device on root filesystem"
+        sudo mkfs.ext4 -m 0 -L "hush" /dev/mapper/${mapper} || _failure "hush" "Failed to make ext4 filesystem on partition"
+        sudo mount /dev/mapper/${mapper} ${mount_point} || _failure "hush" "Failed to mount partition on ${mount_point}"       
+        mount | grep ${mapper}                                      
+        echo
+        _message "hush" "Last command should give the following result:"
+        echo 
+        echo "/dev/mapper/hush on /home/user/.hush type ext4 (rw,relatime,data=ordered)"
+        echo "/dev/mapper/hush on /rw/home/user/.hush type ext4 (rw,relatime,data=ordered)"
+        echo
+
+        _message "hush" "Closing and unmounting device"
+        sudo umount ${mount_point} || _warning "hush" "Failed to unmount ${mount_option}"    # umount
+        sudo cryptsetup close ${mapper} || _failure "hush" "Failed to close LUKS filesystem on ${mapper}" # close everything
+
+        # 3 - Udev for hush partition 
+        _success "udev" "Udev hush partition " 
+        _message "udev" "Getting partition UUID"
+        local UUID=$(sudo cryptsetup luksUUID ${sd_enc_part})
+        _message "udev" "Mapping partition to name"
+        sudo sh -c 'echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'${UUID}'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules' \
+                || _failure "hush" "Failed to write udev mapper file with SDCard UUID"
+        sudo service udev restart
+
+        echo
+        _success "sdcard" "SDCard formatting & setup done" 
+        _success "sdcard" "Configure dom0 to attach SDCard" 
+}
+
+# Easily cleanup, format, luks-encrypt and filesystem setup for a USB drive
+# to be used as a backup medium for risks data.
+format_backup()
+{
+        local PENDRIVE="$1"
+        local MAPPER="pendev"
+        local MOUNT_POINT="/tmp/pendrive"
+
+        # Data cleanup
+        _success "backup" "Pendrive backup initialization"
+        _message "backup" "Overwriting pendrive data"
+        sudo dd if=/dev/urandom of=${PENDRIVE} bs=1M status=progress && sync
+
+        # Encryption setup
+        _message "backup" "Setting up LUKS on entire pendrive"
+        sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 --hash sha512 --iter-time 5000 --use-random luksFormat ${PENDRIVE} \
+                || _failure "pendrive" "Failed to setup LUKS filesystem on backup drive"
+
+        # Filesystem setup
+        mkdir ${MOUNT_POINT} &> /dev/null
+        sudo cryptsetup open --type luks ${PENDRIVE} ${MAPPER} || _failure "pendrive" "Failed to open backup LUKS filesystem"
+        _message "backup" "Making ext4 filesystem on LUKS mapper"
+        sudo mkfs.ext4 -m 0 -L "gpg-backup" /dev/mapper/${MAPPER} || _failure "hush" "Failed to make ext4 filesystem on backup"
+        sudo mount /dev/mapper/${MAPPER} ${MOUNT_POINT} || _failure "hush" "Failed to mount partition on ${MOUNT_POINT}"
+        sudo chown ${USER} ${MOUNT_POINT} 
+
+        # Closing
+        _message "backup" "Unmounting backup pendrive"
+        sudo umount ${MOUNT_POINT} || _failure "Failed to unmount ${MOUNT_POINT}"
+        _message "backup" "Closing LUKS filesystem" 
+        sudo cryptsetup close ${MAPPER} || _failure "hush" "Failed to close LUKS filesystem on ${MAPPER}" 
+        _success "backup" "Done initialization backup pendrive"
+}
+
+# ------------------------------------------- New --------------------------------------------- #
+
+# Complete generation of all data needed by an identity:
+# - RAMDisk setup, used as workspace for creating our files
+# - Coffin files
+# - GPG keys and subkeys (sign/encrypt/auth)
+# - SSH keys
+# - GPG/SSH/Pass tomb files
+# - Checks
+# - Automatic backup of the data
+new_identity()
+{
+        local name="$1"
+        local email="$2"
+        local expiry="$3"
+        local passphrase="$(xkcdpass -n 8)"
+
+        local RAMDISK="${HOME}/.gnupg"
+        local HUSH_DIR="${HOME}/.hush"
+        local IDENTITY="${name// /_}"       # Used for files
+        local PENDRIVE="$4"                 # Backup
+
+        # Create a RAMDisk and setup the GPG directory in it, with configuration files
+        init_gpg
+
+        # Generate all needed key pairs, and keep the fingerprint to be used in later steps
+        gen_gpg_keys "${name}" ${email} "${expiry}" "${passphrase}"
+        local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
+
+        # Generate the SSL key needed for encrypting various things
+        gen_ssl_key "${IDENTITY}" "${passphrase}"
+
+        # Needed to open coffin files easily in the later steps
+	gpgpass ${IDENTITY} 
+
+        # Generate the coffin LUKS container
+        gen_coffin "${IDENTITY}"
+
+        # Cleaning RAM disk, removing private keys from the keyring and checking open/close 
+        cleanup_gpg_init "${IDENTITY}" "${email}"
+
+        ## Write multi SSH-keypair loading script, and generate the keys 
+        gen_ssh_keys "${IDENTITY}" "${email}"
+
+        ## 7 - Pass Initialization
+        _success "7) Pass Initialization "
+        _message "pass" "Creating tomb file for pass"
+        new_tomb "${IDENTITY}" "${email}" pass 20 
+        _message "pass" "Opening password store"
+        open_tomb pass ${IDENTITY}
+        _message "pass" "Initializating password store with recipient ${email}"
+        pass init ${email}
+        _message "SSH" "Closing pass tomb file"
+        close_tomb pass ${IDENTITY}
+
+        ## 9 - Backup
+        _message "backup" "Backing up identity data and partitions"
+        new_backup "${name}" ${email} ${PENDRIVE}
+
+        ## 10 - ALL DONE 
+        echo && _success "identity" "Identity generation complete." 
+}
+
+# Generates a new tomb for a given identity
+new_tomb()
+{
+        local IDENTITY="$1"
+        local RECIPIENT="$2"
+        local LABEL="$3"
+        local TOMBID="${IDENTITY}-${LABEL}"
+        local SIZE="$4"
+
+        # In case it's not set
+        GPG_TTY=$(tty)
+        export GPG_TTY
+
+        _message "tomb" "Opening identity ${IDENTITY}"
+        open_coffin ${IDENTITY}
+        gpgpass ${IDENTITY}
+        _message "tomb" "Digging tomb in ${GRAVEYARD}/${TOMBID}.tomb"
+        tomb dig -s ${SIZE} ${GRAVEYARD}/${TOMBID}.tomb || _failure "tomb (new)" "Failed to dig tomb. Aborting"
+        rw_hush 
+        _message "tomb" "Forging tomb key and making it immutable"
+        tomb forge -g -r ${RECIPIENT} ${HUSH_DIR}/${TOMBID}.key || _failure "tomb (new)" "Failed to forge keys. Aborting"
+        sudo chattr +i ${HUSH_DIR}/${TOMBID}.key
+        ro_hush
+        _message "tomb" "Locking tomb with key"
+        tomb lock -g -k ${HUSH_DIR}/${TOMBID}.key ${GRAVEYARD}/${TOMBID}.tomb || _failure "tomb (new)" "Failed to lock tomb. Aborting"
+}
+
+# Makes a complete backup including several things:
+# - The current, specified identity
+# - All coffins and tomb files
+# - The entire hush partition
+# - Convenience, filesytem based backup with public keys only.
+new_backup()
+{
+        local name="$1"
+        local email="$2"
+        local IDENTITY="${name// /_}"       # Used for files
+
+        local PENDRIVE="$3" 
+        local MAPPER="pendev"
+        local MOUNT_POINT="/tmp/pendrive"
+
+        # Identity and passwords
+        _message "backup" "Opening identity ${IDENTITY}"
+        open_coffin ${IDENTITY}
+        local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
+        _message "backup" "Primary key fingerprint: ${fingerprint}"
+        gpgpass ${IDENTITY}
+        local passphrase="$(xclip -out -selection clipboard)"
+
+        # GPG & Coffin Backup
+        _success "backup" "1) Backing GPG keyring & coffin"
+        # Opening & mounting backup drive
+        if [[ ! -d ${MOUNT_POINT} ]]; then
+                _message "backup (setup)" "Creating mount point directory"
+                mkdir ${MOUNT_POINT} &> /dev/null
+                _message "backup (setup)" "Changing directory owner to ${USER}"
+                sudo chown ${USER} ${MOUNT_POINT}
+        fi
+
+        _message "backup (setup)" "Opening LUKS pendrive"
+        sudo cryptsetup open --type luks ${PENDRIVE} ${MAPPER}
+        sudo mount /dev/mapper/${MAPPER} ${MOUNT_POINT}
+
+        local BCKDIR="${MOUNT_POINT}/gpg/${IDENTITY}"
+        if [[ ! -d ${BCKDIR} ]]; then
+                _message "backup (setup)" "Creating backup directory for ${IDENTITY}"
+                mkdir -p ${BCKDIR}
+        fi
+
+        # GPG backup
+        _message "backup (GPG)" "Opening identity ${IDENTITY}"
+        _message "backup (GPG)" "Backing up gpg -K output on drive (as gpg-k_output.txt)"
+        gpg -K > ${BCKDIR}/gpg-k_output.txt
+
+        # Primary key-pair backup
+        _message "backup (GPG)" "Backing up primary key-pair (armored)"
+        _message "backup (GPG)" "Private key"
+        echo "${passphrase}" | gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --export-secret-keys --armor ${fingerprint} > ${BCKDIR}/private-primary-keypair.arm.key
+        _message "backup (GPG)" "Public key"
+        gpg --export --armor ${fingerprint} > ${BCKDIR}/public-primary-keypair.arm.key
+        # Subkey-pairs backup
+        _message "backup (GPG)" "Backing up subkey-pairs (armored)"
+        echo "${passphrase}" | gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --export-secret-subkeys ${fingerprint} > ${BCKDIR}/private-subkeys.bin.key
+        _message "backup (GPG)" "Listing directory (should have 4 files for this identity)"
+        ls -l ${BCKDIR}
+        echo
+
+        # Convenience backup
+        local convenience_back="${HOME}/pubkeys/gpg-${IDENTITY}"
+        local conv_fingerprint="${convenience_back}/${IDENTITY}-fingerprint.txt"
+        local conv_pubkey="${convenience_back}/${IDENTITY}-public-armored.key"
+        _message "backup (GPG)" "Backing up public key & signature in local filesytem"
+        mkdir -p "${convenience_back}"
+        _message "backup (GPG)" "Fingerprint file: ${conv_fingerprint}"
+        echo ${fingerprint} > ${conv_fingerprint} 
+        _message "backup (GPG)" "Public key file: ${conv_pubkey}"
+        gpg --export --armor ${fingerprint} > ${conv_pubkey}
+
+        # Hush backup
+        _success "backup" "2) Backing hush partition"
+        _message "backup (hush)" "Closing identity ${IDENTITY}"
+        close_coffin ${IDENTITY}
+        _message "backup (hush)" "Unmounting hush partition"
+        umount_hush 
+        _message "backup (hush)" "Backing up hush as .img to pendrive"
+        if [[ -e ${MOUNT_POINT}/hush.img ]]; then
+                sudo chattr -i ${MOUNT_POINT}/hush.img          # Otherwise we can't overwrite
+        fi
+        sudo dd if=/dev/hush of=${MOUNT_POINT}/hush.img status=progress bs=16M
+
+        # Graveyard backup 
+        _success "backup" "3) Backing tomb files"
+        _message "backup (graveyard)" "Backing up graveyard to pendrive"
+        if [[ ! -d ${MOUNT_POINT}/graveyard ]]; then
+                _message "backup (graveyard)" "Creating graveyard directory on pendrive"
+                mkdir ${MOUNT_POINT}/graveyard &> /dev/null
+        fi
+        _message "backup (graveyard)" "Copying graveyard files"
+        sudo chattr -i ${MOUNT_POINT}/graveyard/* || _message "backup" "No files in backup/graveyard for which to change immutability properties"
+        cp -fR ${HOME}/.graveyard/* ${MOUNT_POINT}/graveyard || _failure "backup" "Failed to copy graveyard files to backup medium"
+
+        # Testing backup 
+        _success "backup" "4) Testing backup"
+        _message "backup (test)" "Printing directory tree in backup pendrive"
+        tree ${MOUNT_POINT}
+        echo
+        _message "backup (test)" "Should have 4 files in gpg/${IDENTITY}/, hush.img and graveyard in root"
+        _message "backup (test)" "Making all backup files immutable"
+        sudo chattr +i ${MOUNT_POINT}/graveyard/*
+        sudo chattr +i ${MOUNT_POINT}/hush.img
+        sudo chattr +i ${MOUNT_POINT}/gpg/${IDENTITY}/*
+
+        _message "backup (test)" "Unmounting backup pendrive"
+        sudo umount ${MOUNT_POINT}
+        _message "backup (test)" "Closing LUKS filesystem"
+        sudo cryptsetup close ${MAPPER}
+}
+
+# ------------------------------------------- Data -------------------------------------------- #
 
 open_coffin()
 {
@@ -247,7 +1108,7 @@ open_coffin()
 	local key_file="${HUSH_DIR}/${IDENTITY}-gpg.key"
 	local mount_dir="${HOME}/.gnupg"
 
-	if [ ! -f "${coffin_file}" ]; then
+	if [[ ! -f "${coffin_file}" ]]; then
 		echo "I'm looking for ${coffin_file} but no coffin file found in ${GRAVEYARD}"
 		exit 1
 	fi
@@ -276,14 +1137,18 @@ open_coffin()
 	echo "Coffin ${coffin_file} has been opened in ${mount_dir}"
 }
 
-close_coffin(){
-
+close_coffin()
+{
 	global_var_check "GRAVEYARD"
 
 	local IDENTITY="${1}"
 	local mapper="coffin-${IDENTITY}-gpg"
 	local mount_dir="${HOME}/.gnupg"
 	local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
+
+        # Gpg-agent is an asshole spawning thousands of processes
+        # without anyone to ask for them.... security they said
+        gpgconf --kill gpg-agent
 
 	if is_luks_mounted "/dev/mapper/${mapper}" ; then
 		if ! sudo umount ${mount_dir} ; then
@@ -303,6 +1168,21 @@ close_coffin(){
 	fi
 
 	echo "Coffin file ${coffin_file} has been closed"
+}
+
+list_coffins()
+{
+	local coffins_num=0
+
+	if ls -1 /dev/mapper/coffin-* &> /dev/null; then
+		local coffins=$(ls -1 /dev/mapper/coffin-*| awk -F- {'print $2'})
+		local coffins_num=$(echo ${coffins} | wc -l)
+	fi
+
+	if [[ ${coffins_num} -gt 0 ]]; then
+		echo "Coffins currently open:"
+		echo $(echo ${coffins} | xargs)
+	fi
 }
 
 open_tomb()
@@ -327,23 +1207,23 @@ open_tomb()
 			local mount_dir="${HOME}/.ssh"
 		;;
 		*)
-			local mount_dir="${HOME}/.tomb/${resource}"
+			local mount_dir="${HOME}/.tomb/${RESOURCE}"
 		;;
 	esac
 
-	if [ "${mapper}" != "none" ]; then
+	if [[ "${mapper}" != "none" ]]; then
 		if is_luks_mounted "/dev/mapper/tomb.${IDENTITY}-${RESOURCE}" ; then
 			echo "Tomb ${IDENTITY}-${RESOURCE} is already open and mounted"
 			return 0
 		fi
 	fi
 
-	if [ ! -f "${tomb_file}" ]; then
+	if [[ ! -f "${tomb_file}" ]]; then
 		echo "No tomb file ${tomb_file} found"
 		return 2
 	fi
 
-	if [ ! -f "${key_file}" ]; then
+	if [[ ! -f "${key_file}" ]]; then
 		echo "No key file ${key_file} found"
 		return 2
 	fi
@@ -354,14 +1234,20 @@ open_tomb()
 		open_coffin ${IDENTITY}
 	fi
 
-	if [ ! -d ${mount_dir} ]; then
+	if [[ ! -d ${mount_dir} ]]; then
 		mkdir -p ${mount_dir}
 	fi
 
 	tomb open -g -k "${key_file}" "${tomb_file}" "${mount_dir}"
 
-	if [ "${RESOURCE}" == "ssh" ]; then
-		ssh-add
+        # Either add the only SSH key, or all of them if we have a script
+	if [[ "${RESOURCE}" == "ssh" ]]; then
+                local ssh_add_script="${HOME}/.ssh/ssh-add"
+                if [[ -e ${ssh_add_script} ]]; then
+                        ${ssh_add_script}
+                else
+		        ssh-add
+                fi
 	fi
 }
 
@@ -369,46 +1255,40 @@ close_tomb()
 {
 	local RESOURCE="${1}"
 	local IDENTITY="${2}"
+        local FULL_LABEL="${IDENTITY}-${RESOURCE}"
 
 	if ! get_tomb_mapper ${IDENTITY}-${RESOURCE} &> /dev/null ; then
 		echo "Tomb ${IDENTITY}-${RESOURCE} is already closed"
 		return 0
 	fi
 
-	tomb close ${IDENTITY}-${RESOURCE}
+        # If the concatenated string is too long, cut it to 16 chars
+        if [[ ${#FULL_LABEL} -ge 16 ]]; then
+                FULL_LABEL=${FULL_LABEL:0:16}
+        fi
 
-	if [ "${RESOURCE}" == "ssh" ]; then
+        # Then close it
+	tomb close ${FULL_LABEL}
+
+	if [[ "${RESOURCE}" == "ssh" ]]; then
 		ssh-add -D
 	fi
 
 }
 
-list_coffins()
-{
-	local coffins_num=0
-
-	if ls -1 /dev/mapper/coffin-* &> /dev/null; then
-		local coffins=$(ls -1 /dev/mapper/coffin-*| awk -F- {'print $2'})
-		local coffins_num=$(echo ${coffins} | wc -l)
-	fi
-
-	if [ ${coffins_num} -gt 0 ]; then
-		echo "Coffins currently open:"
-		echo $(echo ${coffins} | xargs)
-	fi
-}
-
 gpgpass()
 {
+        local resource="$1"
+
 	global_var_check "HUSH_DIR"
 
 	file="${HUSH_DIR}/${resource}-gpg.ssl"
-	if [ ! -f ${file} ]; then
+	if [[ ! -f ${file} ]]; then
 		echo "File ${file} does not exist"
 		exit 1
 	fi
 
-	passphrase=$(cat "${file}" | openssl enc -aes-256-cbc -a -d)
+	passphrase=$(cat "${file}" | openssl enc -aes-256-cbc -a -d -pbkdf2)
 
 	echo -n "${passphrase}" | xclip -selection clipboard
 
@@ -422,63 +1302,144 @@ gpgpass()
 	( sleep ${seconds}; echo -n "" |xclip -selection clipboard;) &
 }
 
+slam() 
+{
+        # 1 - Get all open identities
+        identities=$(list_coffins | sed -n '1!p') # Remove first line, not an identity
+        identities=("${identities[@]}") 
+
+        # 2 - Close them all
+        for identity in "${identities[@]}"; do
+                _warning "slam" "Slaming identity ${identity}"
+                echo -e "\nClosing PASS tomb ..."
+                close_tomb pass ${identity}
+
+                echo -e "\nCLosing SSH tomb ..."
+                close_tomb ssh ${identity}
+
+                echo -e "\nClosing GPC coffin ..."
+                close_coffin ${identity}
+        done
+
+        # 3 - Unmount hush
+        echo
+        _warning "slam" "Unmounting hush partition"
+        umount_hush || _failure "slam" "Failed to unmount hush partition"
+}
+
+# ------------------------------------------- Main -------------------------------------------- #
 
 if [[ $EUID -eq 0 ]]; then
    echo "This script must be run as user"
    exit 2
 fi
 
-if [ ! ${1} ] || [ ! ${2} ]; then
+# The `slam` command only requires an action, so only ${1}
+if [ ! ${1} ]; then
 	usage
 	exit 2
 fi
+
+# Use colors unless told not to
+{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
+# Some options are only available during insecure mode
+{ ! option_is_set --unsafe } && {
+        for opt in --tomb-pwd --tomb-old-pwd; do
+                { option_is_set $opt } && {
+                        exitv=127 _failure "You specified option ::1 option::, which is DANGEROUS and should only be used for testing\nIf you really want so, add --unsafe" $opt }
+        done
+}
 
 action=${1}
 resource=${2}
 
-if [ "${resource}" != "hush" ] && [ "${action}" != "list" ] && [ "${action}" != "gpgpass" ] && [ ! ${3} ]; then
+## Arguments checks
+# NOTE: All init/new subcommands will pass this test, since they all require at least one argument 
+if [ "${resource}" != "hush" ] && [ "${action}" != "list" ] && [ "${action}" != "gpgpass" ] && [ "${action}" != "slam" ] && [ ! ${3} ]; then
 	echo "Wrong arguments"
 	usage
 	exit 2
-else
-	identity=${3}
+# else
+        # identity=${3}
 fi
 
 case ${action} in
 
+        # Hush drive ----------------------------------------------------------------
 	mount)
-		if [ "${resource}" == "hush" ]; then
+		if [[ "${resource}" == "hush" ]]; then
 			mount_hush
 		fi
 	;;
 
 	umount)
-		if [ "${resource}" == "hush" ]; then
+		if [[ "${resource}" == "hush" ]]; then
 			umount_hush
 		fi
 	;;
 
 	rw)
-		if [ "${resource}" == "hush" ]; then
+		if [[ "${resource}" == "hush" ]]; then
 			rw_hush
 			exit $?
 		fi
 	;;
 
 	ro)
-		if [ "${resource}" == "hush" ]; then
+		if [[ "${resource}" == "hush" ]]; then
 			ro_hush
 			exit $?
 		fi
 	;;
 
+        # Initialization ---------------------------------------------------------------
+        format)
+                shift; shift
+
+		if [[ "${resource}" == "sdcard" || "${resource}" == "hush" ]]; then
+			format_sdcard "$@"
+			exit $?
+		fi
+
+		if [[ "${resource}" == "backup" ]]; then
+			format_backup "$@"
+			exit $?
+		fi
+        ;;
+
+        # Generation -------------------------------------------------------------------
+        new)
+                shift; shift
+
+		if [[ "${resource}" == "identity" ]]; then
+                        new_identity "$@"
+			exit $?
+		fi
+
+		if [[ "${resource}" == "tomb" ]]; then
+                        new_tomb "$@"
+			exit $?
+		fi
+
+		if [[ "${resource}" == "backup" ]]; then
+                        new_backup "$@"
+			exit $?
+		fi
+        ;;
+
+        # Identities & Data ------------------------------------------------------------
 	open)
-		if [ "${resource}" == "gpg" ] || [ "${resource}" == "coffin" ]; then
+	        identity=${3}
+
+		if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
 			open_coffin ${identity}
 			exit $?
 		else
+                        # Needed to unlock tombs
+                        gpgpass ${identity}
+
 			# Bulk load
-			if [ "${resource}" == "identity" ]; then
+			if [[ "${resource}" == "identity" ]]; then
 				echo -e "\nOpening GPG coffin ..."
 				open_coffin ${identity}
 
@@ -496,12 +1457,14 @@ case ${action} in
 	;;
 
 	close)
-		if [ "${resource}" == "gpg" ] || [ "${resource}" == "coffin" ]; then
+	        identity=${3}
+
+		if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
 			close_coffin ${identity}
 			exit $?
 		else
 			# Bulk load
-			if [ "${resource}" == "identity" ]; then
+			if [[ "${resource}" == "identity" ]]; then
 				echo -e "\nClosing PASS tomb ..."
 				close_tomb pass ${identity}
 
@@ -518,13 +1481,17 @@ case ${action} in
 		fi
 	;;
 
+        slam)
+               slam 
+        ;;
+
 	list)
-		if [ "${resource}" == "coffins" ]; then
+		if [[ "${resource}" == "coffins" ]]; then
 			list_coffins
 			exit $?
 		fi
 
-		if [ "${resource}" == "tombs" ]; then
+		if [[ "${resource}" == "tombs" ]]; then
 			tomb list
 			exit $?
 		fi
@@ -534,7 +1501,7 @@ case ${action} in
 	;;
 
 	gpgpass)
-		gpgpass
+		gpgpass ${resource}
 	;;
 
 	*)
