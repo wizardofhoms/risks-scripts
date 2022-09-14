@@ -781,7 +781,7 @@ init_pass ()
     local IDENTITY="${1}"       
     local email="${2}"
     
-    _success "7) Pass Initialization "
+    _success "7) Pass Initialization"
     _message "pass" "Creating tomb file for pass"
     new_tomb "${IDENTITY}" "${email}" pass 20 
     _message "pass" "Opening password store"
@@ -790,6 +790,28 @@ init_pass ()
     pass init ${email}
     _message "SSH" "Closing pass tomb file"
     close_tomb pass ${IDENTITY}
+}
+
+# The default VM used by Signal
+local DEFAULT_SIGNAL_VM="msg"
+
+# Creates a default management tomb in which, between others, the key=value store is being kept.
+init_mgmt ()
+{
+    local IDENTITY="${1}"       
+    local email="${2}"
+
+    _success "8) Default management tomb"
+    _message "mgmt" "Creating tomb file for management (key=value store, etc)"
+    new_tomb "${IDENTITY}" "${email}" mgmt 10 
+    _message "mgmt" "Opening management tomb"
+    open_tomb mgmt ${IDENTITY}
+
+    # Write default values
+    kvset "signalVM" "${DEFAULT_SIGNAL_VM}"
+
+    _message "mgmt" "Closing management tomb"
+    close_tomb mgmt ${IDENTITY}
 }
 
 
@@ -950,8 +972,8 @@ new_identity()
     ## Pass Initialization
     init_pass "${IDENTITY}" "${email}"
 
-    ## Create a tomb to use for admin storage: config files, etc
-    new_tomb "${IDENTITY}" "${email}" mgmt 10
+    ## Create a tomb to use for admin storage: config files, etc, and set default key=values
+    init_mgmt "${IDENTITY}" "${email}"
 
     ## 8 - Create Signal tomb, set admin stuff and generate password
     # for the enrypted data directory in the Signal VM.
@@ -1216,8 +1238,8 @@ open_tomb()
 		ssh)
 			local mount_dir="${HOME}/.ssh"
 		;;
-		signal)
-			local mount_dir="${HOME}/.signal"
+		mgmt)
+			local mount_dir="${HOME}/.mgmt"
 		;;
 		*)
 			local mount_dir="${HOME}/.tomb/${RESOURCE}"
@@ -1363,67 +1385,116 @@ slam()
 
 # ------------------------------------------ Tools Data ------------------------------------------ #
 
+# Default directory where to save key=values
+default_kv_user_dir="$HOME/.tomb/mgmt/db/"
+
+# print to stderr, red color
+kv_echo_err() {
+	echo -e "\e[01;31m$@\e[0m" >&2
+}
+
+# Usage: kv_validate_key <key>
+kv_validate_key() {
+	[[ "$1" =~ ^[0-9a-zA-Z._:-]+$  ]]
+}
+
+# Usage: kvget <key>
+kvget() {
+	key="$1"
+	kv_validate_key "$key" || {
+		_failure "db" 'invalid param "key"'
+		return 1
+	}
+	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	VALUE="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
+	echo "$VALUE"
+	
+	[ "$VALUE" != "" ]
+}
+
+# Usage: kvset <key> [value] 
+kvset() {
+	key="$1"
+	value="$2"
+	kv_validate_key "$key" || {
+        _failure "db" 'invalid param "key"'
+		return 1
+	}
+	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	test -d "$kv_user_dir" || mkdir "$kv_user_dir"
+	echo "$value" > "$kv_user_dir/$key"
+    _success "kv" "${key} => ${value}"
+}
+
+# Usage: kvdel <key>
+kvdel() {
+	key="$1"
+	kv_validate_key "$key" || {
+        _failure "db" 'invalid param "key"'
+		return 1
+	}
+	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	test -f "$kv_user_dir/$key" && rm -f "$kv_user_dir/$key"
+    _success "kv" "Deleted key '${key}'"
+}
+
+# list all key/value pairs to stdout
+# Usage: kvlist
+kvlist() {
+	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	for i in "$kv_user_dir/"*; do
+		if [ -f "$i" ]; then
+			key="$(basename "$i")"
+			echo "$key" "$(kvget "$key")"
+		fi
+	done 
+}
+
+# clear all key/value pairs in database
+# Usage: kvclear
+kvclear() {
+    rm -rf "${KV_USER_DIR:-$default_kv_user_dir}"
+}
+
 # Loads copies some data needed by some tool on another VM. Generally a script
 # in the said VM should be invoked so as to move to the date to its final destination.
 load()
 {
-    # The default VM used by Signal
-    local DEFAULT_SIGNAL_VM="msg"
-
     # Parameters
-	local RESOURCE="${1}"
-	local IDENTITY="${2}"
-    local DEST_VM="${3-$DEFAULT_SIGNAL_VM}" # Either use the specified VM, or msg
-
-    _message "$RESOURCE" "Loading data to VM ${DEST_VM}"
+	local IDENTITY="${1}"
+    local DEST_VM="${2}"    
+    local RESOURCE="${3}"   # Resource is a tomb file (root directory) in ~/.tomb
 
     # Open the related tomb for the tool 
     open_tomb ${RESOURCE} ${IDENTITY} || _failure "${RESOURCE}" "Failed to open tomb"
 
-    # Get the destination directory 
-	case ${RESOURCE} in
-		signal)
-			local source_dir="${HOME}/.signal"
-		;;
-		*)
-			local source_dir="${HOME}/.tomb/${RESOURCE}"
-		;;
-	esac
-
-    # Copy the files to the VM
-    _message "$RESOURCE" "Copying data to VM ${DEST_VM}"
-    qvm-copy-to-vm "${DEST_VM}" "${source_dir}/*"
+    # Get the source directory, and copy the files to the VM
+    _message "$RESOURCE" "Loading data to VM ${DEST_VM}"
+	local source_dir="${HOME}/.tomb/${RESOURCE}"
+    qvm-copy-to-vm "${DEST_VM}" "${source_dir}/"'*'
 }
 
 # Repatriate all data coming from a given VM, but not using this VM name as a parameter.
 # Generally, the argument is something like "signal", for which this program knows that
 # the data is in "msg" VM, if not otherwise specified by the 3rd argument (optional)
-save () {
-    # The default VM used by Signal
-    local DEFAULT_SIGNAL_VM="msg"
+save () 
+{
+    local SOURCE_VM="${1}"
+	local RESOURCE="${2}"
 
-	local RESOURCE="${1}"
-    local SOURCE_VM="${2-$DEFAULT_SIGNAL_VM}" # Either use the specified VM, or msg
-
-    # Get the destination directory 
-	case ${RESOURCE} in
-		signal)
-			local dest_dir="${HOME}/.signal"
-		;;
-		*)
-			local dest_dir="${HOME}/.tomb/${RESOURCE}"
-		;;
-	esac
-
+    # Make the source directory 
     # Don't do anything if the directory does not exist
-    # TODO: maybe create directory, and/or create tomb if dir not in one.
-    if [[ ! -d "~/QubesIncoming/${SOURCE_VM}" ]]; then
+    local source_dir="${HOME}/QubesIncoming/${SOURCE_VM}"
+    if [[ ! -d $source_dir ]]; then
         _failure "${RESOURCE}" "No QubesIncoming directory found for ${SOURCE_VM}"
     fi
 
+    # And make the destination directory
+	local dest_dir="${HOME}/.tomb/${RESOURCE}"
+    
     # Or move the data from the directory to the tomb directory
     _message "$RESOURCE" "Moving data to tomb directory"
-    mv "~/QubesIncoming/${SOURCE_VM}/*" "${dest_dir}"
+    mv "${source_dir}/"'*' "${dest_dir}"
 }
 
 
@@ -1541,23 +1612,22 @@ cmd_open ()
 # Load data directly to other VMs
 cmd_load () 
 {
-    local resource="${1}"
+    _check_required_args 3 "$@"
+	local IDENTITY="${1}"
+    local DEST_VM="${2}"    
+    local RESOURCE="${3}"   # Resource is a tomb file (root directory) in ~/.tomb
 
-    if [[ "${resource}" == "signal" ]]; then
-        exit $?
-    fi
+    load "${IDENTITY}" "${DEST_VM}" "${RESOURCE}"
 }
 
 # Save data coming from other VMs into identities' stores
 cmd_save () 
 {
-    local source_vm=${3} # Optional
-    local dest_dir=${4}  # Optional
-
-    if [[ "${resource}" == "signal" ]]; then
-        save ${resource} ${source_vm} ${dest_dir}
-        exit $?
-    fi
+    _check_required_args 2 "$@"
+    local SOURCE_VM="${1}"
+	local RESOURCE="${2}"
+    
+    save "${SOURCE_VM}" "${RESOURCE}"
 }
 
 # Close identities and/or associated stores
@@ -1617,6 +1687,37 @@ cmd_list ()
     exit 1
 }
 
+# Set/unset various key=value pairs to be used by other commands/functions
+cmd_kv () 
+{
+    _check_required_args 1 "$@"
+    local action="${1}"
+    shift # We don't need the sub-subcommand set/unset/clear,etc
+
+    if [[ "${action}" == "set" ]]; then
+        _check_required_args 1 "$@"
+        kvget "$@"
+        exit $?
+    fi
+
+    if [[ "${action}" == "unset" ]]; then
+        _check_required_args 2 "$@"
+        kvset "$@"
+        exit $?
+        
+    fi
+
+    if [[ "${action}" == "list" ]]; then
+        kvlist
+        exit $?
+    fi
+
+    if [[ "${action}" == "clear" ]]; then
+        kvclear
+        exit $?
+    fi
+}
+
 
 # --------------------------------------------- Main --------------------------------------------- #
 
@@ -1644,18 +1745,18 @@ fi
         done
 }
 
-action=${1}     # The subcommand, e.g risks format, risks save, etc
+local action=${1}     # The subcommand, e.g risks format, risks save, etc
 shift           # Which we don't need anymore as a positional argument.
 
 # The number of arguments required is determined and ensured per command.
 case ${action} in
 
-    hush)
-        cmd_hush "$@"
-    ;;
-
     format)
         cmd_format "$@"
+    ;;
+
+    hush)
+        cmd_hush "$@"
     ;;
 
     new)
@@ -1678,10 +1779,6 @@ case ${action} in
         cmd_close "$@"
 	;;
 
-    slam)
-        slam 
-    ;;
-
 	list)
         cmd_list "$@"
 	;;
@@ -1689,6 +1786,14 @@ case ${action} in
 	gpgpass)
 		gpgpass "$@"
 	;;
+
+    kv)
+        cmd_kv "$@"
+    ;;
+
+    slam)
+        slam 
+    ;;
 
 	*)
 		echo "unknown action"
