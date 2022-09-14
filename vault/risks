@@ -16,7 +16,7 @@ setopt +o nomatch
 
 #sudo apt install wipe cryptsetup pass gnupg2 e2fsprogs steghide xclip \ 
 #   libsodium23 libtinfo5 dosfstools haveged rng-tools tomb xkcdpass pwgen \
-#   socat ncurses pinentry-curses ssh-askpass-gnome 
+#   socat ncurses pinentry-curses ssh-askpass-gnome age zsh
 
 usage()
 {
@@ -73,7 +73,7 @@ usage()
     echo "$prg save <resource> [VM_NAME] [DEST_DIR]     # Saves some date in QubesIncoming/VM_NAME to tomb open in DEST_DIR"
 }
 
-# ------------------------------------------ Utilities -------------------------------------------- #
+# ------------------------------------------ Utilities ------------------------------------------- #
 
 # Checks if a global var has been configured.
 # Parameter: ${1}: global var name
@@ -138,6 +138,20 @@ option_is_set() {
 	}
 
 	return $r;
+}
+
+# Given a required number of arguments, checks 
+# that those have been supplied and none are nil.
+# $1 - Number of arguments required
+# $2 - Arguments passed to the function we want to run.
+_check_required_args () {
+    local required=$1
+    local args="${@:3}"
+
+    # Number of args should be satisfied
+    if [[ ${#args} -lt $required ]]; then
+            _failure "Not enough arguments provided. Want $required, got ${#args}"
+    fi
 }
 
 # Messaging function with pretty coloring
@@ -233,7 +247,8 @@ function _print() {
 	return 0
 }
 
-# ----------------------------------------- Hush Partition ---------------------------------------- #
+
+# ----------------------------------------- Hush Partition --------------------------------------- #
 
 # Checks if the "hush partition" has been seen by kernel and returns 0 if true
 is_partition_mapper_present()
@@ -629,6 +644,7 @@ cleanup_gpg_init()
     local RAMDISK="${HOME}/.gnupg"
     local HUSH_DIR="${HOME}/.hush"
     local TMP="/tmp/${IDENTITY}-gpg"
+    local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
     # Making tmp directory
     _message "coffin (setup)" "Creating temp directory and mounting coffin"
@@ -777,7 +793,7 @@ init_pass ()
 }
 
 
-# ------------------------------------------- Format -------------------------------------------- #
+# ------------------------------------------- Format --------------------------------------------- #
 
 # Easily cleanup, format, luks-encrypt and filesystem setup onto an SDCard
 # to be used as a store for the various identities' data (excluding backup).
@@ -888,7 +904,7 @@ format_backup()
 }
 
 
-# ------------------------------------------- New --------------------------------------------- #
+# -------------------------------------------- New ----------------------------------------------- #
 
 # Complete generation of all data needed by an identity:
 # - RAMDisk setup, used as workspace for creating our files
@@ -915,9 +931,8 @@ new_identity()
 
     # Generate all needed key pairs, and keep the fingerprint to be used in later steps
     gen_gpg_keys "${name}" ${email} "${expiry}" "${passphrase}"
-    local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
-    # Generate the age key needed for encrypting various things
+    # Generate the age key needed for encrypting the GPG passphrase 
     gen_age_key "${IDENTITY}" "${passphrase}"
 
     # Needed to open coffin files easily in the later steps
@@ -926,7 +941,7 @@ new_identity()
     # Generate the coffin LUKS container
     gen_coffin "${IDENTITY}"
 
-    # Cleaning RAM disk, removing private keys from the keyring and checking open/close 
+    # Cleaning RAM disk, removing private keys from the keyring and test open/close 
     cleanup_gpg_init "${IDENTITY}" "${email}"
 
     ## Write multi SSH-keypair loading script, and generate the keys 
@@ -935,8 +950,12 @@ new_identity()
     ## Pass Initialization
     init_pass "${IDENTITY}" "${email}"
 
+    ## Create a tomb to use for admin storage: config files, etc
+    new_tomb "${IDENTITY}" "${email}" mgmt 10
+
     ## 8 - Create Signal tomb, set admin stuff and generate password
     # for the enrypted data directory in the Signal VM.
+    new_tomb "${IDENTITY}" "${email}" signal 20
     
     ## 9 - Backup
     _message "backup" "Backing up identity data and partitions"
@@ -1086,7 +1105,7 @@ new_backup()
 }
 
 
-# ------------------------------------------- Data -------------------------------------------- #
+# -------------------------------------------- Data ---------------------------------------------- #
 
 open_coffin()
 {
@@ -1272,6 +1291,7 @@ close_tomb()
 
 gpgpass()
 {
+    _check_required_args 1 "$@"
     local resource="$1"
 
 	global_var_check "HUSH_DIR"
@@ -1341,7 +1361,7 @@ slam()
 }
 
 
-# ---------------------------------------- Tools Data ----------------------------------------- #
+# ------------------------------------------ Tools Data ------------------------------------------ #
 
 # Loads copies some data needed by some tool on another VM. Generally a script
 # in the said VM should be invoked so as to move to the date to its final destination.
@@ -1407,14 +1427,205 @@ save () {
 }
 
 
-# ------------------------------------------- Main -------------------------------------------- #
-# TODO: Refactor into smaller funtions for each subcommand
+# ------------------------------------------- Commands ------------------------------------------- #
+
+# Format and setup encryption on sdcards and backup drives
+cmd_format () 
+{
+    _check_required_args 2 "$@"
+    local resource="$1"
+    local device="$2"
+
+    if [[ "${resource}" == "sdcard" || "${resource}" == "hush" ]]; then
+        format_sdcard "$device"
+        exit $?
+    fi
+
+    if [[ "${resource}" == "backup" ]]; then
+        format_backup "$device"
+        exit $?
+    fi
+}
+
+# Manage the hush partition
+cmd_hush () 
+{
+    _check_required_args 1 "$@"
+    local resource="$1"
+
+    if [[ "${resource}" == "rw" ]]; then
+        rw_hush
+        exit $?
+    fi
+    if [[ "${resource}" == "ro" ]]; then
+        ro_hush	
+        exit $?
+    fi
+    if [[ "${resource}" == "mount" ]]; then
+        mount_hush
+        exit $?
+    fi
+    if [[ "${resource}" == "umount" ]]; then
+        umount_hush	
+        exit $?
+    fi
+}
+
+# Create new identities/tombs/backups
+cmd_new () 
+{
+    local resource="$1"
+    shift # Get rid of the resource name
+
+    if [[ "${resource}" == "identity" ]]; then
+                    _check_required_args 4 "$@"
+                    new_identity "$@"
+        exit $?
+    fi
+
+    if [[ "${resource}" == "tomb" ]]; then
+                    _check_required_args 4 "$@"
+                    new_tomb "$@"
+        exit $?
+    fi
+
+    if [[ "${resource}" == "backup" ]]; then
+                    _check_required_args 1 "$@"
+                    new_backup "$@"
+        exit $?
+    fi
+}
+
+# Open identites and/or associated stores
+cmd_open () 
+{
+    _check_required_args 2 "$@" # Counting both the resource and the identity
+    local resource="${1}"
+    local identity=${2}
+
+    # Only open the GPG keyring
+    # Or unlock some/all tombs
+    if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
+        open_coffin ${identity}
+        exit $?
+    else
+        # To be pasted when prompted by GPG
+        gpgpass ${identity}
+
+        # Bulk load
+        if [[ "${resource}" == "identity" ]]; then
+            echo -e "\nOpening GPG coffin ..."
+            open_coffin ${identity}
+
+            echo -e "\nOpening Management tomb ... "
+            open_tomb mgmt ${identity}
+
+            echo -e "\nOpening SSH tomb ... "
+            open_tomb ssh ${identity}
+
+            echo -e "\nOpening PASS tomb ..."
+            open_tomb pass ${identity}
+
+            echo -e "\nOpening Signal tomb ..."
+            open_tomb signal ${identity}
+
+            exit 0
+        fi
+
+        # Or open a single tomb
+        open_tomb ${resource} ${identity}
+        exit $?
+    fi
+}
+
+# Load data directly to other VMs
+cmd_load () 
+{
+    local resource="${1}"
+
+    if [[ "${resource}" == "signal" ]]; then
+        exit $?
+    fi
+}
+
+# Save data coming from other VMs into identities' stores
+cmd_save () 
+{
+    local source_vm=${3} # Optional
+    local dest_dir=${4}  # Optional
+
+    if [[ "${resource}" == "signal" ]]; then
+        save ${resource} ${source_vm} ${dest_dir}
+        exit $?
+    fi
+}
+
+# Close identities and/or associated stores
+cmd_close () 
+{
+    _check_required_args 2 "$@" # Counting both the resource and the identity
+    local resource="${1}"
+    local identity=${2}
+
+    # TODO: Find all other, non-standard tomb names and close them also
+
+    if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
+        close_coffin ${identity}
+        exit $?
+    else
+        # Bulk load
+        if [[ "${resource}" == "identity" ]]; then
+            echo -e "\nCLosing Signal tomb ..."
+            close_tomb signal ${identity}
+
+            echo -e "\nClosing PASS tomb ..."
+            close_tomb pass ${identity}
+
+            echo -e "\nCLosing SSH tomb ..."
+            close_tomb ssh ${identity}
+
+            echo -e "\nCLosing Management tomb ..."
+            close_tomb mgmt ${identity}
+
+            echo -e "\nClosing GPC coffin ..."
+            close_coffin ${identity}
+            exit 0
+        fi
+
+        close_tomb ${resource} ${identity}
+        exit $?
+    fi
+}
+
+# List active identities and/or associated stores
+cmd_list () 
+{
+    _check_required_args 1 "$@"
+    local resource="${1}"
+
+    if [[ "${resource}" == "coffins" ]]; then
+        list_coffins
+        exit $?
+    fi
+
+    if [[ "${resource}" == "tombs" ]]; then
+        tomb list
+        exit $?
+    fi
+
+    echo "unknown resource ${resource}"
+    exit 1
+}
+
+
+# --------------------------------------------- Main --------------------------------------------- #
 
 if [[ $EUID -eq 0 ]]; then
    echo "This script must be run as user"
    exit 2
 fi
 
+# Verify we have at least one argument provided: a subcommand
 # The `slam` command only requires an action, so only ${1}
 if [ ! ${1} ]; then
 	usage
@@ -1427,189 +1638,56 @@ fi
 { ! option_is_set --unsafe } && {
         for opt in --tomb-pwd --tomb-old-pwd; do
                 { option_is_set $opt } && {
-                        exitv=127 _failure "You specified option ::1 option::, which is DANGEROUS and should only be used for testing\nIf you really want so, add --unsafe" $opt }
+                        exitv=127 _failure "You specified option ::1 option::, \
+                        which is DANGEROUS and should only be used for testing\n \
+                        If you really want so, add --unsafe" $opt }
         done
 }
 
-action=${1}
-resource=${2}
+action=${1}     # The subcommand, e.g risks format, risks save, etc
+shift           # Which we don't need anymore as a positional argument.
 
-## Arguments checks
-# NOTE: All init/new subcommands will pass this test, since they all require at least one argument 
-if [ "${resource}" != "hush" ] && [ "${action}" != "list" ] && [ "${action}" != "gpgpass" ] && [ "${action}" != "slam" ] && [ ! ${3} ]; then
-	echo "Wrong arguments"
-	usage
-	exit 2
-# else
-        # identity=${3}
-fi
-
+# The number of arguments required is determined and ensured per command.
 case ${action} in
 
-        # Hush drive ----------------------------------------------------------------
-	mount)
-		if [[ "${resource}" == "hush" ]]; then
-			mount_hush
-		fi
-	;;
+    hush)
+        cmd_hush "$@"
+    ;;
 
-	umount)
-		if [[ "${resource}" == "hush" ]]; then
-			umount_hush
-		fi
-	;;
-
-	rw)
-		if [[ "${resource}" == "hush" ]]; then
-			rw_hush
-			exit $?
-		fi
-	;;
-
-	ro)
-		if [[ "${resource}" == "hush" ]]; then
-			ro_hush
-			exit $?
-		fi
-	;;
-
-    # Initialization ---------------------------------------------------------------
     format)
-            shift; shift
-
-    if [[ "${resource}" == "sdcard" || "${resource}" == "hush" ]]; then
-        format_sdcard "$@"
-        exit $?
-    fi
-
-    if [[ "${resource}" == "backup" ]]; then
-        format_backup "$@"
-        exit $?
-    fi
+        cmd_format "$@"
     ;;
 
-    # Generation -------------------------------------------------------------------
     new)
-            shift; shift
-
-    if [[ "${resource}" == "identity" ]]; then
-                    new_identity "$@"
-        exit $?
-    fi
-
-    if [[ "${resource}" == "tomb" ]]; then
-                    new_tomb "$@"
-        exit $?
-    fi
-
-    if [[ "${resource}" == "backup" ]]; then
-                    new_backup "$@"
-        exit $?
-    fi
+        cmd_new "$@"
     ;;
 
-        # Identities & Data ------------------------------------------------------------
 	open)
-	    identity=${3}
-
-		if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
-			open_coffin ${identity}
-			exit $?
-		else
-            # Needed to unlock tombs
-            gpgpass ${identity}
-
-			# Bulk load
-			if [[ "${resource}" == "identity" ]]; then
-				echo -e "\nOpening GPG coffin ..."
-				open_coffin ${identity}
-
-				echo -e "\nOpening SSH tomb ... "
-				open_tomb ssh ${identity}
-
-				echo -e "\nOpening PASS tomb ..."
-				open_tomb pass ${identity}
-
-				echo -e "\nOpening Signal tomb ..."
-				open_tomb signal ${identity}
-
-				exit 0
-			fi
-
-            # Or open a single tomb
-			open_tomb ${resource} ${identity}
-			exit $?
-		fi
+        cmd_open "$@"
 	;;
 
     load)
-	    identity=${3}
-
-        if [[ "${resource}" == "signal" ]]; then
-            exit $?
-        fi
+        cmd_load "$@"
     ;;
 
     save)
-	    source_vm=${3} # Optional
-	    dest_dir=${4}  # Optional
-
-        if [[ "${resource}" == "signal" ]]; then
-            save ${resource} ${source_vm} ${dest_dir}
-            exit $?
-        fi
+        cmd_save "$@"
     ;;
 
 	close)
-        # TODO: Find all other, non-standard tomb names and close them also
-	    identity=${3}
-
-		if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
-			close_coffin ${identity}
-			exit $?
-		else
-			# Bulk load
-			if [[ "${resource}" == "identity" ]]; then
-				echo -e "\nClosing PASS tomb ..."
-				close_tomb pass ${identity}
-
-				echo -e "\nCLosing SSH tomb ..."
-				close_tomb ssh ${identity}
-
-				echo -e "\nCLosing Signal tomb ..."
-				close_tomb signal ${identity}
-
-				echo -e "\nClosing GPC coffin ..."
-				close_coffin ${identity}
-				exit 0
-			fi
-
-			close_tomb ${resource} ${identity}
-			exit $?
-		fi
+        cmd_close "$@"
 	;;
 
-        slam)
-               slam 
-        ;;
+    slam)
+        slam 
+    ;;
 
 	list)
-		if [[ "${resource}" == "coffins" ]]; then
-			list_coffins
-			exit $?
-		fi
-
-		if [[ "${resource}" == "tombs" ]]; then
-			tomb list
-			exit $?
-		fi
-
-		echo "unknown resource ${resource}"
-		exit 1
+        cmd_list "$@"
 	;;
 
 	gpgpass)
-		gpgpass ${resource}
+		gpgpass "$@"
 	;;
 
 	*)
