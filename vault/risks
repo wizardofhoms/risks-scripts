@@ -15,19 +15,19 @@ setopt +o nomatch
 ## 0 - Required programs 
 
 #sudo apt install wipe cryptsetup pass gnupg2 e2fsprogs steghide xclip \ 
-#   libsodium23 libtinfo5 dosfstools haveged rng-tools tomb xkcdpass pwgen \
-#   socat ncurses pinentry-curses ssh-askpass-gnome age zsh
+#   libsodium23 libtinfo5 dosfstools haveged rng-tools tomb pwgen \
+#   socat ncurses pinentry-curses ssh-askpass-gnome zsh
 
 usage()
 {
-	echo "Usage: $prg action resource identity"
+	echo "Usage: $prg action resource [identity]"
 	echo ""
 	echo "action: list"
 	echo "        |_ coffins"
 	echo "        |_ tombs"
 	echo ""
-	echo "action: umount | mount | rw | ro"
-	echo "        |_ hush"
+	echo "action: hush"
+	echo "        |_ umount | mount | rw | ro"
 	echo ""
 	echo "action: open | close"
 	echo "        |_ coffin|gpg <identity>"
@@ -44,34 +44,56 @@ usage()
 	echo ""
 	echo "action: new"
 	echo "        |_ identity <name> <email> <key_expiry> <backup_drive>"
-	echo "        |_ tomb   <name> <email> <label> <size>"
+	echo "        |_ tomb   <label> <size> [identity]"
 	echo "        |_ backup <backup_drive>"
 	echo ""
-        echo ""
-	echo "Ex.:"
-        echo ""
+	echo "action: load <tomb_dir> <dest_VM>"
+    echo ""
+    echo "action: save <source_VM> <tomb_dir>"
+    echo ""
+	echo "action: kv"
+	echo "        |_ set | unset | list | clean"
+    echo ""
+	echo "Examples:"
+    echo ""
 	echo "$prg format sdcard /dev/xvdi              # SDcard stores data to be used by risks"
-        echo "$prg format backup /dev/xvdj              # Pendrive (another USB) stores the backups"
-        echo ""
+    echo "$prg format backup /dev/xvdj              # Pendrive (another USB) stores the backups"
+    echo ""
 	echo "$prg new identity 'John Doe' john.doe@mail.com '1 year' /dev/xvdj"
-	echo "$prg new tomb 'John Doe' john.doe@mail.com Data 100             # Data expressed in MB"
-	echo "$prg new tomb John_Doe john.doe@mail.com Data 100               # Also works without spaces"
-	echo "$prg new backup John_Doe john.doe@mail.com /dev/xvdj            # Also applies to this"
-        echo ""
-	echo "$prg open ssh <identity>"
-	echo "$prg open pass <identity>"
-        echo ""
-	echo "$prg open gpg <identity>"
-	echo "$prg open ssh <identity>"
-	echo "$prg open pass <identity>"
-	echo "$prg open identity <identity>   #opens gpg coffin, pass tomb and ssh tomb all in once"
-	echo "$prg close identity <identity>  #closes gpg coffin, pass tomb and ssh tomb all in once"
-        echo ""
-	echo "$prg slam         # Closes all active/open identities and unmounts hush partition"
-        echo ""
-    echo "$prg load signal <identity>                   # Moves Signal messenger data to VM (named msg by default)"
-    echo "$prg save <resource> [VM_NAME] [DEST_DIR]     # Saves some date in QubesIncoming/VM_NAME to tomb open in DEST_DIR"
+	echo "$prg new tomb Data 100 john_doe"
+	echo "$prg new backup /dev/xvdj"
+    echo ""
+	echo "$prg open identity <identity>     # Opens gpg coffin, mgmt, pass, ssh and signal tombs all at once"
+	echo "$prg close identity <identity>    # Closes gpg coffin and all open tombs all at once."
+    echo ""
+	echo "$prg open gpg <identity>          # Opens only the GPG keyring for the given identity"         
+	echo "$prg open ssh [identity]          # Opens the ssh tomb for the identity, either active or passed as argument"
+	echo "$prg open pass [identity]         # Same as lign before: the identity parameter is optional if one is active"
+    echo ""
+	echo "$prg slam                         # Closes all active/open identities and unmounts hush partition"
+    echo ""
+    echo "$prg load signal messaging_VM     # Moves Signal messenger tomb data to VM"
+    echo "$prg save messaging_VM signal     # Saves the data in messaging_VM to tomb mounted on ~/.tomb/signal"
+    echo ""
+    echo "$prg kv set signalVM mySignalVM   # Sets the key 'signalVM' to 'mySignalVM' in the key-value store"
+    echo "$prg kv unset signalVM            # Deletes the key 'signalVM' in the key-value store"
+    echo "$prg kv clean                     # Deletes all the key-value pairs present (saved) in the store"
+    echo ""
 }
+
+# Variables ------------------------------------------------------------------------------------- #
+
+local RAMDISK="${HOME}/.gnupg"
+
+local GPG_TOMB_LABEL="GPG"          # Stores an identity GPG private keys. Seldom opened
+local SSH_TOMB_LABEL="ssh"          # Stores SSH keypairs
+local MGMT_TOMB_LABEL="mgmt"        # Holds the key-value store, and anything the user wants.
+local PASS_TOMB_LABEL="pass"        # Holds the password store data
+local SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
+
+# Default directory where to save key=values
+local default_kv_user_dir="$HOME/.tomb/mgmt/db/"
+
 
 # CLI Utilities --------------------------------------------------------------------------------- #
 
@@ -139,6 +161,13 @@ _check_required_args () {
     if [[ ${#args} -lt $required ]]; then
             _failure "Not enough arguments provided. Want $required, got ${#args}"
     fi
+}
+
+# Some global variables are always required, and they are checked here.
+_check_required_vars ()
+{
+	global_var_check "HUSH_DIR" 
+	global_var_check "GRAVEYARD"
 }
 
 
@@ -249,9 +278,9 @@ local RISKS_IDENTITY_FILE="${HOME}/.identity"
 # Parameter: ${1}: global var name
 global_var_check()
 {
-    if [[ -z ${(P)${1}} ]]; then # ZSH
-		echo "Something is wrong with your global var: ${1} is not defined"
-		echo "Check your ~/.zshrc"
+    if [[ -z ${(P)${1}} ]]; then
+        _warning "variables" "Something is wrong with your global var: ${1} is not defined \
+            Check your ~/.zshrc"
 		exit 2
 	fi
 }
@@ -298,7 +327,7 @@ _identity_active_or_specified ()
 {
     if [[ -z ${1} ]] && [[ ! _identity_active ]]; then
         _failure "identity" "Command requires either an identity to be unlocked.\n \
-            Please use `risks open identity <name>` or `risks open gpg <name>` first."
+            Please use 'risks open identity <name>' or 'risks open gpg <name>' first."
     fi
 
     # Print the identity
@@ -327,45 +356,33 @@ _encrypt_filename ()
     # -F n          No config file output
     # -t n          Output a nine characters name, without symbols
     # -u ${user}    User for which to produce the password/name
-    local encrypted=$(printf "${pass}" | spectre -q -n -s 0 -F n -t n -u ${identity} ${filename}))
+    local encrypted=$(print "${pass}" | spectre -q -n -s 0 -F n -t n -u ${identity} ${filename}))
     print "${encrypted}"
 }
 
-# Generate the age key needed for encrypting various files and passphrases
-gen_age_key()
+# Returns a spectre-generated passphrase, given an identity and an optional password argument.
+# - No argument: spectre will prompt for a passphrase, which is essentially creating
+#                a new one to be used in later steps.
+# - With arg:    spectre uses it to produce an output without any prompt.
+#
+# usage: password=$(_passphrase "${identity}" ${master_passphrase})
+_passphrase ()
 {
-    local IDENTITY="$1" 
-    local passphrase="$2"
-    local HUSH_DIR="${HOME}/.hush"
+    local identity=${1}
+    local master="${2}"
 
-    _success "age" "3) age key creation"
-    _message "age" "Mounting hush partition"
-    mount_hush 
-    rw_hush 
-    _message "age" "Checking SDCard is mounted:"
-    mount | grep hush
-    echo
-    _message "age" "Output should look like:"
-    echo
-    echo "/dev/mapper/hush on /home/user/.hush type ext4 (rw,relatime,data=ordered)"
-    echo "/dev/mapper/hush on /rw/home/user/.hush type ext4 (rw,relatime,data=ordered)"
-    echo
-    _warning "age" "If the output was empty, please run:"
-    _warning "age" " in dom0:   attach_hush_to vault"
-    _warning "age" " in vault:  risks mount hush"
-    echo
+    # The `risks` argument is common to all, since it's not specific to anything.
+    local cmd=(spectre -q -n -F n)
+    local parameters=(-t K -P 512 -u ${identity} risks)
 
-    _message "age" "Generating age key with passphrase"
-    if [[ ! -d ${HUSH_DIR} ]]; then
-            _message "coffin" "Creating directory ${HUSH_DIR}"
-            mkdir -p ${HUSH_DIR}
+    if [[ ! -z ${master} ]]; then
+        local passphrase=$(print "${master}" | ${cmd} -s 0 ${parameters})
+    else
+        local passphrase=$(${cmd} ${parameters})
     fi
-    echo "$passphrase" | age -encrypt -passphrase -o ${HUSH_DIR}/${IDENTITY}-gpg.age \
-            || _failure "age" "Failed to generate age key"
-    _message "age" "Protecting key from accidental changes/deletion"
-    sudo chattr +i ${HUSH_DIR}/${IDENTITY}-gpg.age
-}
 
+    print "${passphrase}"
+}
 
 # Hush Partition -------------------------------------------------------------------------------- #
 
@@ -539,13 +556,13 @@ get_tomb_mapper()
 # Create a RAMDisk and setup the GPG directory in it, with configuration files
 init_gpg()
 {
-    local RAMDISK="${HOME}/.gnupg"
+    # local RAMDISK="${HOME}/.gnupg"
 
     ## 0 - RAMDisk Setup 
     _success "ramdisk" "0) Setting up RAMDisk and GPG backend" 
     ## Creating
     _message 'ramdisk' 'Creating directory & setting permissions'
-    local RAMDISK="${HOME}/.gnupg"
+    # local RAMDISK="${HOME}/.gnupg"
     rm -fR ${RAMDISK}
     mkdir ${RAMDISK}
     sudo mount -t tmpfs -o size=10m ramdisk ${RAMDISK} || _failure "Failed to mount tmp fs on ramdisk"
@@ -612,7 +629,7 @@ gen_gpg_keys()
     local expiry="$3"
     local passphrase="$4"
 
-    local RAMDISK="${HOME}/.gnupg"
+    # local RAMDISK="${HOME}/.gnupg"
 
     ## 1 - GPG Batch file setup 
     _success "gpg" "1) GPG Batch file setup & primary key generation"
@@ -667,21 +684,30 @@ EOF
 gen_coffin() 
 {
     local IDENTITY="$1" 
-    local HUSH_DIR="${HOME}/.hush"
+    local pass="$2"
+    # local HUSH_DIR="${HOME}/.hush"
 
     _success "coffin" "4) Coffin creation"
 
+    # Filenames
+    local key_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.key" "$pass")
+    local key_file="${HUSH_DIR}/${key_filename}"
+    local coffin_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.coffin" "$pass")
+    local coffin_file="${GRAVEYARD}/${coffin_filename}"
+    local coffin_name=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
+    local identity_fs=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg" "$pass")
+
     ## Key
     _message "coffin (key)" "Generating coffin key (compatible with QRCode printing)"
-    pwgen -y -s -C 64 > ${HUSH_DIR}/${IDENTITY}-gpg.key || _failure "coffin (key)" "Failed to generate coffin key"
+    pwgen -y -s -C 64 > ${key_file} || _failure "coffin (key)" "Failed to generate coffin key"
     _message "coffin (key)" "Protecting against deletions"
-    sudo chattr +i ${HUSH_DIR}/${IDENTITY}-gpg.key
+    sudo chattr +i ${key_file}
     _message "coffin (key)" "Testing immutability of key file"
     lsattr ${HUSH_DIR}
     echo
-    _message "coffin (key)" "Output should look like:"
+    _message "coffin (key)" "Output should look like (filename is encrypted):"
     echo
-    echo "—-i———e—- /home/user/.hush/joe-gpg.key"
+    echo "—-i———e—- /home/user/.hush/JRklfdjklb334blkfd"
     echo
 
     ## Creation
@@ -690,14 +716,14 @@ gen_coffin()
             _message "coffin" "Creating directory ${GRAVEYARD}"
             mkdir -p ${GRAVEYARD}
     fi
-    dd if=/dev/urandom of=${GRAVEYARD}/${IDENTITY}-gpg.coffin bs=1M count=50
+    dd if=/dev/urandom of=${coffin_file} bs=1M count=50
     _message "coffin" "Laying the coffin inside the container"
-    sudo cryptsetup -v -q --cipher aes-xts-plain64 --master-key-file ${HUSH_DIR}/${IDENTITY}-gpg.key \
+    sudo cryptsetup -v -q --cipher aes-xts-plain64 --master-key-file ${key_file} \
             --key-size 512 --hash sha512 --iter-time 5000 --use-random \
-            luksFormat ${GRAVEYARD}/${IDENTITY}-gpg.coffin ${HUSH_DIR}/${IDENTITY}-gpg.key \
+            luksFormat ${coffin_file} ${key_file} \
             || _failure "coffin" "Failed to lay setup and format the coffin LUKS filesystem"
     _message "coffin" "Testing the coffin"
-    sudo cryptsetup luksDump ${GRAVEYARD}/${IDENTITY}-gpg.coffin || _failure "coffin" "Failed to dump coffin LUKS filesystem"
+    sudo cryptsetup luksDump ${coffin_file} || _failure "coffin" "Failed to dump coffin LUKS filesystem"
     echo
     _warning "coffin" "Normally, we should see the UUID of the coffin, and only key configured for it" -b
     echo
@@ -705,16 +731,16 @@ gen_coffin()
     ##  Setup 
     _success "coffin" "5) Setup"
     _message "coffin (setup)" "Opening the coffin for setup"
-    sudo cryptsetup open --type luks ${GRAVEYARD}/${IDENTITY}-gpg.coffin coffin-${IDENTITY}-gpg --key-file ${HUSH_DIR}/${IDENTITY}-gpg.key \
+    sudo cryptsetup open --type luks ${coffin_file} ${coffin_name} --key-file ${key_file} \
             || _failure "coffin" "Failed to open the coffin LUKS filesystem"
 
     _message "coffin (setup)" "Testing coffin status"
-    sudo cryptsetup status coffin-${IDENTITY}-gpg || _warning "coffin" "Failed to get status of coffin LUKS filesystem"
+    sudo cryptsetup status ${coffin_name} || _warning "coffin" "Failed to get status of coffin LUKS filesystem"
     echo
 
     ## Filesystem
     _message "coffin (setup)" "Formatting the coffin filesystem (ext4)"
-    sudo mkfs.ext4 -m 0 -L ${IDENTITY}-gpg /dev/mapper/coffin-${IDENTITY}-gpg \
+    sudo mkfs.ext4 -m 0 -L ${identity_fs} /dev/mapper/${coffin_name} \
             || _failure "coffin (setup)" "Failed to make ext4 filesystem on coffin partition"
 }
 
@@ -726,18 +752,24 @@ cleanup_gpg_init()
 {
     local IDENTITY="$1"
     local email="$2"
-    local RAMDISK="${HOME}/.gnupg"
-    local HUSH_DIR="${HOME}/.hush"
-    local TMP="/tmp/${IDENTITY}-gpg"
-    local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
+    local pass="$3"
+
+    # local RAMDISK="${HOME}/.gnupg"
+    # local HUSH_DIR="${HOME}/.hush"
+    # local TMP="/tmp/${IDENTITY}-gpg"
+
+    # Filenames
+    local TMP_FILENAME=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg" "$pass")
+    local TMP="/tmp/${TMP_FILENAME}"
+    local coffin_name=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
 
     # Making tmp directory
     _message "coffin (setup)" "Creating temp directory and mounting coffin"
     mkdir ${TMP}
-    sudo mount /dev/mapper/coffin-${IDENTITY}-gpg ${TMP} || _failure "coffin (setup)" "Failed to mount coffin partition on ${TMP}"       
+    sudo mount /dev/mapper/${coffin_name} ${TMP} || _failure "coffin (setup)" "Failed to mount coffin partition on ${TMP}"       
     sudo chown ${USER} ${TMP}
     _message "coffin (setup)" "Testing coffin filesystem"
-    mount | grep ${IDENTITY}-gpg
+    mount | grep ${TMP_FILENAME} 
 
     ## Moving GPG data into the coffin, and closing again
     _message "coffin (setup)" "Copying GPG files in coffin"
@@ -747,7 +779,7 @@ cleanup_gpg_init()
     sudo chattr +i ${TMP}/openpgp-revocs.d/*
     _message "coffin (setup)" "Closing coffin"
     sudo umount ${TMP} || _warning "coffin (setup)" "Failed to unmount tmp directory ${TMP}"
-    sudo cryptsetup close /dev/mapper/coffin-${IDENTITY}-gpg || _failure "coffin (setup)" "Failed to close LUKS filesystem for identity"
+    sudo cryptsetup close /dev/mapper/${coffin_name} || _failure "coffin (setup)" "Failed to close LUKS filesystem for identity"
 
     # Clearing RAMDisk
     _message "ramdisk" "Wiping and unmounting ramdisk"
@@ -762,32 +794,33 @@ cleanup_gpg_init()
     _message "coffin (checks)" "Should look like this:"
     echo
     echo " /home/user/.hush"
-    echo "├── joe-gpg.key"
+    echo "├── fjdri3kff2i4rjkFA (joe-gpg.key)"
     echo
     echo "/home/user/.graveyard"
-    echo "├── joe-gpg.coffin"
+    echo "├── fejk38RjhfEf13 (joe-gpg.coffin)"
     echo
     _message "coffin (checks)" "Final test, opening and closing coffin for ${IDENTITY}"
-    open_coffin ${IDENTITY}
-    close_coffin ${IDENTITY}
+    open_coffin ${IDENTITY} "${pass}" TODO: Check coffin uses encrypted filename
+    close_coffin ${IDENTITY} "${pass}"
 
     ## 6 - Removing GPG private keys 
     _success "GPG cleanup" "6) Removing GPG private keys"
 
-    local TOMB_LABEL="GPG"
+    local GPG_TOMB_LABEL_ENC=$(_encrypt_filename ${IDENTITY} "${GPG_TOMB_LABEL}" "$pass")
     local TOMB_SIZE=15
+    local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
     _message "GPG cleanup" "Creating tomb file for identity ${IDENTITY}"
-    new_tomb ${TOMB_LABEL} ${TOMB_SIZE} "${IDENTITY}" 
+    new_tomb ${GPG_TOMB_LABEL} ${TOMB_SIZE} "${IDENTITY}" "$pass"
     _message "GPG cleanup" "Opening tomb file"
-    open_tomb ${TOMB_LABEL} ${IDENTITY}
+    open_tomb ${GPG_TOMB_LABEL} ${IDENTITY}
     local KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
     _message "GPG cleanup" "Keygrip: ${KEYGRIP}"
     _message "GPG cleanup" "Copying private data to tomb"
     _message "GPG cleanup" "Private keys"
-    cp ${RAMDISK}/private-keys-v1.d/${KEYGRIP} ${HOME}/.tomb/${TOMB_LABEL}/
+    cp ${RAMDISK}/private-keys-v1.d/${KEYGRIP} ${HOME}/.tomb/${GPG_TOMB_LABEL_ENC}/
     _message "GPG cleanup" "Revocation certificates"
-    cp ${RAMDISK}/openpgp-revocs.d/${fingerprint}.rev ${HOME}/.tomb/${TOMB_LABEL}/
+    cp ${RAMDISK}/openpgp-revocs.d/${fingerprint}.rev ${HOME}/.tomb/${GPG_TOMB_LABEL_ENC}/
     _message "GPG cleanup" "Wiping corresponding files"
     sudo chattr -i ${RAMDISK}/private-keys-v1.d/${KEYGRIP}
     wipe -rf ${RAMDISK}/private-keys-v1.d/${KEYGRIP}
@@ -798,7 +831,7 @@ cleanup_gpg_init()
     _message "GPG cleanup" "Printing GPG keyring. Should have 'sec#' instead of 'pub'"
     gpg -K
     _message "GPG cleanup" "Closing GPG tomb file"
-    close_tomb ${TOMB_LABEL} ${IDENTITY}
+    close_tomb ${GPG_TOMB_LABEL} ${IDENTITY}
 }
 
 # Generate SSH keypair and sets up scripts for loading multiple keypairs
@@ -806,11 +839,12 @@ gen_ssh_keys()
 {
     local IDENTITY="$1"
     local email="$2"
+    local pass="$3"
 
     _success "8) SSH Initialization "
     _message "SSH" "Creating tomb file for SSH"
-    new_tomb ssh 20 "${IDENTITY}" 
-    open_tomb ssh ${IDENTITY}
+    new_tomb ${SSH_TOMB_LABEL} 20 "${IDENTITY}" "$pass"
+    open_tomb ${SSH_TOMB_LABEL} ${IDENTITY}
 
     # Write multi-key loading script
     _message "SSH" "Writing multiple SSH-keypairs loading script (ssh-add)"
@@ -857,7 +891,7 @@ EOF
     _message "SSH" "Making keys immutable"
     sudo chattr +i ${HOME}/.ssh/id_ed25519*
     _message "SSH" "Closing SSH tomb file"
-    close_tomb ssh ${IDENTITY}
+    close_tomb ${SSH_TOMB_LABEL} ${IDENTITY}
 }
 
 ## Creates a tomb storing the password-store and sets the latter up 
@@ -865,30 +899,32 @@ init_pass ()
 {
     local IDENTITY="${1}"       
     local email="${2}"
-    
+    local passphrase="${3}"
+
     _success "7) Pass Initialization"
     _message "pass" "Creating tomb file for pass"
-    new_tomb pass 20 "${IDENTITY}" 
+    new_tomb ${PASS_TOMB_LABEL} 20 "${IDENTITY}" "$passphrase"
     _message "pass" "Opening password store"
-    open_tomb pass ${IDENTITY}
+    open_tomb ${PASS_TOMB_LABEL} ${IDENTITY}
     _message "pass" "Initializating password store with recipient ${email}"
     pass init ${email}
     _message "SSH" "Closing pass tomb file"
-    close_tomb pass ${IDENTITY}
+    close_tomb ${PASS_TOMB_LABEL} ${IDENTITY}
 }
 
 # Creates a default management tomb in which, between others, the key=value store is being kept.
 init_mgmt ()
 {
     local IDENTITY="${1}"       
+    local passphrase="${2}"
 
     _success "8) Default management tomb"
     _message "mgmt" "Creating tomb file for management (key=value store, etc)"
-    new_tomb mgmt 10 "${IDENTITY}" 
+    new_tomb ${MGMT_TOMB_LABEL} 10 "${IDENTITY}" "$passphrase"
     _message "mgmt" "Opening management tomb"
-    open_tomb mgmt ${IDENTITY}
+    open_tomb ${MGMT_TOMB_LABEL} ${IDENTITY}
     _message "mgmt" "Closing management tomb"
-    close_tomb mgmt ${IDENTITY}
+    close_tomb ${MGMT_TOMB_LABEL} ${IDENTITY}
 }
 
 
@@ -902,7 +938,7 @@ format_sdcard()
         local sd_ext4_drive="$sd_drive"1        # Dumb partition
         local sd_enc_part="$sd_drive"2          # Encrypted partition
         local mapper="hush"                     
-        local mount_point="$HOME/.hush"
+        local mount_point="${HUSH_DIR}"
 
         # 1 - Cleanup & partitions 
         _message "1) SDCard cleanup & partitioning"
@@ -1015,50 +1051,61 @@ format_backup()
 # - Automatic backup of the data
 new_identity()
 {
+    # Base identity parameters
     local name="$1"
     local email="$2"
     local expiry="$3"
-    local passphrase="$(xkcdpass -n 8)"
 
-    local RAMDISK="${HOME}/.gnupg"
-    local HUSH_DIR="${HOME}/.hush"
-    local IDENTITY="${name// /_}"       # Used for files
+    # Base filesystem parameters
     local PENDRIVE="$4"                 # Backup
+    # local RAMDISK="${HOME}/.gnupg"
+    # local HUSH_DIR="${HOME}/.hush"
+    local IDENTITY="${name// /_}"       # Used for files
+
+    # Encrypted filenames and identifiers
+    
+    # Generate a passphrase for this identity, given a master password
+    # Only one argument given will make spectre to prompt user for a master password
+    # This will also copy the passphrase to the clipboard, in case we need it in
+    # later steps with GPG prompts.
+    local passphrase=$(gpgpass "${IDENTITY}" --out)
+    # local passphrase=$(_passphrase "${IDENTITY}")
 
     # Create a RAMDisk and setup the GPG directory in it, with configuration files
     init_gpg
 
-    # Generate all needed key pairs, and keep the fingerprint to be used in later steps
+    # Generate all needed GPG key pairs
     gen_gpg_keys "${name}" ${email} "${expiry}" "${passphrase}"
 
-    # Generate the age key needed for encrypting the GPG passphrase 
-    gen_age_key "${IDENTITY}" "${passphrase}"
+    # Generate the age key needed for encrypting the GPG passphrase file.
+    # As mentionned in the gpgpass function, this is not strictly needed anymore.
+    # gen_age_key "${IDENTITY}" "${passphrase}"
 
     # Needed to open coffin files easily in the later steps
-    gpgpass ${IDENTITY} 
+    # gpgpass ${IDENTITY} 
 
     # Generate the coffin LUKS container
-    gen_coffin "${IDENTITY}"
+    gen_coffin "${IDENTITY}" "${passphrase}"
 
     # Cleaning RAM disk, removing private keys from the keyring and test open/close 
-    cleanup_gpg_init "${IDENTITY}" "${email}"
+    cleanup_gpg_init "${IDENTITY}" "${email}" "${passphrase}"
 
     ## Write multi SSH-keypair loading script, and generate the keys 
-    gen_ssh_keys "${IDENTITY}" "${email}"
+    gen_ssh_keys "${IDENTITY}" "${email}" "${passphrase}"
 
     ## Pass Initialization
-    init_pass "${IDENTITY}" "${email}"
+    init_pass "${IDENTITY}" "${email}" "${passphrase}"
 
     ## Create a tomb to use for admin storage: config files, etc, and set default key=values
-    init_mgmt "${IDENTITY}"
+    init_mgmt "${IDENTITY}" "${passphrase}"
 
     ## 8 - Create Signal tomb, set admin stuff and generate password
     # for the enrypted data directory in the Signal VM.
-    new_tomb signal 20 "${IDENTITY}" 
+    new_tomb ${SIGNAL_TOMB_LABEL} 20 "${IDENTITY}" "${passphrase}"
     
     ## 9 - Backup
     _message "backup" "Backing up identity data and partitions"
-    new_backup "${name}" ${email} ${PENDRIVE}
+    new_backup "${name}" ${email} ${PENDRIVE} "${passphrase}"
 
     ## 10 - ALL DONE 
     echo && _success "identity" "Identity generation complete." 
@@ -1068,34 +1115,38 @@ new_identity()
 new_tomb()
 {
     local LABEL="$1"
-    local TOMBID="${IDENTITY}-${LABEL}"
     local SIZE="$2"
-    # local IDENTITY="$3"
-
-    local IDENTITY="$(_identity_active_or_specified ${3})"
+    local IDENTITY="$3"
+    local passphrase="$4"
+    
+    # Filenames
+    local TOMBID="${IDENTITY}-${LABEL}"
+    local TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" ${passphrase})
+    local TOMB_FILE="${GRAVEYARD}/${TOMB_FILE_ENC}"
+    local TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" ${passphrase})
+    local TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
     
     # In case it's not set
     GPG_TTY=$(tty)
     export GPG_TTY
 
     _message "tomb" "Opening identity ${IDENTITY}"
-    open_coffin ${IDENTITY}
-    gpgpass ${IDENTITY}
+    open_coffin ${IDENTITY} ${passphrase}
 
     # Get the email recipient
     local uid=$(gpg -K | grep uid | head -n 1)
     local RECIPIENT="${uid[3]}"
-    
+
     # And dig
-    _message "tomb" "Digging tomb in ${GRAVEYARD}/${TOMBID}.tomb"
-    tomb dig -s ${SIZE} ${GRAVEYARD}/${TOMBID}.tomb || _failure "tomb (new)" "Failed to dig tomb. Aborting"
+    _message "tomb" "Digging tomb in ${TOMB_FILE}"
+    tomb dig -s ${SIZE} ${TOMB_FILE} || _failure "tomb (new)" "Failed to dig tomb. Aborting"
     rw_hush 
     _message "tomb" "Forging tomb key and making it immutable"
-    tomb forge -g -r ${RECIPIENT} ${HUSH_DIR}/${TOMBID}.key || _failure "tomb (new)" "Failed to forge keys. Aborting"
-    sudo chattr +i ${HUSH_DIR}/${TOMBID}.key
+    tomb forge -g -r ${RECIPIENT} ${TOMB_KEY_FILE} || _failure "tomb (new)" "Failed to forge keys. Aborting"
+    sudo chattr +i ${TOMB_KEY_FILE} 
     ro_hush
     _message "tomb" "Locking tomb with key"
-    tomb lock -g -k ${HUSH_DIR}/${TOMBID}.key ${GRAVEYARD}/${TOMBID}.tomb || _failure "tomb (new)" "Failed to lock tomb. Aborting"
+    tomb lock -g -k ${TOMB_KEY_FILE} ${TOMB_FILE} || _failure "tomb (new)" "Failed to lock tomb. Aborting"
 }
 
 # Makes a complete backup including several things:
@@ -1113,13 +1164,16 @@ new_backup()
     local MAPPER="pendev"
     local MOUNT_POINT="/tmp/pendrive"
 
+    local passphrase="${4}"
+
+    # First prompt identity for password, since needed for opening the coffin
+    # local passphrase=$(gpgpass ${IDENTITY} --out)
+
     # Identity and passwords
     _message "backup" "Opening identity ${IDENTITY}"
-    open_coffin ${IDENTITY}
+    open_coffin ${IDENTITY} ${passphrase}
     local fingerprint=$(gpg -K ${email} | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
     _message "backup" "Primary key fingerprint: ${fingerprint}"
-    gpgpass ${IDENTITY}
-    local passphrase="$(xclip -out -selection clipboard)"
 
     # GPG & Coffin Backup
     _success "backup" "1) Backing GPG keyring & coffin"
@@ -1159,21 +1213,26 @@ new_backup()
     ls -l ${BCKDIR}
     echo
 
-    # Convenience backup
-    local convenience_back="${HOME}/pubkeys/gpg-${IDENTITY}"
-    local conv_fingerprint="${convenience_back}/${IDENTITY}-fingerprint.txt"
-    local conv_pubkey="${convenience_back}/${IDENTITY}-public-armored.key"
-    _message "backup (GPG)" "Backing up public key & signature in local filesytem"
-    mkdir -p "${convenience_back}"
-    _message "backup (GPG)" "Fingerprint file: ${conv_fingerprint}"
-    echo ${fingerprint} > ${conv_fingerprint} 
-    _message "backup (GPG)" "Public key file: ${conv_pubkey}"
-    gpg --export --armor ${fingerprint} > ${conv_pubkey}
+    # Unmount and close everything before the backup step
+    _message "backup (hush)" "Closing identity ${IDENTITY}"
+    close_coffin ${IDENTITY} "${passphrase}"
 
+    # Convenience backup
+    # local convenience_back="${HOME}/pubkeys/gpg-${IDENTITY}"
+    # local conv_fingerprint="${convenience_back}/${IDENTITY}-fingerprint.txt"
+    # local conv_pubkey="${convenience_back}/${IDENTITY}-public-armored.key"
+    # _message "backup (GPG)" "Backing up public key & signature in local filesytem"
+    # mkdir -p "${convenience_back}"
+    # _message "backup (GPG)" "Fingerprint file: ${conv_fingerprint}"
+    # echo ${fingerprint} > ${conv_fingerprint} 
+    # _message "backup (GPG)" "Public key file: ${conv_pubkey}"
+    # gpg --export --armor ${fingerprint} > ${conv_pubkey}
+
+    # This is redundant with the _full_backup function, but we need to have access to identity files
+    # for setting/unsetting immutability, and testing we correctly backed them.
+    #
     # Hush backup
     _success "backup" "2) Backing hush partition"
-    _message "backup (hush)" "Closing identity ${IDENTITY}"
-    close_coffin ${IDENTITY}
     _message "backup (hush)" "Unmounting hush partition"
     umount_hush 
     _message "backup (hush)" "Backing up hush as .img to pendrive"
@@ -1210,18 +1269,67 @@ new_backup()
     sudo cryptsetup close ${MAPPER}
 }
 
+# _full_backup generates a backup of all the files on the hush partition 
+# and in the graveyard, irrespective of the identity which they belong to.
+# $1 - Device file of the backup partition (eg. /dev/xvdc1)
+_full_backup ()
+{
+    local PENDRIVE="$1" 
+    local MAPPER="pendev"
+    local MOUNT_POINT="/tmp/pendrive"
+
+    # Mount and decrypt the backup drive.
+    _message "backup (setup)" "Opening LUKS pendrive"
+    sudo cryptsetup open --type luks ${PENDRIVE} ${MAPPER} # TODO: Add failure check/exit here
+    sudo mount /dev/mapper/${MAPPER} ${MOUNT_POINT}        # Same
+
+    # Hush backup
+    _success "backup" "2) Backing hush partition"
+    _message "backup (hush)" "Unmounting hush partition"
+    umount_hush 
+    _message "backup (hush)" "Backing up hush as .img to pendrive"
+    if [[ -e ${MOUNT_POINT}/hush.img ]]; then
+            sudo chattr -i ${MOUNT_POINT}/hush.img          # Otherwise we can't overwrite
+    fi
+    sudo dd if=/dev/hush of=${MOUNT_POINT}/hush.img status=progress bs=16M
+
+    # Graveyard backup 
+    _success "backup" "3) Backing tomb files"
+    _message "backup (graveyard)" "Backing up graveyard to pendrive"
+    if [[ ! -d ${MOUNT_POINT}/graveyard ]]; then
+            _message "backup (graveyard)" "Creating graveyard directory on pendrive"
+            mkdir ${MOUNT_POINT}/graveyard &> /dev/null
+    fi
+    _message "backup (graveyard)" "Copying graveyard files"
+    sudo chattr -i ${MOUNT_POINT}/graveyard/* || _message "backup" "No files in backup/graveyard for which to change immutability properties"
+    cp -fR ${HOME}/.graveyard/* ${MOUNT_POINT}/graveyard || _failure "backup" "Failed to copy graveyard files to backup medium"
+
+    # And finally unmount everything.
+    _message "backup (test)" "Unmounting backup pendrive"
+    sudo umount ${MOUNT_POINT}
+    _message "backup (test)" "Closing LUKS filesystem"
+    sudo cryptsetup close ${MAPPER}
+}
+
 
 # Data ------------------------------------------------------------------------------------------ #
 
+# open_coffin requires both an identity name and its corresponding passphrase
 open_coffin()
 {
-	global_var_check "HUSH_DIR"
-	global_var_check "GRAVEYARD"
-
 	local IDENTITY="${1}"
-	local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
-	local mapper="coffin-${IDENTITY}-gpg"
-	local key_file="${HUSH_DIR}/${IDENTITY}-gpg.key"
+    local pass="${2}"
+
+    local key_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.key" "$pass")
+    local key_file="${HUSH_DIR}/${key_filename}"
+    local coffin_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.coffin" "$pass")
+    local coffin_file="${GRAVEYARD}/${coffin_filename}"
+    local mapper=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
+    # local coffin_name=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
+
+	# local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
+	# local mapper="coffin-${IDENTITY}-gpg"
+	# local key_file="${HUSH_DIR}/${IDENTITY}-gpg.key"
 	local mount_dir="${HOME}/.gnupg"
 
 	if [[ ! -f "${coffin_file}" ]]; then
@@ -1256,16 +1364,20 @@ open_coffin()
 
 close_coffin()
 {
-	global_var_check "GRAVEYARD"
+    local IDENTITY="${1}"
+    local pass="${2}"
 
-	local IDENTITY="${1}"
-	local mapper="coffin-${IDENTITY}-gpg"
+    local coffin_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.coffin" "$pass")
+    local coffin_file="${GRAVEYARD}/${coffin_filename}"
+	# local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
+    local mapper=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
+	# local mapper="coffin-${IDENTITY}-gpg"
+
 	local mount_dir="${HOME}/.gnupg"
-	local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
 
-        # Gpg-agent is an asshole spawning thousands of processes
-        # without anyone to ask for them.... security they said
-        gpgconf --kill gpg-agent
+    # Gpg-agent is an asshole spawning thousands of processes
+    # without anyone to ask for them.... security they said
+    gpgconf --kill gpg-agent
 
 	if is_luks_mounted "/dev/mapper/${mapper}" ; then
 		if ! sudo umount ${mount_dir} ; then
@@ -1303,18 +1415,29 @@ list_coffins()
 	fi
 }
 
+# open_tomb requires a cleartext resource name that the function will encrypt to resolve the correct tomb file.
+# The name is both used as a mount directory, as well as to determine when some special tombs need to be mounted
+# on non-standard mount points, like gpg/ssh.
+# $1 - Name of the tomb
+# $2 - Identity
+# $3 - Passphrase
 open_tomb()
 {
-	global_var_check "GRAVEYARD"
-	global_var_check "HUSH_DIR"
-
 	local RESOURCE="${1}"
-	# local IDENTITY="${2}"
-    local IDENTITY="$(_identity_active_or_specified ${2})"
+    local IDENTITY="${2}"
+    local passphrase=${3}
 
-	local tomb_file="${GRAVEYARD}/${IDENTITY}-${RESOURCE}.tomb"
-	local key_file="${HUSH_DIR}/${IDENTITY}-${RESOURCE}.key"
-	local mapper=$(get_tomb_mapper ${IDENTITY}-${RESOURCE})
+    # Filenames
+    local TOMBID="${IDENTITY}-${RESOURCE}"
+    local TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" ${passphrase})
+    local TOMB_FILE="${GRAVEYARD}/${TOMB_FILE_ENC}"
+    local TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" ${passphrase})
+    local TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
+    
+	# local tomb_file="${GRAVEYARD}/${IDENTITY}-${RESOURCE}.tomb"
+	# local key_file="${HUSH_DIR}/${IDENTITY}-${RESOURCE}.key"
+	# local mapper=$(get_tomb_mapper ${IDENTITY}-${RESOURCE})
+	local mapper=$(get_tomb_mapper ${TOMBID})
 
     # Some funtions will call this function while not wanting output
     # if the tomb is already open. Any non-nil value means true.
@@ -1331,7 +1454,7 @@ open_tomb()
 			local mount_dir="${HOME}/.ssh"
 		;;
 		mgmt)
-			local mount_dir="${HOME}/.mgmt"
+			local mount_dir="${HOME}/.tomb/mgmt"
 		;;
 		*)
 			local mount_dir="${HOME}/.tomb/${RESOURCE}"
@@ -1339,35 +1462,36 @@ open_tomb()
 	esac
 
 	if [[ "${mapper}" != "none" ]]; then
-		if is_luks_mounted "/dev/mapper/tomb.${IDENTITY}-${RESOURCE}" ; then
+		if is_luks_mounted "/dev/mapper/tomb.${TOMBID}" ; then
             if [[ -z ${SILENT_IF_OPEN} ]]; then
-			    echo "Tomb ${IDENTITY}-${RESOURCE} is already open and mounted"
+			    echo "Tomb ${TOMBID} is already open and mounted"
             fi
 			return 0
 		fi
 	fi
 
-	if [[ ! -f "${tomb_file}" ]]; then
-		echo "No tomb file ${tomb_file} found"
+	if [[ ! -f "${TOMB_FILE}" ]]; then
+		echo "No tomb file ${TOMB_FILE} found"
 		return 2
 	fi
 
-	if [[ ! -f "${key_file}" ]]; then
-		echo "No key file ${key_file} found"
+    if [[ ! -f "${TOMB_KEY_FILE}" ]]; then
+        echo "No key file ${TOMB_KEY_FILE} found"
 		return 2
 	fi
 
 	# checks if the gpg coffin is mounted
-	if ! is_luks_mounted "/dev/mapper/coffin-${IDENTITY}-gpg" ; then
+    local COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
+	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
 		echo -e "\nOpening ${IDENTITY} GPG coffin ..."
-		open_coffin ${IDENTITY}
+		open_coffin ${IDENTITY} ${passphrase} 
 	fi
 
 	if [[ ! -d ${mount_dir} ]]; then
 		mkdir -p ${mount_dir}
 	fi
 
-	tomb open -g -k "${key_file}" "${tomb_file}" "${mount_dir}"
+	tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
 
     # Either add the only SSH key, or all of them if we have a script
 	if [[ "${RESOURCE}" == "ssh" ]]; then
@@ -1380,6 +1504,8 @@ open_tomb()
 	fi
 }
 
+# NOTE: This function SHOULD ENCRYPT the given tomb name: not done by caller
+# NOTE: REquires passphrase as argument 3
 close_tomb()
 {
 	local RESOURCE="${1}"
@@ -1407,50 +1533,39 @@ close_tomb()
 
 }
 
-gpgpass()
+# gpgpass essentially wraps a call to spectre with our identity parameters.
+# Note that this function cannot fail because of "a wrong password".
+#
+# If a second, non-nil argument is passed, we print the passphrase: 
+# this is used when some commands need both the passphrase as an input
+# to decrypt something (like files) and the user needs them for GPG prompts
+gpgpass ()
 {
-    # _check_required_args 1 "$@"
-    # local resource="$1"
-    local resource="$(_identity_active_or_specified ${1})"
+    local identity="$(_identity_active_or_specified ${1})"
 
-	global_var_check "HUSH_DIR"
-
-	file="${HUSH_DIR}/${resource}-gpg.age"
-	if [[ ! -f ${file} ]]; then
-		echo "File ${file} does not exist"
-		exit 1
-	fi
-
-    # Decrypt the age file containing the passphrase.
-	passphrase=$(age -decrypt "${file}")
-
-    # Two outcomes can happen here:
-    # 1 - The user enters an empty password, and the passphrase will be empty,
-    #     but no failure will arise. This is useful when the GPG key is not protected
-    #     and therefore (probably) no tombs require a GPG passphrase to be used.
+    # Since we did not give any input (master) passphrase to this call,
+    # spectre will prompt us for an input one. This input is already known
+    # to us, since we have used the same when generating the GPG keys.
     #
-    #     This is as important as it seems, since if any of the tombs require this passphrase,
-    #     but the $passphrase variable is empty, the user won't be able to paste anything when
-    #     prompted for it when GPG needs it for tomb use
+    # In addition: this call cannot fail because of "a wrong" passphrase.
+    # It will just output something, which will or will not (if actually incorrect)
+    # work when pasted in further GPG passphrase prompts.
+    local passphrase=$(_passphrase ${identity})
 
-    # 2 - Or, the age program returns a failure, in all likelyhood a bad decrypt, and
-    #     here we should abort and return the error exit code, so that any command incorporating
-    #     this function will also abort before attempting to open anything else.
-    if [[ $? != 0 ]]; then
-        _failure "gpgpass" "Error happened when decrypting GPG key. Aborting"
-    fi
-
-    # Else everything good, even if the passphrase is empty. Copy to clipboard and return
 	echo -n "${passphrase}" | xclip -selection clipboard
-
-	seconds=45
-
-	echo -e "\nThe passphrase has been saved in clipboard"
-	echo "Press CTRL+V to use the content in this qube"
-	echo "Press CTRL+SHIFT+C to share the clipboard with another qube"
-	echo "In the other qube, press CTRL+SHIFT+v and then CTRL+V to use the clipboard content"
-	echo "Local clipboard will be erased is ${seconds} seconds"
+	seconds=45 TODO: Make timeout global value
 	( sleep ${seconds}; echo -n "" |xclip -selection clipboard;) &
+
+    # Return the passphrase is asked to
+    if [[ ! -z ${2} ]]; then
+        print "${passphrase}"
+    else
+        echo -e "\nThe passphrase has been saved in clipboard"
+        echo "Press CTRL+V to use the content in this qube"
+        echo "Press CTRL+SHIFT+C to share the clipboard with another qube"
+        echo "In the other qube, press CTRL+SHIFT+v and then CTRL+V to use the clipboard content"
+        echo "Local clipboard will be erased is ${seconds} seconds"
+    fi
 }
 
 # Closes all identites and closes/unmounts the hush partition
@@ -1461,7 +1576,9 @@ slam()
     identities=("${identities[@]}") 
 
     # 2 - Close them all
+    # TODO: Find all open tombs
     for identity in "${identities[@]}"; do
+        # TODO: ask password for identity
         _warning "slam" "Slaming identity ${identity}"
         echo -e "\nClosing PASS tomb ..."
         close_tomb pass ${identity}
@@ -1481,9 +1598,6 @@ slam()
 
 
 # Tools Data ------------------------------------------------------------------------------------ #
-
-# Default directory where to save key=values
-default_kv_user_dir="$HOME/.tomb/mgmt/db/"
 
 # print to stderr, red color
 kv_echo_err() {
@@ -1600,6 +1714,10 @@ save ()
 
 
 # Commands -------------------------------------------------------------------------------------- #
+#
+# Commands are wrappers around the main risks functions' implementations.
+# They must ensure all necessary parameters are provided and valid, prompt
+# for any of them (like passwords) before passing them down to the functions.
 
 # Format and setup encryption on sdcards and backup drives
 cmd_format () 
@@ -1649,21 +1767,34 @@ cmd_new ()
     local resource="$1"
     shift # Get rid of the resource name
 
+    # New identity is the only function that takes care of prompting
+    # the user for a passphrase input, since we must initialize everything
+    # within the function.
     if [[ "${resource}" == "identity" ]]; then
-                    _check_required_args 4 "$@"
-                    new_identity "$@"
+        _check_required_args 4 "$@"
+        new_identity "$@"
         exit $?
     fi
 
+    # If creating a tomb, we immediately prompt the user for a passphrase, since
+    # we will need it for both GPG prompts and filename encryption/resolution.
     if [[ "${resource}" == "tomb" ]]; then
-                    _check_required_args 2 "$@" # Identity  is optional
-                    new_tomb "$@"
+        _check_required_args 2 "$@" # Only tomb label and size are required 
+
+        local LABEL="$1"
+        local SIZE="$2"
+        local IDENTITY="$(_identity_active_or_specified ${3})"
+        local passphrase=$(_passphrase ${IDENTITY})
+
+        new_tomb "${LABEL}" "${SIZE}" "${IDENTITY}" "${passphrase}" 
         exit $?
     fi
 
+    # Full backups are done irrespective of any identity, 
+    # so we don't need neither names nor passphrases.
     if [[ "${resource}" == "backup" ]]; then
-                    _check_required_args 1 "$@"
-                    new_backup "$@"
+        _check_required_args 1 "$@"
+        _full_backup "$@"
         exit $?
     fi
 }
@@ -1671,47 +1802,55 @@ cmd_new ()
 # Open identites and/or associated stores
 cmd_open () 
 {
-    _check_required_args 1 "$@" # The identity is optional in some cases
+    _check_required_args 1 "$@" # We need at least a resource name
     local resource="${1}"
-    local identity=${2}
+    shift
 
-    # Only open the GPG keyring
-    # Or unlock some/all tombs
+    # Either only open the GPG keyring
     if [[ "${resource}" == "gpg" ]] || [[ "${resource}" == "coffin" ]]; then
-        _check_required_args 2 "$@" # The identity is necessary 
-        open_coffin ${identity}
-        exit $?
-    else
-        # To be pasted when prompted by GPG
-        # Identity is optional, since one might be active
-        gpgpass ${identity}
+        _check_required_args 1 "$@"                 # And the identity is necessary ...
 
-        # Bulk load
-        if [[ "${resource}" == "identity" ]]; then
-            _check_required_args 2 "$@" # The identity is necessary 
-
-            echo -e "\nOpening GPG coffin ..."
-            open_coffin ${identity}
-
-            echo -e "\nOpening Management tomb ... "
-            open_tomb mgmt ${identity}
-
-            echo -e "\nOpening SSH tomb ... "
-            open_tomb ssh ${identity}
-
-            echo -e "\nOpening PASS tomb ..."
-            open_tomb pass ${identity}
-
-            echo -e "\nOpening Signal tomb ..."
-            open_tomb signal ${identity}
-
-            exit 0
-        fi
-
-        # Or open a single tomb
-        open_tomb ${resource} ${identity}
+        local identity=${1}
+        local passphrase=$(_passphrase ${identity}) # at least to get the password ...
+        open_coffin ${identity} "${passphrase}"     # for decrypting filenames.
         exit $?
     fi
+
+    # Or we either open an entire identity or some tomb,
+    # and then the identity argument is optional, since
+    # we might have one already active.
+    local identity="$(_identity_active_or_specified ${1})"
+
+    # The passphrase will be needed at least for filename
+    # resolution, and most probably for GPG pass prompts.
+    local passphrase=$(gpgpass ${identity} --out)
+
+    # Bulk load
+    if [[ "${resource}" == "identity" ]]; then
+        # Make sure we have been provided an identity argument.
+        _check_required_args 1 "$@"  
+
+        echo -e "\nOpening GPG coffin ..."
+        open_coffin ${identity} "${passphrase}"
+
+        echo -e "\nOpening Management tomb ... "
+        open_tomb ${MGMT_TOMB_LABEL} "${identity}" ${passphrase}
+
+        echo -e "\nOpening SSH tomb ... "
+        open_tomb ${SSH_TOMB_LABEL} "${identity}" ${passphrase}
+
+        echo -e "\nOpening PASS tomb ..."
+        open_tomb ${PASS_TOMB_LABEL} "${identity}" ${passphrase}
+
+        echo -e "\nOpening Signal tomb ..."
+        open_tomb ${SIGNAL_TOMB_LABEL} "${identity}" ${passphrase}
+
+        exit 0
+    fi
+
+    # Or open a single tomb
+    open_tomb ${resource} ${identity} ${passphrase}
+    exit $?
 }
 
 # Load data directly to other VMs
@@ -1741,8 +1880,8 @@ cmd_close ()
 {
     _check_required_args 1 "$@" # The identity is optional in some cases
     local resource="${1}"
-    # local identity=${2}
     local identity="$(_identity_active_or_specified ${2})"
+    local passphrase=$(_passphrase "${identity}")
 
     # TODO: Find all other, non-standard tomb names and close them also
 
@@ -1851,6 +1990,10 @@ fi
                         If you really want so, add --unsafe" $opt }
         done
 }
+
+# Some variables will be unvariably needed by the program, 
+# so immediately fail if they are not defined anywhere.
+_check_required_vars
 
 # Get the invoked subcommand, and get rid of it as a positional argument.
 local action=${1}
