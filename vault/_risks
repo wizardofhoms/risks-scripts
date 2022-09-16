@@ -1,7 +1,8 @@
 #compdef risks 
 #autoload
 
-# Entrypoint to risks completion --------------------------------------------------------------
+# Entrypoint ----------------------------------------------------------------------------------
+
 _risks() 
 {
     local cmd
@@ -14,11 +15,11 @@ _risks()
         shift words
         # Run the completion for the subcommand
         case "${cmd}" in
+            hush)
+                _hush
+                ;;
             list)
                 _list 
-                ;;
-            mount|umount|rw|ro)
-                _hush 
                 ;;
             gpgpass)
                 _identity 
@@ -35,31 +36,31 @@ _risks()
             load)
                 _tools
                 ;;
+                kv)
+                _kv
+                ;;
         esac
     else
         local -a subcmds
         subcmds=(
-            'list:Show currently open data stores'
-            'mount:Mount a hush drive'
-            'umount:Unmount the hush drive'
-            'rw:Set read-write permissions on the hush partition'
-            'ro:Set read-only permissions on the hush partition'
-            'mount:Manage partitions mount points and permissions'
+            'format:Setup drives for either hush or backup partitions'
+            'hush:Manage the hush partition mount points and read/write permissions'
+            'new:Create new identities, backups or data stores'
             'open:Open an identity or some of its associated data stores'
+            'gpgpass:Copy the identity passphrase to the clipboard'
+            'list:Show currently open data stores'
             'load:Copy some resource to a VM where to use it (completed)'
             'save:Move some data coming from another VM to a (tomb) directory'
             'close:Close an identity or some of its associated data stores'
-            'gpgpass:Copy the identity passphrase to the clipboard'
-            'new:Create new identities, backups or data stores'
-            'format:Setup drives for either hush or backup partitions'
             'slam:Close all active identities and unmount hush partition'
+            'kv:Manage the small key=value store used by other commands/functions'
         )
 
         _describe -t commands 'commands' subcmds
     fi
 }
 
-# Subcomands ------------------------------------------------------------------------------------
+# Subcomands ----------------------------------------------------------------------------------
 
 # Completion for all arguments needed when creating a new store 
 _new() 
@@ -86,6 +87,28 @@ _new()
                     ;;
             esac
             ;;
+    esac
+}
+
+# Completion for hush command
+_hush ()
+{
+    local line state
+    _arguments -C \
+        "1: :->subcmds"
+
+    case "$state" in
+        subcmds)
+            local -a subcmds
+            subcmds=(
+                'mount:Mount the hush drive'
+                'umount:Unmount the hush drive'
+                'rw:Set read-write permissions on the hush partition'
+                'ro:Set read-only permissions on the hush partition'
+            )
+
+            _describe -t commands 'hush commands' subcmds
+        ;;
     esac
 }
 
@@ -169,12 +192,58 @@ _list() {
     _arguments '1:data stores:(coffins tombs)' && ret=0
 }
 
-# Completions for mount/umount/ro/rw
-_hush() {
-    _arguments '1:partitions:(hush)' && ret=0
+# Completion for kv command (key=value store)]
+_kv ()
+{
+    local ret=1
+
+    # Subcommands of the kv command are the first "positional argument"
+    function _kv_subcmds {
+        local -a subcmds
+        subcmds=(
+            'set:Set a variable to a value'
+            'get:Get the value of a variable'
+            'unset:Unset an existing variable'
+            'list:List all key=value pairs in the store'
+            'clean:Delete all key=value pairs in the store'
+        )
+
+        _describe -t commands 'key=value store commands' subcmds && ret=0
+    }
+
+    # Start checking/proposing for subcommands/arguments
+    local line state
+    _arguments -C \
+        "1: :_kv_subcmds" \
+        "*::arg:->args" \
+        && ret=0
+
+    # And depending on the kv subcommand entered, complete accordingly
+    case $state in
+        args)
+            case $line[1] in
+            set)
+                _arguments -C "1:key:" "2:variable:" && ret=0 # TODO complete existing keys ?"
+            ;;
+            get|unset)
+                _arguments -C "1:key:" && ret=0 # TODO complete existing keys ?"
+            ;;
+            esac
+    esac
 }
 
-# Command arguments ---------------------------------------------------------------------------------
+# Completions for load command
+_load ()
+{
+}
+
+# Completions for the save command
+_save ()
+{
+}
+
+
+# Command arguments ---------------------------------------------------------------------------
 
 # Completes all available identity names
 _identity() 
@@ -242,6 +311,7 @@ _tools()
             ;;
     esac
 }
+
 
 # don't run the completion function when being source-ed or eval-ed
 if [ "$funcstack[1]" = "_risks" ]; then
