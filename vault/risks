@@ -7,6 +7,7 @@
 # DEFAULTS
 
 prg=$(basename "$0")
+prg_path="$0"
 typeset -H _TTY
 
 # Remove verbose errors when * don't yield any match in ZSH
@@ -52,7 +53,7 @@ usage()
     echo "action: save <source_VM> <tomb_dir>"
     echo ""
 	echo "action: kv"
-	echo "        |_ set | unset | list | clean"
+	echo "        |_ set | unset | get | list | clean"
     echo ""
 	echo "Examples:"
     echo ""
@@ -77,6 +78,7 @@ usage()
     echo ""
     echo "$prg kv set signalVM mySignalVM   # Sets the key 'signalVM' to 'mySignalVM' in the key-value store"
     echo "$prg kv unset signalVM            # Deletes the key 'signalVM' in the key-value store"
+    echo "$prg kv get signalVM              # Prints the value of the key 'signalVM'" 
     echo "$prg kv clean                     # Deletes all the key-value pairs present (saved) in the store"
     echo ""
 }
@@ -92,7 +94,10 @@ local PASS_TOMB_LABEL="pass"        # Holds the password store data
 local SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
 
 # Default directory where to save key=values
-local default_kv_user_dir="$HOME/.tomb/mgmt/db/"
+local default_kv_user_dir="$HOME/.tomb/mgmt/db/" 
+
+# Path where risks scripts are stored on the hush
+local RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts/"
 
 
 # CLI Utilities --------------------------------------------------------------------------------- #
@@ -556,13 +561,10 @@ get_tomb_mapper()
 # Create a RAMDisk and setup the GPG directory in it, with configuration files
 init_gpg()
 {
-    # local RAMDISK="${HOME}/.gnupg"
-
     ## 0 - RAMDisk Setup 
     _success "ramdisk" "0) Setting up RAMDisk and GPG backend" 
     ## Creating
     _message 'ramdisk' 'Creating directory & setting permissions'
-    # local RAMDISK="${HOME}/.gnupg"
     rm -fR ${RAMDISK}
     mkdir ${RAMDISK}
     sudo mount -t tmpfs -o size=10m ramdisk ${RAMDISK} || _failure "Failed to mount tmp fs on ramdisk"
@@ -628,8 +630,6 @@ gen_gpg_keys()
     local email="$2"
     local expiry="$3"
     local passphrase="$4"
-
-    # local RAMDISK="${HOME}/.gnupg"
 
     ## 1 - GPG Batch file setup 
     _success "gpg" "1) GPG Batch file setup & primary key generation"
@@ -753,10 +753,6 @@ cleanup_gpg_init()
     local IDENTITY="$1"
     local email="$2"
     local pass="$3"
-
-    # local RAMDISK="${HOME}/.gnupg"
-    # local HUSH_DIR="${HOME}/.hush"
-    # local TMP="/tmp/${IDENTITY}-gpg"
 
     # Filenames
     local TMP_FILENAME=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg" "$pass")
@@ -932,9 +928,13 @@ init_mgmt ()
 
 # Easily cleanup, format, luks-encrypt and filesystem setup onto an SDCard
 # to be used as a store for the various identities' data (excluding backup).
+# $1 - The device file to the SDCard (raw device, not partition, eg. /dev/sda, not /dev/sda1)
+# $2 - The size for the encrypted partition, either absolute or relative, to pass to the fdisk command.
 format_sdcard()
 {
         local sd_drive="$1"                     # Device file
+        local enc_part_size="$2"                # Size of encrypte partition
+
         local sd_ext4_drive="$sd_drive"1        # Dumb partition
         local sd_enc_part="$sd_drive"2          # Encrypted partition
         local mapper="hush"                     
@@ -950,7 +950,7 @@ n
 p
 1
 
-+7.3GB
++${enc_part_size}
 n
 p
 2
@@ -964,7 +964,7 @@ EOF
         _message "disk setup" "Making 1st partition mountable by default for all OS (fat32)"
         sudo mkfs.vfat -F 32 -n DATA ${sd_ext4_drive} || _failure "hush" "Failed to make vfat32 filesystem"
 
-        # 2 - Hush partition setup 
+        # Hush partition setup 
         _success "2) Hush partition setup" 
         _message "hush" "Creating directory ${mount_point}"
         mkdir ${mount_point} &> /dev/null
@@ -986,11 +986,13 @@ EOF
         echo "/dev/mapper/hush on /rw/home/user/.hush type ext4 (rw,relatime,data=ordered)"
         echo
 
+        # Write our risks scripts in a special directory on the hush, and close the device.
+        store_risks_scripts
         _message "hush" "Closing and unmounting device"
         sudo umount ${mount_point} || _warning "hush" "Failed to unmount ${mount_option}"    # umount
         sudo cryptsetup close ${mapper} || _failure "hush" "Failed to close LUKS filesystem on ${mapper}" # close everything
 
-        # 3 - Udev for hush partition 
+        # Setup udev identitiers mapping for hush partition 
         _success "udev" "Udev hush partition " 
         _message "udev" "Getting partition UUID"
         local UUID=$(sudo cryptsetup luksUUID ${sd_enc_part})
@@ -1038,6 +1040,46 @@ format_backup()
         _success "backup" "Done initialization backup pendrive"
 }
 
+# store_risks_scripts copies the various vault risks scripts in a special directory in the
+# hush partition, along with a small installation scriptlet, so that upon mounting the hush
+# somewhere else, the user can quickly install and use the risks on the new machine.
+store_risks_scripts ()
+{
+    _message "scripts" "Copying risks scripts onto the hush partition"
+    mkdir -p "${RISKS_SCRIPTS_INSTALL_PATH}"
+    sudo cp "${prg_path}" ${RISKS_SCRIPTS_INSTALL_PATH}
+    sudo cp /usr/local/share/zsh/site-functions/_risks ${RISKS_SCRIPTS_INSTALL_PATH}
+
+    cat >${RISKS_SCRIPTS_INSTALL_PATH}/install <<'EOL'
+#!/usr/bin/env zsh
+
+local INSTALL_SCRIPT_DIR="${0:a:h}"
+local INSTALL_SCRIPT_PATH="$0"
+local BINARY_INSTALL_DIR="${HOME}/.local/bin"
+local COMPLETIONS_INSTALL_DIR="${HOME}/.local/share/zsh/site-functions"
+
+## Binary -------------
+#
+echo "Installing risks script in ${BINARY_INSTALL_DIR}"
+if [[ ! -d "${BINARY_INSTALL_DIR}" ]]; then
+    mkdir -p "${BINARY_INSTALL_DIR}"
+fi
+cp "${INSTALL_SCRIPT_PATH}" "${BINARY_INSTALL_DIR}"
+
+## Completions --------
+#
+echo "Installing risks completions in ${COMPLETIONS_INSTALL_DIR}"
+if [[ ! -d "${COMPLETIONS_INSTALL_DIR}" ]]; then
+    echo "Completions directory does not exist. Creating it."
+    echo "You should add it to ${FPATH} and reload your shell"
+    mkdir -p "${COMPLETIONS_INSTALL_DIR}"
+fi
+cp "${INSTALL_SCRIPT_DIR}/_risks" "${COMPLETIONS_INSTALL_DIR}"
+
+echo "Done installing risks scripts."
+EOL
+}
+
 
 # New ------------------------------------------------------------------------------------------- #
 
@@ -1058,8 +1100,6 @@ new_identity()
 
     # Base filesystem parameters
     local PENDRIVE="$4"                 # Backup
-    # local RAMDISK="${HOME}/.gnupg"
-    # local HUSH_DIR="${HOME}/.hush"
     local IDENTITY="${name// /_}"       # Used for files
 
     # Encrypted filenames and identifiers
@@ -1069,20 +1109,12 @@ new_identity()
     # This will also copy the passphrase to the clipboard, in case we need it in
     # later steps with GPG prompts.
     local passphrase=$(gpgpass "${IDENTITY}" --out)
-    # local passphrase=$(_passphrase "${IDENTITY}")
 
     # Create a RAMDisk and setup the GPG directory in it, with configuration files
     init_gpg
 
     # Generate all needed GPG key pairs
     gen_gpg_keys "${name}" ${email} "${expiry}" "${passphrase}"
-
-    # Generate the age key needed for encrypting the GPG passphrase file.
-    # As mentionned in the gpgpass function, this is not strictly needed anymore.
-    # gen_age_key "${IDENTITY}" "${passphrase}"
-
-    # Needed to open coffin files easily in the later steps
-    # gpgpass ${IDENTITY} 
 
     # Generate the coffin LUKS container
     gen_coffin "${IDENTITY}" "${passphrase}"
@@ -1166,9 +1198,6 @@ new_backup()
 
     local passphrase="${4}"
 
-    # First prompt identity for password, since needed for opening the coffin
-    # local passphrase=$(gpgpass ${IDENTITY} --out)
-
     # Identity and passwords
     _message "backup" "Opening identity ${IDENTITY}"
     open_coffin ${IDENTITY} ${passphrase}
@@ -1216,17 +1245,6 @@ new_backup()
     # Unmount and close everything before the backup step
     _message "backup (hush)" "Closing identity ${IDENTITY}"
     close_coffin ${IDENTITY} "${passphrase}"
-
-    # Convenience backup
-    # local convenience_back="${HOME}/pubkeys/gpg-${IDENTITY}"
-    # local conv_fingerprint="${convenience_back}/${IDENTITY}-fingerprint.txt"
-    # local conv_pubkey="${convenience_back}/${IDENTITY}-public-armored.key"
-    # _message "backup (GPG)" "Backing up public key & signature in local filesytem"
-    # mkdir -p "${convenience_back}"
-    # _message "backup (GPG)" "Fingerprint file: ${conv_fingerprint}"
-    # echo ${fingerprint} > ${conv_fingerprint} 
-    # _message "backup (GPG)" "Public key file: ${conv_pubkey}"
-    # gpg --export --armor ${fingerprint} > ${conv_pubkey}
 
     # This is redundant with the _full_backup function, but we need to have access to identity files
     # for setting/unsetting immutability, and testing we correctly backed them.
@@ -1325,11 +1343,7 @@ open_coffin()
     local coffin_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.coffin" "$pass")
     local coffin_file="${GRAVEYARD}/${coffin_filename}"
     local mapper=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
-    # local coffin_name=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
 
-	# local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
-	# local mapper="coffin-${IDENTITY}-gpg"
-	# local key_file="${HUSH_DIR}/${IDENTITY}-gpg.key"
 	local mount_dir="${HOME}/.gnupg"
 
 	if [[ ! -f "${coffin_file}" ]]; then
@@ -1369,9 +1383,7 @@ close_coffin()
 
     local coffin_filename=$(_encrypt_filename ${IDENTITY} "${IDENTITY}-gpg.coffin" "$pass")
     local coffin_file="${GRAVEYARD}/${coffin_filename}"
-	# local coffin_file="${GRAVEYARD}/${IDENTITY}-gpg.coffin"
     local mapper=$(_encrypt_filename ${IDENTITY} "coffin-${IDENTITY}-gpg" "$pass")
-	# local mapper="coffin-${IDENTITY}-gpg"
 
 	local mount_dir="${HOME}/.gnupg"
 
@@ -1434,9 +1446,6 @@ open_tomb()
     local TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" ${passphrase})
     local TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
     
-	# local tomb_file="${GRAVEYARD}/${IDENTITY}-${RESOURCE}.tomb"
-	# local key_file="${HUSH_DIR}/${IDENTITY}-${RESOURCE}.key"
-	# local mapper=$(get_tomb_mapper ${IDENTITY}-${RESOURCE})
 	local mapper=$(get_tomb_mapper ${TOMBID})
 
     # Some funtions will call this function while not wanting output
@@ -1509,7 +1518,6 @@ open_tomb()
 close_tomb()
 {
 	local RESOURCE="${1}"
-	# local IDENTITY="${2}"
     local IDENTITY="$(_identity_active_or_specified ${2})"
 
     local FULL_LABEL="${IDENTITY}-${RESOURCE}"
@@ -1941,16 +1949,22 @@ cmd_kv ()
     shift # We don't need the sub-subcommand set/unset/clear,etc
 
     if [[ "${action}" == "set" ]]; then
-        _check_required_args 1 "$@"
-        kvget "$@"
+        _check_required_args 2 "$@"
+        kvset "$@"
         exit $?
     fi
 
     if [[ "${action}" == "unset" ]]; then
-        _check_required_args 2 "$@"
-        kvset "$@"
+        _check_required_args 1 "$@"
+        kvdel "$@"
         exit $?
         
+    fi
+
+    if [[ "${action}" == "get" ]]; then
+        _check_required_args 1 "$@"
+        kvget "$@"
+        exit $?
     fi
 
     if [[ "${action}" == "list" ]]; then
