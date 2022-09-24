@@ -99,6 +99,8 @@ local MGMT_TOMB_LABEL="mgmt"        # Holds the key-value store, and anything th
 local PASS_TOMB_LABEL="pass"        # Holds the password store data
 local SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
 
+local GPGPASS_TIMEOUT=45
+
 # Default directory where to save key=values
 local default_kv_user_dir="$HOME/.tomb/mgmt/db/" 
 
@@ -458,11 +460,6 @@ mount_hush()
 
 
 	play_sound "plugged"
-
-        echo
-	_success "hush" "SDCARD has been mounted read-only. To give write permissions, use:"
-	_success "hush" "$0 rw hush"
-        echo
 }
 
 umount_hush()
@@ -473,28 +470,23 @@ umount_hush()
 	global_var_check "SDCARD_QUIET"
 
 	if ! is_partition_mapper_present ; then
-		echo "Device mapper /dev/mapper/${SDCARD_ENC_PART_MAPPER} not found."
-		echo "Be sure you have attached your hush partition."
-		exit 1
+		_failure "risks" "Device mapper /dev/mapper/${SDCARD_ENC_PART_MAPPER} not found.\n \
+		Be sure you have attached your hush partition."
 	fi
 
 	if is_hush_mounted ; then
 		if ! sudo umount -f ${HUSH_DIR} ; then
-			echo "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be umounted from ${HUSH_DIR}"
-			exit 1
+			_failure "risks" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be umounted from ${HUSH_DIR}"
 		fi
 	fi
 
 	if is_luks_mapper_present ; then
 		if ! sudo cryptsetup close ${SDCARD_ENC_PART_MAPPER} ; then
-			echo "SDCARD can not be closed"
-			exit 1
+			_failure "risks" "SDCARD can not be closed"
 		fi
 	fi
 
 	play_sound "unplugged"
-
-	echo -e "\nSDCARD is ready to be detached from this qube"
 }
 
 ro_hush()
@@ -504,17 +496,14 @@ ro_hush()
 	global_var_check "HUSH_DIR"
 
 	if ! is_hush_mounted ; then
-		echo "HUSH is not mounted"
-		exit 1
+		_failure "risks" "HUSH is not mounted"
 	fi
 
 	mount_option="remount,ro"
 	if ! sudo mount -o ${mount_option} /dev/mapper/${SDCARD_ENC_PART_MAPPER} ${HUSH_DIR} &> /dev/null ; then
-		echo "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with read-only permissions"
-		exit 1
+		_failure "risks" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with read-only permissions"
 	fi
 
-	echo "HUSH is now mounted read-only"
 }
 
 rw_hush()
@@ -524,24 +513,18 @@ rw_hush()
 	global_var_check "HUSH_DIR"
 
 	if ! is_hush_mounted ; then
-                _failure "hush (rw)" "SDCARD is not mounted"
+                _failure "risks" "SDCARD is not mounted"
 		exit 1
 	fi
 
 	mount_option="remount,rw"
 
 	if ! sudo mount -o ${mount_option} /dev/mapper/${SDCARD_ENC_PART_MAPPER} ${HUSH_DIR} &> /dev/null ; then
-		_failure "hush" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with write permissions"
+		_failure "risks" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with write permissions"
 		exit 1
 	fi
 
 	sudo chown ${USER} ${HUSH_DIR}
-
-	echo ""
-	echo "###################################"
-	echo "Warning! HUSH is writable"
-	echo "Do not unplug without umounting it!"
-	echo "###################################"
 }
 
 is_luks_open()
@@ -788,7 +771,7 @@ cleanup_gpg_init()
         ├── fejk38RjhfEf13 (joe-gpg.coffin)"
 
     _verbose "coffin" "Test opening and closing coffin for ${IDENTITY}"
-    open_coffin ${IDENTITY} "${pass}" TODO: Check coffin uses encrypted filename
+    open_coffin ${IDENTITY} "${pass}"
     close_coffin ${IDENTITY} "${pass}"
 
     ## 6 - Removing GPG private keys 
@@ -978,14 +961,12 @@ EOF
         sudo cryptsetup close ${mapper} || _failure "hush" "Failed to close LUKS filesystem on ${mapper}" 
 
         # Setup udev identitiers mapping for hush partition 
-        _success "udev" "Setting Udev rules for hush partition " 
+        _message "udev" "Setting Udev rules for hush partition " 
         local UUID=$(sudo cryptsetup luksUUID ${sd_enc_part})
         sudo sh -c 'echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'${UUID}'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules' \
                 || _failure "hush" "Failed to write udev mapper file with SDCard UUID"
-        _success "udev" "Restarting udev service" 
+        _verbose "udev" "Restarting udev service" 
         sudo udevadm control --reload-rules
-        _message "hush" "SDCard formatting & setup done" 
-        _message "hush" "Configure dom0 to attach SDCard" 
 }
 
 # Easily cleanup, format, luks-encrypt and filesystem setup for a USB drive
@@ -1019,7 +1000,6 @@ format_backup()
         sudo umount ${MOUNT_POINT} || _failure "Failed to unmount ${MOUNT_POINT}"
         _verbose "backup" "Closing LUKS filesystem" 
         sudo cryptsetup close ${MAPPER} || _failure "hush" "Failed to close LUKS filesystem on ${MAPPER}" 
-        _message "backup" "Done formatting and encrypting backup drive"
 }
 
 # store_risks_scripts copies the various vault risks scripts in a special directory in the
@@ -1168,7 +1148,7 @@ new_tomb()
 # - The current, specified identity
 # - All coffins and tomb files
 # - The entire hush partition
-# - Convenience, filesytem based backup with public keys only.
+# - Convenience, filesystem based backup with public keys only.
 new_backup()
 {
     local name="$1"
@@ -1280,9 +1260,9 @@ _full_backup ()
     local MOUNT_POINT="/tmp/pendrive"
 
     # Mount and decrypt the backup drive.
-    _verbose "backup" "Opening LUKS pendrive"
-    sudo cryptsetup open --type luks ${PENDRIVE} ${MAPPER} # TODO: Add failure check/exit here
-    sudo mount /dev/mapper/${MAPPER} ${MOUNT_POINT}        # Same
+    _verbose "backup" "Opening backup LUKS filesystem"
+    sudo cryptsetup open --type luks ${PENDRIVE} ${MAPPER} || _failure "backup" "Failed to open backup LUKS filesystem"
+    sudo mount /dev/mapper/${MAPPER} ${MOUNT_POINT}   || sudo cryptsetup close ${MAPPER} && _failure "backup" "Failed to mount LUKS filesystem"
 
     # Hush backup
     _message "backup" "Backing hush partition"
@@ -1310,7 +1290,6 @@ _full_backup ()
     sudo umount ${MOUNT_POINT}
     _verbose "backup" "Closing LUKS filesystem"
     sudo cryptsetup close ${MAPPER}
-    _message "backup" "Done backing up identities"
 }
 
 
@@ -1496,8 +1475,6 @@ open_tomb()
 	fi
 }
 
-# NOTE: This function SHOULD ENCRYPT the given tomb name: not done by caller
-# NOTE: REquires passphrase as argument 3
 close_tomb()
 {
 	local RESOURCE="${1}"
@@ -1544,8 +1521,7 @@ gpgpass ()
     local passphrase=$(_passphrase ${identity})
 
 	echo -n "${passphrase}" | xclip -selection clipboard
-	seconds=45 TODO: Make timeout global value
-	( sleep ${seconds}; echo -n "" |xclip -selection clipboard;) &
+	( sleep ${GPGPASS_TIMEOUT}; echo -n "" |xclip -selection clipboard;) &
 
     # Return the passphrase is asked to
     if [[ ! -z ${2} ]]; then
@@ -1553,7 +1529,7 @@ gpgpass ()
     else
         _message "risks" "The passphrase has been saved in clipboard     \n \
         Press CTRL+SHIFT+C to share the clipboard with another qube.     \n \
-        Local clipboard will be erased is ${seconds} seconds"       
+        Local clipboard will be erased is ${GPGPASS_TIMEOUT} seconds"       
     fi
 }
 
@@ -1716,12 +1692,17 @@ cmd_format ()
     local device="$2"
 
     if [[ "${resource}" == "sdcard" || "${resource}" == "hush" ]]; then
+        _message "risks" "Preparing SDcard/USB drive as hush device"
         format_sdcard "$device"
+        _message "hush" "SDCard formatting & setup done" 
+        _message "hush" "Configure dom0 to attach SDCard" 
         exit $?
     fi
 
     if [[ "${resource}" == "backup" ]]; then
+        _message "risks" "Preparing device as backup drive"
         format_backup "$device"
+        _message "backup" "Done formatting and encrypting backup drive"
         exit $?
     fi
 }
@@ -1732,20 +1713,33 @@ cmd_hush ()
     _check_required_args 1 "$@"
     local resource="$1"
 
-    if [[ "${resource}" == "rw" ]]; then
-        rw_hush
-        exit $?
-    fi
-    if [[ "${resource}" == "ro" ]]; then
-        ro_hush	
-        exit $?
-    fi
     if [[ "${resource}" == "mount" ]]; then
         mount_hush
+            echo
+        _success "hush" "SDCARD has been mounted read-only. To give write permissions, use:"
+        _success "hush" "$0 hush rw"
+            echo
         exit $?
     fi
+
+    if [[ "${resource}" == "rw" ]]; then
+        rw_hush
+        _warning "risks" "-----------------------------------   \n \
+        Warning! HUSH is writable                               \n \
+        Do not unplug without umounting it!                     \n \"
+        -----------------------------------"
+        exit $?
+    fi
+
+    if [[ "${resource}" == "ro" ]]; then
+        ro_hush	
+	    _verbose "risks" "HUSH is now mounted read-only"
+        exit $?
+    fi
+
     if [[ "${resource}" == "umount" ]]; then
         umount_hush	
+    	_message "risks" "SDCARD is ready to be detached from this qube"
         exit $?
     fi
 }
@@ -1775,7 +1769,9 @@ cmd_new ()
         local IDENTITY="$(_identity_active_or_specified ${3})"
         local passphrase=$(_passphrase ${IDENTITY})
 
+        _message "risks" "Creating tomb ${LABEL}."
         new_tomb "${LABEL}" "${SIZE}" "${IDENTITY}" "${passphrase}" 
+        _message "risks" "Done creating tomb."
         exit $?
     fi
 
@@ -1783,7 +1779,9 @@ cmd_new ()
     # so we don't need neither names nor passphrases.
     if [[ "${resource}" == "backup" ]]; then
         _check_required_args 1 "$@"
+        _message "risks" "Backing up all identities' data and hush partition."
         _full_backup "$@"
+        _message "backup" "Done backing up identities and hush partition."
         exit $?
     fi
 }
