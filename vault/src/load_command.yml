@@ -1,0 +1,4 @@
+name: load
+help: 'Copy some resource to a VM where to use it (completed)'
+# args:
+#   - name:

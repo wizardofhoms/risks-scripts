@@ -1,0 +1,9 @@
+name: list
+help: 'Show currently open data stores'
+args:
+- name: store
+  help: 'Datastore types to list'
+  required: true
+examples:
+  - "list coffins         # Lists open GPG coffins"
+  - "list tombs           # Lists open tombs"

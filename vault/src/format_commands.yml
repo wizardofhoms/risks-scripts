@@ -1,0 +1,29 @@
+# Partition/device formatting commands #
+name: format
+help: 'Setup drives for either hush or backup partitions'
+
+commands:
+  - name: sdcard
+    help: 'Device storing identity secrets (GPG/coffin/age keys)'
+    args:
+      - name: device
+        required: true
+        help: "Device file of the sdcard drive (must be a whole drive without a partition number, eg. /dev/sda)"
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+    examples:
+      - format sdcard /dev/xvdi
+  - name: backup 
+    help: "Device storing backup data (identities' secrets/data, hush.img, etc)"
+    args:
+      - name: device
+        required: true
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+    examples:
+      - format backup /dev/xvdi

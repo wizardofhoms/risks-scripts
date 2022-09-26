@@ -1,0 +1,4 @@
+name: save 
+help: 'Move some data coming from another VM to a (tomb) directory'
+# args:
+#   - name:

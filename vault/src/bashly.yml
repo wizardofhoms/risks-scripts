@@ -1,0 +1,40 @@
+name: risks 
+help: Identity creation and management tool
+version: 0.1.0
+
+# Required programs for all commands
+dependencies:
+
+# Environment variables don't need to be set in bashrc/zshrc files anymore.
+environment_variables:
+- name: SDCARD_ENC_PART 
+  help: 'Device file path to the hush partition' 
+  default: /dev/hush 
+- name: SDCARD_ENC_PART_MAPPER 
+  help: 'Name of LUKS mapper to hush partition' 
+  default: hush 
+- name: SDCARD_QUIET
+  help: 'Enable sound when hush device is mounted (0: enabled, 1: disabled), default is 0/enabled.' 
+  default: '0'
+- name: HUSHDIR 
+  help: 'Directory mount point for the hush device' 
+  default: ~/.hush 
+- name: GRAVEYARD 
+  help: 'Directory where to store tomb files' 
+  default: ~/.graveyard
+
+commands:
+  # Drives/partitions
+- import: src/hush_commands.yml
+- import: src/format_commands.yml
+  # Identity/Stores management commands
+- import: src/new_commands.yml
+- import: src/open_command.yml
+- import: src/close_command.yml
+- import: src/list_command.yml
+- import: src/slam_command.yml
+- import: src/gpgpass_command.yml
+  # Data / tools commands
+- import: src/kv_commands.yml
+- import: src/load_command.yml
+- import: src/save_command.yml

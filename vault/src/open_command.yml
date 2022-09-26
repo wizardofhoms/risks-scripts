@@ -1,0 +1,26 @@
+name: open
+help: 'Open an identity or some of its associated data stores'
+args:
+  - name: store
+    help: 'Datastore (tomb) or full identity (coffin/GPG/SSH,etc) to open'
+    required: true
+  - name: identity 
+    required: false 
+    help: "Identity owning the store. Optional only if a the store to open is a tomb and an identity is active."
+flags:
+  - long: --verbose
+    short: -v
+    help: "Show verbose logging"
+  - long: --log
+    short: -l
+    help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+  - long: --log-file
+    short: -f
+    help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+    arg: logfile
+    default: 'default'
+examples:
+  - "open identity john_doe       # Opens gpg coffin and mgmt/pass/ssh/signal tombs"
+  - "open gpg john_doe            # Opens the GPG keyring for identity 'john_doe'"         
+  - "open ssh                     # Opens the ssh tomb for the active identity"
+  - "open pass [identity]         # Opens the password-store for active identity"

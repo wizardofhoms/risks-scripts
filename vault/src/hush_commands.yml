@@ -1,0 +1,14 @@
+# Hush partition commands #
+name: hush 
+help: 'Manage the hush partition mount points and read/write permissions'
+
+commands:
+  - name: mount
+    help: 'Mount the hush drive' 
+  - name: rw 
+    help: 'Set read-write permissions on the hush partition'
+  - name: ro 
+    help: 'Set read-only permissions on the hush partition'
+  - name: umount 
+    help: 'Unmount the hush drive'
+

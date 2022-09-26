@@ -1,0 +1,74 @@
+# New identity/stores commands #
+name: new
+help: 'Create new identities, data stores or backups'
+
+commands:
+  - name: identity 
+    help: 'Create a new GPG identity, with SSH/password-store/Signal and associated tombs' 
+    args:
+      - name: name 
+        required: true
+        help: "Alias/nym/name to use for the identity (can include spaces if full name, but use quotes accordingly)"
+      - name: email 
+        required: true
+        help: "Email address to use for the GPG identity"
+      - name: expiry_date
+        required: true
+        help: Human readable, or GPG-compliant expiry duration to use for the GPG subkeys (eg. '1 year', '1 week', etc)
+      - name: backup_device
+        required: true
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+      - long: --log
+        short: -l
+        help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+      - long: --log-file
+        short: -f
+        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+        arg: logfile
+        default: 'default'
+    examples:
+      - new identity 'John Doe' john.doe@mail.com '1 year' /dev/xvdj
+
+  - name: tomb 
+    help: 'Create a new tomb' 
+    args:
+      - name: tomb_name 
+        required: true
+        help: "Name/label to use for the tomb"
+      - name: size
+        required: true
+        help: "Size (in MB) of the tomb"
+      - name: identity 
+        required: false 
+        help: "Identity for which to create the tomb. Optional: the active identity is used if no identity is specified"
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+      - long: --log
+        short: -l
+        help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+      - long: --log-file
+        short: -f
+        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+        arg: logfile
+        default: 'default'
+    examples:
+      - new tomb Data 100 john_doe
+
+  - name: backup
+    help: 'Create a new backup with all the data currenly available in the hush drive and the graveyard'
+    args:
+      - name: device
+        required: true
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+    examples:
+      - new backup /dev/xvdj
