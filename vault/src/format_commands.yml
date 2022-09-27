@@ -4,11 +4,15 @@ help: 'Setup drives for either hush or backup partitions'
 
 commands:
   - name: sdcard
+    alias: hush
     help: 'Device storing identity secrets (GPG/coffin/age keys)'
     args:
       - name: device
         required: true
         help: "Device file of the sdcard drive (must be a whole drive without a partition number, eg. /dev/sda)"
+      - name: size
+        required: false
+        help: "Size of encrypted partition. Can also be a percentage value (of the entire drive). Optional, defaults to 100 percent"
     flags:
       - long: --verbose
         short: -v
