@@ -9,13 +9,13 @@ init_pass ()
     local passphrase="${3}"
 
     _verbose "pass" "Creating tomb file for pass"
-    new_tomb ${PASS_TOMB_LABEL} 20 "${IDENTITY}" "$passphrase"
+    new_tomb "${PASS_TOMB_LABEL}" 20 "${IDENTITY}" "$passphrase"
     _verbose "pass" "Opening password store"
-    open_tomb ${PASS_TOMB_LABEL} ${IDENTITY}
+    open_tomb "${PASS_TOMB_LABEL}" "${IDENTITY}"
     _verbose "pass" "Initializating password store with recipient ${email}"
-    pass init ${email}
+    pass init "${email}"
     _verbose "pass" "Closing pass tomb file"
-    close_tomb ${PASS_TOMB_LABEL} ${IDENTITY}
+    close_tomb "${PASS_TOMB_LABEL}" "${IDENTITY}"
 }
 
 # Creates a default management tomb in which, between others, the key=value store is being kept.
@@ -25,11 +25,11 @@ init_mgmt ()
     local passphrase="${2}"
 
     _verbose "mgmt" "Creating tomb file for management (key=value store, etc)"
-    new_tomb ${MGMT_TOMB_LABEL} 10 "${IDENTITY}" "$passphrase"
+    new_tomb "${MGMT_TOMB_LABEL}" 10 "${IDENTITY}" "$passphrase"
     _verbose "mgmt" "Opening management tomb"
-    open_tomb ${MGMT_TOMB_LABEL} ${IDENTITY}
+    open_tomb "${MGMT_TOMB_LABEL}" "${IDENTITY}"
     _verbose "mgmt" "Closing management tomb"
-    close_tomb ${MGMT_TOMB_LABEL} ${IDENTITY}
+    close_tomb "${MGMT_TOMB_LABEL}" "${IDENTITY}"
 }
 
 # store_risks_scripts copies the various vault risks scripts in a special directory in the
@@ -41,10 +41,10 @@ store_risks_scripts ()
 
     _verbose "scripts" "Copying risks scripts onto the hush partition"
     mkdir -p "${RISKS_SCRIPTS_INSTALL_PATH}"
-    sudo cp "${prg_path}" ${RISKS_SCRIPTS_INSTALL_PATH}
-    sudo cp /usr/local/share/zsh/site-functions/_risks ${RISKS_SCRIPTS_INSTALL_PATH}
+    sudo cp "${prg_path}" "${RISKS_SCRIPTS_INSTALL_PATH}"
+    sudo cp /usr/local/share/zsh/site-functions/_risks "${RISKS_SCRIPTS_INSTALL_PATH}"
 
-    cat >${RISKS_SCRIPTS_INSTALL_PATH}/install <<'EOL'
+    cat >"${RISKS_SCRIPTS_INSTALL_PATH}/install" <<'EOL'
 #!/usr/bin/env zsh
 
 local INSTALL_SCRIPT_DIR="${0:a:h}"

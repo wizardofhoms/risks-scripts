@@ -176,7 +176,7 @@ _format()
         drives)
             local -a drives
             drives=(
-                'sdcard:Device storing identity data'
+                'sdcard:Device storing identity secrets (GPG/coffin/age keys)'
                 'backup:Device storing backup data (keys, hush.img, etc)'
             )
             _describe -t arguments 'drives' drives 
