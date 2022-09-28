@@ -1,4 +1,12 @@
-echo "# this file is located in 'src/hush_rw_command.sh'"
-echo "# code for 'risks hush rw' goes here"
-echo "# you can edit it freely and regenerate (it will not be overwritten)"
-inspect_args
+if ! is_hush_mounted ; then
+            _failure "risks" "SDCARD is not mounted"
+    exit 1
+fi
+
+mount_option="remount,rw"
+if ! sudo mount -o ${mount_option} "/dev/mapper/${SDCARD_ENC_PART_MAPPER}" "${HUSH_DIR}" &> /dev/null ; then
+    _failure "risks" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be re-mounted with write permissions"
+    exit 1
+fi
+
+sudo chown "${USER}" "${HUSH_DIR}"
