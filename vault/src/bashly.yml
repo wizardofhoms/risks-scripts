@@ -4,6 +4,25 @@ version: 0.1.0
 
 # Required programs for all commands
 dependencies:
+  # Filesystem
+  # - cryptsetup
+  # - fscrypt 
+  - steghide
+  - wipe
+  - tomb
+  # - dosfstools
+  # - e2fsprogs
+  # Encryption, non-filesystem related
+  - age
+  - spectre
+  - pass
+  - gpg2
+  # Agents and workflow
+  - xclip
+  - socat
+  # - ncurses
+  - pinentry-curses
+  # - ssh-akspass-gnome
 
 # Environment variables don't need to be set in bashrc/zshrc files anymore.
 environment_variables:
@@ -14,14 +33,14 @@ environment_variables:
   help: 'Name of LUKS mapper to hush partition' 
   default: hush 
 - name: SDCARD_QUIET
-  help: 'Enable sound when hush device is mounted (0: enabled, 1: disabled), default is 0/enabled.' 
+  help: 'Enable sound when hush device is mounted (0: enabled, 1: disabled)' 
   default: '0'
-- name: HUSHDIR 
+- name: HUSH_DIR 
   help: 'Directory mount point for the hush device' 
-  default: ~/.hush 
+  default: /home/user/.hush 
 - name: GRAVEYARD 
   help: 'Directory where to store tomb files' 
-  default: ~/.graveyard
+  default: /home/user/.graveyard
 
 commands:
   # Drives/partitions
