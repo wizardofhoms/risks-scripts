@@ -10,13 +10,24 @@ commands:
       - name: device
         required: true
         help: "Device file of the sdcard drive (must be a whole drive without a partition number, eg. /dev/sda)"
-      - name: size
-        required: false
-        help: "Size of encrypted partition. Can also be a percentage value (of the entire drive). Optional, defaults to 100 percent"
     flags:
       - long: --verbose
         short: -v
         help: "Show verbose logging"
+      - long: --size-percent
+        short: -P
+        arg: percent
+        default: "90"
+        required: false
+        help: "Size of encrypted partition, as a percentage of the entire drive"
+        conflicts: [ --size-absolute ]
+      - long: --size-absolute
+        short: -A
+        arg: size 
+        required: false
+        help: "Size of encrypted partition, in absolute terms, WITH unit (eg. 100G, 20M, etc)"
+        conflicts: [ --size-percent ]
+        validate: partition_size
     examples:
       - format sdcard /dev/xvdi
   - name: backup 
