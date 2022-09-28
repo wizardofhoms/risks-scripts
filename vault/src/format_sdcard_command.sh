@@ -69,7 +69,7 @@ _run "hush" sudo mount -o rw "/dev/mapper/${SDCARD_ENC_PART_MAPPER}" "${mount_po
 _catch "hush" "Failed to mount partition on ${mount_point}"       
 sudo chown "${USER}" "${HUSH_DIR}"
 _verbose "hush" "Setting up fscrypt in hush mount point (${mount_point})"
-echo "N" | sudo fscrypt setup "${mount_point}" &> /dev/null
+sudo fscrypt setup --quiet --force "${mount_point}"
 _catch "hush" "Failed to setup fscrypt metadata with root permissions"
 
 # Checks
