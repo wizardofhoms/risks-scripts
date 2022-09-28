@@ -7,8 +7,8 @@ gen_ssh_keys()
     local pass="$3"
 
     _verbose "SSH" "Creating and opening tomb file for SSH"
-    new_tomb ${SSH_TOMB_LABEL} 20 "${IDENTITY}" "$pass"
-    open_tomb ${SSH_TOMB_LABEL} ${IDENTITY}
+    new_tomb "${SSH_TOMB_LABEL}" 20 "${IDENTITY}" "$pass"
+    open_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}"
 
     # Write multi-key loading script
     _verbose "SSH" "Writing multiple SSH-keypairs loading script (ssh-add)"
@@ -51,9 +51,9 @@ EOF
     
     # Generate keys
     _verbose "SSH" "Generating keys for identity"
-    ssh-keygen -t ed25519 -b 4096 -C "${email}" -N "" -f ${HOME}/.ssh/id_ed25519 # No passphrase
+    _run 'SSH' ssh-keygen -t ed25519 -b 4096 -C "${email}" -N "" -f "${HOME}"/.ssh/id_ed25519 # No passphrase
     _verbose "SSH" "Making keys immutable"
-    $s chattr +i ${HOME}/.ssh/id_ed25519*
-    _"SSH" "Closing SSH tomb file"
-    close_tomb ${SSH_TOMB_LABEL} ${IDENTITY}
+    sudo chattr +i "${HOME}"/.ssh/id_ed25519*
+    _verbose "SSH" "Closing SSH tomb file"
+    close_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}"
 }

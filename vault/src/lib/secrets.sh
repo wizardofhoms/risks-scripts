@@ -8,6 +8,7 @@ _encrypt_filename ()
     local filename="$1"
     local identity="$2"
     local pass="$3"
+    local encrypted
 
     # -q            Quiet: just output the password/filename
     # -n            Don't append a newline to the password output
@@ -15,29 +16,30 @@ _encrypt_filename ()
     # -F n          No config file output
     # -t n          Output a nine characters name, without symbols
     # -u ${user}    User for which to produce the password/name
-    local encrypted=$(print "${pass}" | spectre -q -n -s 0 -F n -t n -u ${identity} ${filename})
+    encrypted=$(print "${pass}" | spectre -q -n -s 0 -F n -t n -u "${identity}" "${filename}")
     print "${encrypted}"
 }
 
-# Returns a spectre-generated passphrase, given an identity and an optional password argument.
-# - No argument: spectre will prompt for a passphrase, which is essentially creating
-#                a new one to be used in later steps.
-# - With arg:    spectre uses it to produce an output without any prompt.
+# Returns a spectre-generated passphrase, given an identity, a passname and 
+# an optional password argument. Two arguments are mandatory (identity & 
+# passname), while the third one (master passphrase, is optional).
 #
-# usage: password=$(_passphrase "${identity}" ${master_passphrase})
-passphrase ()
+# usage: password=$(get_passphrase "${identity}" mypass ${master_passphrase})
+get_passphrase ()
 {
     local identity=${1}
-    local master="${2}"
+    local passname="${2}"
+    local master="${3}"
 
-    # The `risks` argument is common to all, since it's not specific to anything.
+    local passphrase
+
     local cmd=(spectre -q -n -F n)
-    local parameters=(-t K -P 512 -u ${identity} risks)
+    local spectre_params=(-t K -P 512 -u "${identity}" "${passname}")
 
-    if [[ ! -z ${master} ]]; then
-        local passphrase=$(print "${master}" | ${cmd} -s 0 ${parameters})
+    if [[ -n ${master} ]]; then
+        passphrase=$(print "${master}" | "${cmd[@]}" -s 0 "${spectre_params[@]}")
     else
-        local passphrase=$(${cmd} ${parameters})
+        passphrase=$("${cmd[@]}" "${spectre_params[@]}")
     fi
 
     print "${passphrase}"

@@ -1,12 +1,106 @@
 
 get_tomb_mapper()
 {
-	ls -1 /dev/mapper/tomb.* &> /dev/null
-	if [[ $? -eq 0 ]]; then
-		ls -1 /dev/mapper/tomb.* | grep ${1}
+	if ls -1 /dev/mapper/tomb.* &> /dev/null ;  then
+        ls -1 /dev/mapper/tomb.* | grep "${1}"
 	else
 		echo "none"
 	fi
+}
+
+# new_graveyard generates a private directory in the
+# graveyard for a given identity, with fscrypt support.
+new_graveyard ()
+{
+    local IDENTITY="$1"
+    local passphrase="$2"
+
+    local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+
+    # Always make sure the root graveyard directory exists
+    if [[ ! -d ${GRAVEYARD} ]]; then
+            _verbose "coffin" "Creating directory ${GRAVEYARD}"
+            mkdir -p "${GRAVEYARD}"
+    fi
+
+    # The directory name in cleartext is simply the identity name
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}" "${passphrase}")
+    IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+
+    # Make the directory
+    _verbose "graveyard" "Creating identity graveyard directory"
+    mkdir -p "${IDENTITY_GRAVEYARD_PATH}"
+
+    # And setup fscrypt protectors on it.
+    _verbose "graveyard" "Setting up fscrypt protectors on directory"
+    echo "${passphrase}" | fscrypt encrypt "${IDENTITY_GRAVEYARD_PATH}" \
+       --quiet --source=custom_passphrase --name="${GRAVEYARD_DIRECTORY_ENC}"
+}
+
+# get_identity_graveyard returns the path to an identity's graveyard directory,
+# and decrypts (gives access to) this directory, since this function was called
+# because we need some resource stored within.
+get_identity_graveyard ()
+{
+    local IDENTITY="$1"
+    local passphrase="$2"
+
+    local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+
+    # Compute the directory names and absolute paths
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}" "${passphrase}")
+    IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+
+    print "${IDENTITY_GRAVEYARD_PATH}"
+}
+
+# Generates a new tomb for a given identity
+new_tomb()
+{
+    local LABEL="$1"
+    local SIZE="$2"
+    local IDENTITY="$3"
+    local passphrase="$4"
+    
+    local TOMBID TOMBID_ENC TOMB_FILE 
+    local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
+    local uid RECIPIENT
+
+    # Filenames
+    TOMBID="${IDENTITY}-${LABEL}"
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" "${passphrase}")
+    TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
+    
+    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
+
+    # TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" "${passphrase}")
+    # IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    # TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMB_FILE_ENC}"
+
+    # First make sure GPG keyring is accessible
+    _verbose "tomb" "Opening identity ${IDENTITY}"
+    open_coffin "${IDENTITY}" "${passphrase}"
+
+    # And get the email recipient
+    uid=$(gpg -K | grep uid | head -n 1)
+    RECIPIENT="${uid[3]}"
+
+    # Then dig
+    _verbose "tomb" "Digging tomb in ${TOMB_FILE}"
+    _run "tomb" tomb dig -s "${SIZE}" "${TOMB_FILE}" 
+    _catch "tomb" "Failed to dig tomb. Aborting"
+    rw_hush_command 
+    _verbose "tomb" "Forging tomb key and making it immutable"
+    _run "tomb" tomb forge -g -r "${RECIPIENT}" "${TOMB_KEY_FILE}" 
+    _catch "tomb" "Failed to forge keys. Aborting"
+    chattr +i "${TOMB_KEY_FILE}" 
+    ro_hush_command
+    _verbose "tomb" "Locking tomb with key"
+    _run "tomb" tomb lock -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" 
+    _catch "tomb" "Failed to lock tomb. Aborting"
 }
 
 # open_tomb requires a cleartext resource name that the function will encrypt to resolve the correct tomb file.
@@ -21,18 +115,25 @@ open_tomb()
     local IDENTITY="${2}"
     local passphrase=${3}
 
-    # Filenames
-    local TOMBID="${IDENTITY}-${RESOURCE}"
-    local TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" ${passphrase})
-    local TOMB_FILE="${GRAVEYARD}/${TOMB_FILE_ENC}"
-    local TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" ${passphrase})
-    local TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
-    
-	local mapper=$(get_tomb_mapper ${TOMBID})
+    local TOMBID TOMBID_ENC TOMB_FILE 
+    local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
+    local mapper
 
-    # Some funtions will call this function while not wanting output
-    # if the tomb is already open. Any non-nil value means true.
-    local SILENT_IF_OPEN=$3
+    # Filenames
+    TOMBID="${IDENTITY}-${RESOURCE}"
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" "${passphrase}")
+    TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
+
+    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
+    
+    # TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" "${passphrase}")
+    # IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    # TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMB_FILE_ENC}"
+
+    mapper=$(get_tomb_mapper "${TOMBID}")
 
 	case ${RESOURCE} in
 		gpg)
@@ -53,70 +154,75 @@ open_tomb()
 	esac
 
 	if [[ "${mapper}" != "none" ]]; then
-		if is_luks_mounted "/dev/mapper/tomb.${TOMBID}" ; then
-            if [[ -z ${SILENT_IF_OPEN} ]]; then
-			    echo "Tomb ${TOMBID} is already open and mounted"
-            fi
+        if is_luks_mounted "/dev/mapper/tomb.${TOMBID_ENC}" ; then
+        # if is_luks_mounted "/dev/mapper/tomb.${TOMBID}" ; then
+            _verbose "Tomb ${TOMBID} is already open and mounted"
 			return 0
 		fi
 	fi
 
 	if [[ ! -f "${TOMB_FILE}" ]]; then
-		echo "No tomb file ${TOMB_FILE} found"
+		_warning "No tomb file ${TOMB_FILE} found"
 		return 2
 	fi
 
     if [[ ! -f "${TOMB_KEY_FILE}" ]]; then
-        echo "No key file ${TOMB_KEY_FILE} found"
+        _warning "No key file ${TOMB_KEY_FILE} found"
 		return 2
 	fi
 
 	# checks if the gpg coffin is mounted
-    local COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
+    local COFFIN_NAME
+    COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
 	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
-		open_coffin ${IDENTITY} ${passphrase} 
+        open_coffin "${IDENTITY}" "${passphrase}" 
 	fi
 
 	if [[ ! -d ${mount_dir} ]]; then
-		mkdir -p ${mount_dir}
+        mkdir -p "${mount_dir}"
 	fi
 
-	tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
+	_run 'risks' tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
+    _catch 'risks' "Failed to open tomb"
 
     # Either add the only SSH key, or all of them if we have a script
 	if [[ "${RESOURCE}" == "ssh" ]]; then
-                local ssh_add_script="${HOME}/.ssh/ssh-add"
-                if [[ -e ${ssh_add_script} ]]; then
-                        ${ssh_add_script}
-                else
-		        ssh-add
-                fi
+        local ssh_add_script="${HOME}/.ssh/ssh-add"
+        if [[ -e ${ssh_add_script} ]]; then
+            ${ssh_add_script}
+        else
+            ssh-add
+        fi
 	fi
 }
 
 close_tomb()
 {
 	local RESOURCE="${1}"
-    local IDENTITY="$(_identity_active_or_specified ${2})"
+    local IDENTITY="${2}"
+    local passphrase=${3}
 
-    local FULL_LABEL="${IDENTITY}-${RESOURCE}"
+    # Filenames
+    # local FULL_LABEL="${IDENTITY}-${RESOURCE}"
+    TOMBID="${IDENTITY}-${RESOURCE}"
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
 
-	if ! get_tomb_mapper ${IDENTITY}-${RESOURCE} &> /dev/null ; then
-		_message "Tomb ${IDENTITY}-${RESOURCE} is already closed"
+    if ! get_tomb_mapper "${IDENTITY}"-"${RESOURCE}" &> /dev/null ; then
+		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
 		return 0
 	fi
 
-        # If the concatenated string is too long, cut it to 16 chars
-        if [[ ${#FULL_LABEL} -ge 16 ]]; then
-                FULL_LABEL=${FULL_LABEL:0:16}
-        fi
+    # If the concatenated string is too long, cut it to 16 chars
+    if [[ ${#TOMBID_ENC} -ge 16 ]]; then
+        TOMBID_ENC=${TOMBID_ENC:0:16}
+    fi
 
-        # Then close it
-	tomb close ${FULL_LABEL}
+    # Then close it
+    tomb close "${TOMBID_ENC}"
 
+    # SSH tombs must all delete all SSH identities from the agent
 	if [[ "${RESOURCE}" == "ssh" ]]; then
 		ssh-add -D
 	fi
-
 }
 
