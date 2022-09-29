@@ -3,8 +3,8 @@ name: format
 help: 'Setup drives for either hush or backup partitions'
 
 commands:
-  - name: sdcard
-    alias: hush
+  - name: hush 
+    alias: sdcard 
     help: 'Device storing identity secrets (GPG/coffin/age keys)'
     args:
       - name: device
@@ -29,7 +29,9 @@ commands:
         conflicts: [ --size-percent ]
         validate: partition_size
     examples:
-      - format sdcard /dev/xvdi
+      - "format hush --size-absolute 200M /dev/xvdi   # The encrypted part will be 200M in size"
+      - "format hush --size-percent 70 /dev/xvdi      # The encrypted part takes 70% of the drive"
+      - "format sdcard /dev/xvdi                      # sdcard is an alias to hush"
   - name: backup 
     help: "Device storing backup data (identities' secrets/data, hush.img, etc)"
     args:

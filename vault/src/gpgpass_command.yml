@@ -4,6 +4,13 @@ args:
   - name: identity 
     required: false 
     help: "Identity for which to copy the GPG passphrase. Optional if an identity is active."
+flags:
+  - long: --timeout
+    short: -t
+    required: false
+    help: "Clear the clipboard after this many seconds"
+    arg: timeout
+    default: "45"
 examples:
   - "gpgpass john_doe         # Copy john_doe's GPG key passphrase"
   - "gpgpass                  # Copy the current identity's GPG key passphrase"

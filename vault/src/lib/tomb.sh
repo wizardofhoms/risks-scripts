@@ -92,12 +92,12 @@ new_tomb()
     _verbose "tomb" "Digging tomb in ${TOMB_FILE}"
     _run "tomb" tomb dig -s "${SIZE}" "${TOMB_FILE}" 
     _catch "tomb" "Failed to dig tomb. Aborting"
-    rw_hush_command 
+    hush_rw_command 
     _verbose "tomb" "Forging tomb key and making it immutable"
     _run "tomb" tomb forge -g -r "${RECIPIENT}" "${TOMB_KEY_FILE}" 
     _catch "tomb" "Failed to forge keys. Aborting"
     chattr +i "${TOMB_KEY_FILE}" 
-    ro_hush_command
+    hush_ro_command
     _verbose "tomb" "Locking tomb with key"
     _run "tomb" tomb lock -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" 
     _catch "tomb" "Failed to lock tomb. Aborting"
