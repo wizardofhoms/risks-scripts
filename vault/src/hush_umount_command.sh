@@ -17,3 +17,5 @@ if is_luks_mapper_present ; then
 fi
 
 play_sound "unplugged"
+
+_message "risks" "SDCARD is ready to be detached from this qube"

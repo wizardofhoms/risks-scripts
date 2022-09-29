@@ -31,3 +31,8 @@ if ! sudo mount -o ro "/dev/mapper/${SDCARD_ENC_PART_MAPPER}" "${HUSH_DIR}" ; th
 fi
 
 play_sound "plugged"
+
+echo
+_success "hush" "SDCARD has been mounted read-only. To give write permissions, use:"
+_success "hush" "risks hush rw"
+echo

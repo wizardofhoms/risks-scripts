@@ -35,10 +35,10 @@ echo "N" | sudo fscrypt setup "${MOUNT_POINT}" &> /dev/null
 _catch "backup" "Failed to setup fscrypt metadata with root permissions"
 
 # Closing
-_verbose "backup" "Unmounting backup pendrive"
+_message "backup" "Unmounting backup pendrive"
 _run "backup" sudo umount ${MOUNT_POINT} 
 _catch "backup" "Failed to unmount ${MOUNT_POINT}"
-_verbose "backup" "Closing LUKS filesystem" 
+_message "backup" "Closing LUKS filesystem" 
 _run "backup" sudo cryptsetup close ${MAPPER} 
 _catch "backup" "Failed to close LUKS filesystem on ${MAPPER}" 
 

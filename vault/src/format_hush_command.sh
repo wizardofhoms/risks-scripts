@@ -13,6 +13,7 @@ mount_point="${HUSH_DIR}"
 # If absolute size was specified, use it and forget all other values
 if [[ -n "${args[--size-absolute]}" ]]; then
     enc_part_size="${args[--size-absolute]}"
+    start_enc_sectors="${enc_part_size}"
 else
     percent_size="${args[--size-percent]}"  
     total_size="$(sudo blockdev --getsize "${sd_drive}")"

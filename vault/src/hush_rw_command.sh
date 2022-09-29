@@ -10,3 +10,8 @@ if ! sudo mount -o ${mount_option} "/dev/mapper/${SDCARD_ENC_PART_MAPPER}" "${HU
 fi
 
 sudo chown "${USER}" "${HUSH_DIR}"
+
+_warning "risks" "----------------------------------------"
+_message -n "risks" "Warning! HUSH is writable"
+_message -n "risks" "Do not unplug without umounting it !"
+_message -n "risks" "-------------------------------------"
