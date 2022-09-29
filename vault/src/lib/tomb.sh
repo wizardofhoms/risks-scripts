@@ -133,7 +133,8 @@ open_tomb()
     # IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
     # TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMB_FILE_ENC}"
 
-    mapper=$(get_tomb_mapper "${TOMBID}")
+    mapper=$(get_tomb_mapper "${TOMBID_ENC}")
+    # mapper=$(get_tomb_mapper "${TOMBID}")
 
 	case ${RESOURCE} in
 		gpg)
@@ -178,10 +179,12 @@ open_tomb()
         open_coffin "${IDENTITY}" "${passphrase}" 
 	fi
 
+    # Make the mount point directory if needed
 	if [[ ! -d ${mount_dir} ]]; then
         mkdir -p "${mount_dir}"
 	fi
 
+    # And finally open the tomb
 	_run 'risks' tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
     _catch 'risks' "Failed to open tomb"
 
@@ -207,7 +210,8 @@ close_tomb()
     TOMBID="${IDENTITY}-${RESOURCE}"
     TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
 
-    if ! get_tomb_mapper "${IDENTITY}"-"${RESOURCE}" &> /dev/null ; then
+    if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
+    # if ! get_tomb_mapper "${IDENTITY}"-"${RESOURCE}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
 		return 0
 	fi
@@ -219,6 +223,16 @@ close_tomb()
 
     # Then close it
     tomb close "${TOMBID_ENC}"
+
+    # And delete the directory if it's not a builtin
+	case ${RESOURCE} in
+		gpg|pass|ssh|signal|mgmt)
+            # Ignore those
+		;;
+		*)
+            rm -rf "${HOME}/.tomb/${RESOURCE}"
+		;;
+	esac
 
     # SSH tombs must all delete all SSH identities from the agent
 	if [[ "${RESOURCE}" == "ssh" ]]; then
