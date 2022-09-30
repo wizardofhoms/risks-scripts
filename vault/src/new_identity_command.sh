@@ -16,7 +16,7 @@ _warning "Do not unplug hush and backup devices during the process"
 # given will make spectre to prompt user for a master password. 
 # This passphrase is used for encrypting all file/directory names,
 # as well as fscrypt encryption.
-passphrase=$(get_passphrase "${IDENTITY}" master)
+passphrase=$(get_passphrase "${IDENTITY}")
 
 _in_section 'gpg' && _message "Setting up RAMDisk and GPG backend"
 init_gpg
@@ -25,7 +25,7 @@ init_gpg
 # we use for encrypting file/directory names and contents.
 # This new key is also the one provided when using gpgpass command.
 _message "Generating GPG keys"
-gpg_passphrase=$(get_passphrase "${IDENTITY}" gpg "${passphrase}")
+gpg_passphrase=$(get_passphrase "${IDENTITY}" "${GPG_TOMB_LABEL}" "${passphrase}")
 echo -n "${gpg_passphrase}" | xclip -loops 1 -selection clipboard
 _warning "Passphrase copied to clipboard with one-time use only, for GPG prompt"
 _run gen_gpg_keys "${name}" "${email}" "${expiry}" "${gpg_passphrase}"

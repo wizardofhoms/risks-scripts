@@ -33,9 +33,20 @@ get_passphrase ()
 
     local passphrase
 
+    # If the call did include neither a passname and a master password,
+    # we set the passname to master: this will output the passphrase used
+    # to obfuscate and encrypt file/directory names, as well as the phrase
+    # used to derive further passphrases, such as the GPG one.
+    if [[ ${#@} -eq 1 ]]; then
+        passname="master"
+    fi
+
+    # Forge command
     local cmd=(spectre -q -n -F n)
     local spectre_params=(-t K -P 512 -u "${identity}" "${passname}")
 
+    # Optionally derive the passphrase we want from a master passphrase;
+    # this has for effect of not prompting the user for it.
     if [[ -n ${master} ]]; then
         passphrase=$(print "${master}" | "${cmd[@]}" -s 0 "${spectre_params[@]}")
     else

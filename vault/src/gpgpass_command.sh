@@ -18,7 +18,7 @@ identity="$(_identity_active_or_specified "${identity_name}")"
 # In addition: this call cannot fail because of "a wrong" passphrase.
 # It will just output something, which will or will not (if actually incorrect)
 # work when pasted in further GPG passphrase prompts.
-passphrase=$(get_passphrase "${identity}" gpg)
+passphrase=$(get_passphrase "${identity}" "${GPG_TOMB_LABEL}")
 
 TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
 

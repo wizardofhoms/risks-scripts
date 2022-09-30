@@ -145,6 +145,14 @@ open_tomb()
 		;;
 	esac
 
+	# checks if the gpg coffin is mounted, and open it first:
+    # this also have for effect to unlock the identity's graveyard.
+    local COFFIN_NAME
+    COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
+	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
+        open_coffin "${IDENTITY}" "${passphrase}" 
+	fi
+
 	if [[ "${mapper}" != "none" ]]; then
         if is_luks_mounted "/dev/mapper/tomb.${TOMBID_ENC}" ; then
             _verbose "Tomb ${TOMBID} is already open and mounted"
@@ -160,13 +168,6 @@ open_tomb()
     if [[ ! -f "${TOMB_KEY_FILE}" ]]; then
         _warning "No key file ${TOMB_KEY_FILE} found"
 		return 2
-	fi
-
-	# checks if the gpg coffin is mounted
-    local COFFIN_NAME
-    COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
-	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
-        open_coffin "${IDENTITY}" "${passphrase}" 
 	fi
 
     # Make the mount point directory if needed
@@ -201,7 +202,6 @@ close_tomb()
     TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
 
     if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
-    # if ! get_tomb_mapper "${IDENTITY}"-"${RESOURCE}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
 		return 0
 	fi

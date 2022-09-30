@@ -141,14 +141,11 @@ function _warning() {
 # We then exit the program.
 function _failure() 
 {
-    local section="$1"
-    shift
-    
 	typeset -i exitcode=${exitv:-1}
 
-    _msg failure "$section" "$@"
+    _msg failure "$@"
     if [[ -n "$COMMAND_STDERR" ]]; then
-        _msg inline "$section" "$COMMAND_STDERR"
+        _msg inline "$COMMAND_STDERR"
     fi
 
 	# Be sure we forget the secrets we were told

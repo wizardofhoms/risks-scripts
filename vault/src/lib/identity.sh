@@ -7,7 +7,7 @@ _set_identity ()
     # If the identity is empty, wipe the identity file
     if [[ -z ${1} ]] && [[ -e ${RISKS_IDENTITY_FILE} ]]; then
         identity=$(cat "${RISKS_IDENTITY_FILE}")
-        wipe -s -f -P 10 "${RISKS_IDENTITY_FILE}"
+        _run wipe -s -f -P 10 "${RISKS_IDENTITY_FILE}" || _warning "Failed to wipe identity file !"
 
         _verbose "Identity '${identity}' is now inactive, (name file deleted)"
         _message "Identity '${identity}' is now INACTIVE"

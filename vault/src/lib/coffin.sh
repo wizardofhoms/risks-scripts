@@ -160,13 +160,16 @@ list_coffins()
 	local coffins_num=0
     local coffins
 
-	if ls -1 /dev/mapper/coffin-* &> /dev/null; then
-		coffins=$(ls -1 /dev/mapper/coffin-* | awk -F- {'print $2'})
+    ls_filtered=(ls -1 --ignore={dmroot,control,hush} --ignore='tomb*')
+
+    if "${ls_filtered[@]}" &> /dev/null; then
+		coffins=$("${ls_filtered[@]}" /dev/mapper)
+		# coffins=$(ls -1 /dev/mapper/* | awk -F- {'print $2'})
         coffins_num=$(echo "${coffins}" | wc -l)
 	fi
 
 	if [[ ${coffins_num} -gt 0 ]]; then
-		_message "Coffins currently open:"
+		_message "Coffins currently opened:"
         echo "${coffins}" | xargs
 	fi
 }

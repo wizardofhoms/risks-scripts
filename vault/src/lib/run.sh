@@ -25,8 +25,6 @@ _run ()
     if [[ $ret -eq 0 ]] && is_verbose_set ; then
         if [[ -n "$COMMAND_STDOUT" ]]; then
             _verbose "$COMMAND_STDOUT"
-        elif [[ -n "$COMMAND_STDERR" ]]; then
-            _verbose "$COMMAND_STDERR"
         fi
     fi
 
