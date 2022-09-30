@@ -197,6 +197,46 @@ close_tomb()
     local passphrase=${3}
 
     # Filenames
+    TOMBID="${IDENTITY}-${RESOURCE}"
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+
+    if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
+		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
+		return 0
+	fi
+
+    # If the concatenated string is too long, cut it to 16 chars
+    if [[ ${#TOMBID_ENC} -ge 16 ]]; then
+        TOMBID_ENC=${TOMBID_ENC:0:16}
+    fi
+
+    # SSH tombs must all delete all SSH identities from the agent
+	if [[ "${RESOURCE}" == "ssh" ]]; then
+		_run ssh-add -D
+	fi
+
+    # Then close it
+    tomb close "${TOMBID_ENC}"
+
+    # And delete the directory if it's not a builtin
+	case ${RESOURCE} in
+		gpg|pass|ssh|signal|mgmt)
+            # Ignore those
+		;;
+		*)
+            rm -rf "${HOME}/.tomb/${RESOURCE}"
+		;;
+	esac
+}
+
+# Identical to close_tomb, but slamming it, so all processes making use of it are killed
+slam_tomb()
+{
+	local RESOURCE="${1}"
+    local IDENTITY="${2}"
+    local passphrase=${3}
+
+    # Filenames
     # local FULL_LABEL="${IDENTITY}-${RESOURCE}"
     TOMBID="${IDENTITY}-${RESOURCE}"
     TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
@@ -211,8 +251,14 @@ close_tomb()
         TOMBID_ENC=${TOMBID_ENC:0:16}
     fi
 
+    # SSH tombs must all delete all SSH identities from the agent
+    # before tombs kills the process.
+	if [[ "${RESOURCE}" == "ssh" ]]; then
+		_run ssh-add -D
+	fi
+
     # Then close it
-    tomb close "${TOMBID_ENC}"
+    tomb slam "${TOMBID_ENC}"
 
     # And delete the directory if it's not a builtin
 	case ${RESOURCE} in
@@ -224,9 +270,4 @@ close_tomb()
 		;;
 	esac
 
-    # SSH tombs must all delete all SSH identities from the agent
-	if [[ "${RESOURCE}" == "ssh" ]]; then
-		_run ssh-add -D
-	fi
 }
-
