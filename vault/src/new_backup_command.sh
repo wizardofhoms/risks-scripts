@@ -3,6 +3,8 @@ PENDRIVE="${args[device]}"
 MAPPER="pendev"
 MOUNT_POINT="/tmp/pendrive"
 
+_message "Making new backup for current identity and hush device image"
+
 # Mount and decrypt the backup drive, or fail
 _verbose "Opening backup LUKS filesystem"
 sudo cryptsetup open --type luks "${PENDRIVE}" ${MAPPER} 
@@ -38,3 +40,5 @@ _verbose "Unmounting backup pendrive"
 sudo umount ${MOUNT_POINT}
 _verbose "Closing LUKS filesystem"
 sudo cryptsetup close ${MAPPER}
+
+_success "Done backing up identity data and hush image"

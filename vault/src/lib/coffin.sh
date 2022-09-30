@@ -22,7 +22,8 @@ gen_coffin()
     _verbose "Protecting against deletions"
     sudo chattr +i "${key_file}"
     _verbose "Testing immutability of key file"
-    _verbose "Output: \n $(lsattr "${HUSH_DIR}")"
+    _verbose "Output of lsattr:"
+    _run lsattr "${HUSH_DIR}"
     _verbose "Output should look like (filename is encrypted):"
     _verbose "—-i———e—- /home/user/.hush/JRklfdjklb334blkfd"
 

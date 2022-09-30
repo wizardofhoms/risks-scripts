@@ -8,6 +8,7 @@ expiry="${args[expiry_date]}"
 PENDRIVE="${args[backup_device]}"
 IDENTITY="${name// /_}"
 
+_in_section 'risks' 6
 _message "Starting new identity generation process"
 _warning "Do not unplug hush and backup devices during the process"
 
@@ -17,7 +18,7 @@ _warning "Do not unplug hush and backup devices during the process"
 # as well as fscrypt encryption.
 passphrase=$(get_passphrase "${IDENTITY}" master)
 
-_in_section 'gpg' 6 && _message "Setting up RAMDisk and GPG backend"
+_in_section 'gpg' && _message "Setting up RAMDisk and GPG backend"
 init_gpg
 
 # Generate GPG keypairs with a different passphrase than the one
@@ -26,7 +27,7 @@ init_gpg
 _message "Generating GPG keys"
 gpg_passphrase=$(get_passphrase "${IDENTITY}" gpg "${passphrase}")
 echo -n "${gpg_passphrase}" | xclip -loops 1 -selection clipboard
-_warning "Passphrase copied to clipboard, with one time use only, for upcoming GPG prompt"
+_warning "Passphrase copied to clipboard with one-time use only, for GPG prompt"
 _run gen_gpg_keys "${name}" "${email}" "${expiry}" "${gpg_passphrase}"
 
 # Setup the identity graveyard directory with fscrypt protection

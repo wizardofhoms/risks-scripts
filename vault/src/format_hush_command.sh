@@ -92,7 +92,7 @@ _catch "Failed to close LUKS filesystem on ${SDCARD_ENC_PART_MAPPER}"
 # Setup udev identitiers mapping for hush partition 
 _message "Setting Udev rules for hush partition " 
 UUID=$(sudo cryptsetup luksUUID "${sd_enc_part}")
-sudo sh -c 'echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'"${UUID}"'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules'
+sudo sh -c 'echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'${UUID}'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules'
 _catch "Failed to write udev mapper file with SDCard UUID"
 _verbose "Restarting udev service" 
 sudo udevadm control --reload-rules

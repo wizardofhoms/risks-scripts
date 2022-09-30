@@ -13,7 +13,9 @@ section_padding=0
 _in_section ()
 {
     section="$1"
-    section_padding="$2"
+    if [[ -n "${2}" ]]; then
+        section_padding="$2"
+    fi
 }
 
 ## Functions ##
@@ -29,15 +31,6 @@ function is_verbose_set () {
 # Messaging function with pretty coloring
 function _msg() 
 {
- #    local progname="$2"
-	# local msg="$3"
-
-	# local i
-	# command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
-	# for i in {3..${#}}; do
-	# 	msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
-	# done
-
     # Check if we have been provided a section name, 
     # and if not, that the section is set to a default.
     if [[ ${#@} -lt 3 ]]; then
@@ -53,6 +46,14 @@ function _msg()
 
     # Padd the program/section name
     progname="$(printf %"${section_padding}"s "${progname}")"
+
+    # Apply any translation for non-english users
+	# local i
+	# command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
+	# for i in {3..${#}}; do
+	# 	msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
+	# done
+
 
 	local command="print -P"
 	local pchars=""
