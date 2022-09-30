@@ -30,6 +30,18 @@ if [[ "${resource}" == "identity" ]]; then
     _message "CLosing Management tomb ..."
     _run close_tomb "${MGMT_TOMB_LABEL}" "${identity}" "${master_pass}"
 
+    # Finally, find all other tombs...
+    tombs=$(tomb list 2>&1 \
+        | sed -n '0~4p' \
+        | awk -F" " '{print $(3)}' \
+        | rev | cut -c2- | rev | cut -c2-)
+
+    # ... and close them
+    while read -r tomb_name ; do
+        _message "Closing tomb ${tomb_name} ..."
+        _run tomb close "${tomb_name}"
+    done <<< "$tombs"
+
     _message "Closing GPG coffin ..."
     close_coffin "${identity}" "${master_pass}"
     exit 0
