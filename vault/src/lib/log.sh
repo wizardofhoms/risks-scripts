@@ -1,4 +1,23 @@
 
+## Variables ##
+
+# Section is set either by functions or simple calls,
+# so that logging can inform on the component working.
+section='risks'
+
+# When multiple sections are used within a single risks
+# operation, we padd them, for clearer/better aesthetics.
+section_padding=0
+
+# Simple way of setting the section and to update the padding
+_in_section ()
+{
+    section="$1"
+    section_padding="$2"
+}
+
+## Functions ##
+
 function is_verbose_set () {
     if [[ "${args[--verbose]}" -eq 1 ]]; then
         return 0
@@ -10,14 +29,30 @@ function is_verbose_set () {
 # Messaging function with pretty coloring
 function _msg() 
 {
-    local progname="$2"
-	local msg="$3"
+ #    local progname="$2"
+	# local msg="$3"
 
 	# local i
 	# command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
 	# for i in {3..${#}}; do
 	# 	msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
 	# done
+
+    # Check if we have been provided a section name, 
+    # and if not, that the section is set to a default.
+    if [[ ${#@} -lt 3 ]]; then
+        local progname="$section"
+        if [[ -z "$progname" ]]; then
+            progname='risks'
+        fi
+        local msg="$2"
+    else
+        local progname="$2"
+        local msg="$3"
+    fi
+
+    # Padd the program/section name
+    progname="$(printf %"${section_padding}"s "${progname}")"
 
 	local command="print -P"
 	local pchars=""
@@ -86,7 +121,6 @@ function _message() {
 
 function _verbose() {
     is_verbose_set && _msg verbose "$@"
-    # option_is_set -D && _msg verbose "$@"
 	return 0
 }
 

@@ -3,28 +3,28 @@
 init_gpg()
 {
     ## Creating
-    _verbose 'ramdisk' 'Creating directory & setting permissions'
+    _verbose 'Creating directory & setting permissions'
     rm -fR "${RAMDISK}"
     mkdir "${RAMDISK}"
-    _run 'ramdisk' sudo mount -t tmpfs -o size=10m ramdisk "${RAMDISK}"
-    _catch 'ramdisk' "Failed to mount tmp fs on ramdisk"
+    _run sudo mount -t tmpfs -o size=10m ramdisk "${RAMDISK}"
+    _catch "Failed to mount tmp fs on ramdisk"
     sudo chown "${USER}" "${RAMDISK}" 
-    _catch 'ramdisk' "Failed to set ownership to ${RAMDISK}"
+    _catch "Failed to set ownership to ${RAMDISK}"
     sudo chmod 0700 "${RAMDISK}" 
-    _catch 'ramdisk' "Failed to change mod 0700 to ${RAMDISK}"
+    _catch "Failed to change mod 0700 to ${RAMDISK}"
 
     ## Testing
-    _verbose "ramdisk" "Testing ramdisk read/write"
-    _verbose "ramdisk" "$(mount | grep ramdisk)"
-    _verbose "ramdisk" "Previous command should look like this: \n\n\
+    _verbose "Testing ramdisk read/write"
+    _verbose "$(mount | grep ramdisk)"
+    _verbose "Previous command should look like this: \n\n\
         ramdisk on /home/user/ramdisk type tmpfs (rw,relatime,size=10240k) \n\
         ramdisk on /rw/home/user/ramdisk type tmpfs (rw,relatime,size=10240k) \n"
 
     touch "${RAMDISK}/delme" && rm "${RAMDISK}/delme" 
-    _catch "ramdisk" "Failed to test write file ${1}"
+    _catch "Failed to test write file ${1}"
 
     # Configuration files
-    _verbose "gpg" "Writing default GPG configuration file"
+    _verbose "Writing default GPG configuration file"
     cat >"${RAMDISK}/gpg.conf" <<EOF
 # Avoid information leaked
 no-emit-version
@@ -73,7 +73,7 @@ gen_gpg_keys()
     local expiry_date fingerprint
 
     # Output the identity batch file with values
-    _verbose "gpg" "Writing GPG batch file to ramdisk"
+    _verbose "Writing GPG batch file to ramdisk"
     cat >"${RAMDISK}/primary_key_unattended" <<EOF
 %echo Generating EDDSA key (Ed25519 curve)
 Key-Type: eddsa 
@@ -89,34 +89,34 @@ Passphrase: ${passphrase}
 EOF
 
     # Generate key and get rid of batch file
-    _verbose "gpg" "Generating primary key from batch file"
-    _run 'gpg' gpg --batch --gen-key "${RAMDISK}/primary_key_unattended" 
-    _catch 'gpg' "Failed to generate keys from batch file"
-    _verbose "gpg" "Deleting batch file"
-    _run 'gpg' wipe -f "${RAMDISK}/primary_key_unattended" 
-    _catch 'gpg' "Failed to wipe batch file: contains the identity passphrase"
+    _verbose "Generating primary key from batch file"
+    _run gpg --batch --gen-key "${RAMDISK}/primary_key_unattended" 
+    _catch "Failed to generate keys from batch file"
+    _verbose "Deleting batch file"
+    _run wipe -f "${RAMDISK}/primary_key_unattended" 
+    _catch "Failed to wipe batch file: contains the identity passphrase"
 
     ## 2 - Subjeys creation 
     expiry_date="$(date +"%Y-%m-%d" --date="${expiry}")" 
     fingerprint=$(gpg -K "${email}" | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
-    _message "gpg" "Fingerprint: ${fingerprint}"
+    _message "Fingerprint: ${fingerprint}"
 
     local gpg_base_cmd=(gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --quick-add-key "${fingerprint}")
 
-    _verbose "gpg" "Generating encryption subkey-pair"
+    _verbose "Generating encryption subkey-pair"
     echo "$passphrase" | "${gpg_base_cmd[@]}" cv25519 encr "${expiry_date}" &> /dev/null
-    _catch 'gpg' "Failed to generate encryption subkey-pair"
+    _catch "Failed to generate encryption subkey-pair"
 
-    _verbose "gpg" "Generating signature subkey-pair"
+    _verbose "Generating signature subkey-pair"
     echo "$passphrase" | "${gpg_base_cmd[@]}" ed25519 sign "${expiry_date}" &> /dev/null
-    _catch 'gpg' "Failed to generate signature subkey-pair"
+    _catch "Failed to generate signature subkey-pair"
 
-    _verbose "gpg" "Generating authentication subkey-pair"
+    _verbose "Generating authentication subkey-pair"
     echo "$passphrase" | "${gpg_base_cmd[@]}" ed25519 auth "${expiry_date}" &> /dev/null
-    _catch 'gpg' "subkeys" "Failed to generate authentication subkey-pair. Continuing still"
+    _catch "subkeys" "Failed to generate authentication subkey-pair. Continuing still"
 
-    _verbose "gpg" "Directory structure:"
-    _verbose "gpg" "$(tree "${RAMDISK}")"
+    _verbose "Directory structure:"
+    _verbose "$(tree "${RAMDISK}")"
 }
 
 # A rather complete function performing several important, but quite unrelated, tasks:
@@ -137,46 +137,46 @@ cleanup_gpg_init()
     coffin_name=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$pass")
 
     # Making tmp directory
-    _verbose "coffin" "Creating temp directory and mounting coffin"
+    _verbose "Creating temp directory and mounting coffin"
     mkdir "${TMP}"
     sudo mount /dev/mapper/"${coffin_name}" "${TMP}" 
-    _catch "coffin" "Failed to mount coffin partition on ${TMP}"       
+    _catch "Failed to mount coffin partition on ${TMP}"       
     sudo chown "${USER}" "${TMP}"
-    _verbose "coffin" "Testing coffin filesystem"
-    _verbose "coffin" "$(mount | grep "${TMP_FILENAME}")"
+    _verbose "Testing coffin filesystem"
+    _verbose "$(mount | grep "${TMP_FILENAME}")"
 
     ## Moving GPG data into the coffin, and closing again
-    _verbose "coffin" "Copying GPG files in coffin"
-    cp -fR "${RAMDISK}"/* "${TMP}" || _warning "coffin" "Failed to copy one or more files into coffin"
-    _verbose "coffin" "Setting GPG files immutable"
+    _verbose "Copying GPG files in coffin"
+    cp -fR "${RAMDISK}"/* "${TMP}" || _warning "Failed to copy one or more files into coffin"
+    _verbose "Setting GPG files immutable"
     sudo chattr +i "${TMP}"/private-keys-v1.d/*
-    _verbose "coffin" "Closing coffin"
+    _verbose "Closing coffin"
     sudo chattr +i "${TMP}"/openpgp-revocs.d/*
-    sudo umount "${TMP}" || _warning "coffin" "Failed to unmount tmp directory ${TMP}"
+    sudo umount "${TMP}" || _warning "Failed to unmount tmp directory ${TMP}"
     sudo cryptsetup close /dev/mapper/"${coffin_name}" 
-    _catch "coffin" "Failed to close LUKS filesystem for identity"
+    _catch "Failed to close LUKS filesystem for identity"
 
     # Clearing RAMDisk
-    _verbose "ramdisk" "Wiping and unmounting ramdisk"
-    _run "ramdisk" sudo wipe -rf "${RAMDISK}"/*
-    _catch "ramdisk" "Failed to wipe ${RAMDISK} directory"
-    sudo umount -l "${RAMDISK}" || _warning "ramdisk" "Failed to unmount ramdisk ${RAMDISK}"
+    _verbose "Wiping and unmounting ramdisk"
+    _run sudo wipe -rf "${RAMDISK}"/*
+    _catch "Failed to wipe ${RAMDISK} directory"
+    sudo umount -l "${RAMDISK}" || _warning "Failed to unmount ramdisk ${RAMDISK}"
 
     ## 5 - Final checks 
-    _verbose "coffin" "Checking directory contents"
-    _verbose "coffin" "$(tree "${HUSH_DIR}" "${GRAVEYARD}")"
-    _verbose "coffin" "Should look like this:           \n\n \
+    _verbose "Checking directory contents"
+    _verbose "$(tree "${HUSH_DIR}" "${GRAVEYARD}")"
+    _verbose "Should look like this:           \n\n \
 /home/user/.hush                                    \n    \
     ├── fjdri3kff2i4rjkFA (joe-gpg.key)             \n    \
 /home/user/.graveyard                               \n    \
     ├── fejk38RjhfEf13 (joe-gpg.coffin) \n"
 
-    _verbose "coffin" "Test opening and closing coffin for ${IDENTITY}"
+    _verbose "Test opening and closing coffin for ${IDENTITY}"
     close_coffin "${IDENTITY}" "${pass}"
     open_coffin "${IDENTITY}" "${pass}"
 
     ## 6 - Removing GPG private keys 
-    _verbose "gpg" "Removing GPG private keys"
+    _verbose "Removing GPG private keys"
 
     local TOMB_SIZE KEYGRIP fingerprint
 
@@ -184,32 +184,32 @@ cleanup_gpg_init()
     fingerprint=$(gpg -K "${email}" | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
     # Creating tomb file for private keys and moving them
-    _verbose "gpg" "Creating tomb file for identity ${IDENTITY}"
-    _run "gpg" new_tomb "${GPG_TOMB_LABEL}" ${TOMB_SIZE} "${IDENTITY}" "$pass"
-    _verbose "gpg" "Opening tomb file"
-    _run "gpg" open_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
+    _verbose "Creating tomb file for identity ${IDENTITY}"
+    _run new_tomb "${GPG_TOMB_LABEL}" ${TOMB_SIZE} "${IDENTITY}" "$pass"
+    _verbose "Opening tomb file"
+    _run open_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
 
     KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
-    _verbose "gpg" "Keygrip: ${KEYGRIP}"
+    _verbose "Keygrip: ${KEYGRIP}"
 
-    _verbose "gpg" "Copying private data to tomb"
-    _verbose "gpg" "Private keys"
+    _verbose "Copying private data to tomb"
+    _verbose "Private keys"
     cp "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
-    _verbose "gpg" "Revocation certificates"
+    _verbose "Revocation certificates"
     cp "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
 
     # Deleting keys from keyring
-    _verbose "gpg" "Wiping corresponding files in GPG keyring"
+    _verbose "Wiping corresponding files in GPG keyring"
     sudo chattr -i "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" 
-    _run 'gpg' wipe -rf "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" \
-        || _warning "gpg" "Failed to delete master private key from keyring !"
+    _run wipe -rf "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" \
+        || _warning "Failed to delete master private key from keyring !"
     sudo chattr -i "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev
-    _run 'gpg' wipe -rf "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev \
-        || _warning "gpg" "Failed to delete master key revocation from keyring !"
+    _run wipe -rf "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev \
+        || _warning "Failed to delete master key revocation from keyring !"
 
     # Verbose checks
-    _verbose "gpg" "Printing GPG keyring. Should have 'sec#' instead of 'pub'"
+    _verbose "Printing GPG keyring. Should have 'sec#' instead of 'pub'"
     _verbose "$(gpg -K)"
-    _verbose "gpg" "Closing GPG tomb file"
-    _run "gpg" close_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
+    _verbose "Closing GPG tomb file"
+    _run close_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
 }

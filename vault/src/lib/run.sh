@@ -7,10 +7,6 @@ COMMAND_STDERR=''           # Stores a command's stderr output.
 # Returns the command's exit code, so we can catch any errors and inform.
 _run ()
 {
-    # First argument is the name of the section
-    local section="$1"
-    shift
-
     # The STDOUT/STDERR variables are populated, which
     # makes their content available to any subsequent call
     # to _failure, which needs STDERR output
@@ -28,9 +24,9 @@ _run ()
     # output to stderr, like wipe.
     if [[ $ret -eq 0 ]] && is_verbose_set ; then
         if [[ -n "$COMMAND_STDOUT" ]]; then
-            _verbose "$section" "$COMMAND_STDOUT"
+            _verbose "$COMMAND_STDOUT"
         elif [[ -n "$COMMAND_STDERR" ]]; then
-            _verbose "$section" "$COMMAND_STDERR"
+            _verbose "$COMMAND_STDERR"
         fi
     fi
 
@@ -44,11 +40,9 @@ _run ()
 function _catch ()
 {
     local ret="$?" 
-    local section="$1"
-    shift 
 
     if [[ ! $ret -eq 0 ]]; then
-        _failure "$section" "$@"
+        _failure "$@"
     fi
 }
 

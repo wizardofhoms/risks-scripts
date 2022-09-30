@@ -6,12 +6,12 @@ gen_ssh_keys()
     local email="$2"
     local pass="$3"
 
-    _verbose "SSH" "Creating and opening tomb file for SSH"
-    _run "ssh" new_tomb "${SSH_TOMB_LABEL}" 20 "${IDENTITY}" "$pass"
-    _run "ssh" open_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "$pass"
+    _verbose "Creating and opening tomb file for SSH"
+    _run new_tomb "${SSH_TOMB_LABEL}" 20 "${IDENTITY}" "$pass"
+    _run open_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "$pass"
 
     # Write multi-key loading script
-    _verbose "SSH" "Writing multiple SSH-keypairs loading script (ssh-add)"
+    _verbose "Writing multiple SSH-keypairs loading script (ssh-add)"
     cat >"${HOME}/.ssh/ssh-add" <<'EOF'
 #!/usr/bin/env bash
 #
@@ -47,13 +47,13 @@ fi
 
 unset env
 EOF
-    chmod +x "${HOME}/.ssh/ssh-add" || _warning "SSH" "Failed to make ssh-add custom script executable"
+    chmod +x "${HOME}/.ssh/ssh-add" || _warning "Failed to make ssh-add custom script executable"
     
     # Generate keys
-    _verbose "SSH" "Generating keys for identity"
-    _run 'SSH' ssh-keygen -t ed25519 -b 4096 -C "${email}" -N "" -f "${HOME}"/.ssh/id_ed25519 # No passphrase
-    _verbose "SSH" "Making keys immutable"
+    _verbose "Generating keys for identity"
+    _run ssh-keygen -t ed25519 -b 4096 -C "${email}" -N "" -f "${HOME}"/.ssh/id_ed25519 # No passphrase
+    _verbose "Making keys immutable"
     sudo chattr +i "${HOME}"/.ssh/id_ed25519*
-    _verbose "SSH" "Closing SSH tomb file"
-    _run "ssh" close_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "${pass}"
+    _verbose "Closing SSH tomb file"
+    _run close_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "${pass}"
 }

@@ -9,8 +9,8 @@ _set_identity ()
         identity=$(cat "${RISKS_IDENTITY_FILE}")
         wipe -s -f -P 10 "${RISKS_IDENTITY_FILE}"
 
-        _verbose "risks" "Identity '${identity}' is now inactive, (name file deleted)"
-        _message "risks" "Identity '${identity}' is now INACTIVE"
+        _verbose "Identity '${identity}' is now inactive, (name file deleted)"
+        _message "Identity '${identity}' is now INACTIVE"
         return
     fi
 
@@ -21,8 +21,8 @@ _set_identity ()
         print "$1" > "${RISKS_IDENTITY_FILE}"
 	fi
 
-    _verbose "risks" "Identity '${1}' is now active (name file written)"
-    _message "risks" "Identity '${1}' is now ACTIVE"
+    _verbose "Identity '${1}' is now active (name file written)"
+    _message "Identity '${1}' is now ACTIVE"
 }
 
 # Returns 0 if an identity is unlocked, 1 if not.

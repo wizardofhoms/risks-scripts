@@ -1,12 +1,12 @@
 
 if ! is_partition_mapper_present ; then
-    _failure "hush" "Device mapper /dev/${SDCARD_ENC_PART_MAPPER} not found."
-    _failure "hush" "Be sure you have attached your hush partition."
+    _failure "Device mapper /dev/${SDCARD_ENC_PART_MAPPER} not found."
+    _failure "Be sure you have attached your hush partition."
     exit 1
 fi
 
 if is_hush_mounted ; then
-    _message "hush" "Sdcard already mounted"
+    _message "Sdcard already mounted"
     play_sound
     exit 0
 fi
@@ -14,7 +14,7 @@ fi
 if ! is_luks_mapper_present ; then
     # decrypts the "hush partition": it will ask for passphrase
     if ! sudo cryptsetup open --type luks "${SDCARD_ENC_PART}" "${SDCARD_ENC_PART_MAPPER}" ; then
-        _failure "hush" "The hush partition ${SDCARD_ENC_PART} can not be decrypted"
+        _failure "The hush partition ${SDCARD_ENC_PART} can not be decrypted"
         exit 1
     fi
 fi
@@ -26,13 +26,13 @@ fi
 
 # mounts the "hush partition" in read-only mode by default
 if ! sudo mount -o ro "/dev/mapper/${SDCARD_ENC_PART_MAPPER}" "${HUSH_DIR}" ; then
-    _failure "hush" "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be mounted on ${HUSH_DIR}"
+    _failure "/dev/mapper/${SDCARD_ENC_PART_MAPPER} can not be mounted on ${HUSH_DIR}"
     exit 1
 fi
 
 play_sound "plugged"
 
 echo
-_success "hush" "SDCARD has been mounted read-only. To give write permissions, use:"
-_success "hush" "risks hush rw"
+_success "SDCARD has been mounted read-only. To give write permissions, use:"
+_success "risks hush rw"
 echo

@@ -28,16 +28,16 @@ default_kv_user_dir="$HOME/.tomb/mgmt/db/"
 # is unlocked, and reset when this identity is closed.
 RISKS_IDENTITY_FILE="${HOME}/.identity"
 
-# Needed for GPG operations
-GPG_TTY=$(tty)
-export GPG_TTY
-
 # Password-store
 export PASSWORD_STORE_ENABLE_EXTENSIONS=true
 export PASSWORD_STORE_GENERATED_LENGTH=12
 
 # Path where risks scripts are stored on the hush
 RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts"
+
+# Needed for GPG operations
+GPG_TTY=$(tty)
+export GPG_TTY
 
 
 #----------------------------#

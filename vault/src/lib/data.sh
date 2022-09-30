@@ -12,7 +12,7 @@ load()
     open_tomb ${RESOURCE} ${IDENTITY} --silent || _failure "${RESOURCE}" "Failed to open tomb"
 
     # Get the source directory, and copy the files to the VM
-    _message "risks" "Loading data in tomb $RESOURCE to VM ${DEST_VM}"
+    _message "Loading data in tomb $RESOURCE to VM ${DEST_VM}"
 	local source_dir="${HOME}/.tomb/${RESOURCE}"
     qvm-copy-to-vm "${DEST_VM}" "${source_dir}/"'*'
 }
@@ -40,6 +40,6 @@ save ()
 	local dest_dir="${HOME}/.tomb/${RESOURCE}"
     
     # Or move the data from the directory to the tomb directory
-    _message "risks" "Moving data to tomb ${RESOURCE} directory"
+    _message "Moving data to tomb ${RESOURCE} directory"
     mv "${source_dir}/"'*' "${dest_dir}"
 }
