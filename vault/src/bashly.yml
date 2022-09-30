@@ -54,6 +54,6 @@ commands:
 - import: src/slam_command.yml
 - import: src/gpgpass_command.yml
   # Data / tools commands
-- import: src/kv_commands.yml
 - import: src/load_command.yml
 - import: src/save_command.yml
+- import: src/kv_commands.yml

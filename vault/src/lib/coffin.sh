@@ -164,12 +164,13 @@ list_coffins()
 
     if "${ls_filtered[@]}" &> /dev/null; then
 		coffins=$("${ls_filtered[@]}" /dev/mapper)
-		# coffins=$(ls -1 /dev/mapper/* | awk -F- {'print $2'})
-        coffins_num=$(echo "${coffins}" | wc -l)
+        coffins_num=$(echo -n "${coffins}" | wc -l)
 	fi
 
 	if [[ ${coffins_num} -gt 0 ]]; then
 		_message "Coffins currently opened:"
         echo "${coffins}" | xargs
+    else
+        _message "No opened coffins"
 	fi
 }
