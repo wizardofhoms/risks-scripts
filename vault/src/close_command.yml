@@ -1,7 +1,7 @@
 name: close
 help: 'Close an identity or some of its associated data stores' 
 args:
-- name: store
+- name: resource 
   help: 'Datastore (tomb) or full identity (coffin/GPG/SSH,etc) to close'
   required: true
 - name: identity 
@@ -18,7 +18,6 @@ flags:
     short: -f
     help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
     arg: logfile
-    default: 'default'
 examples:
   - "close identity john_doe      # Closes gpg coffin/all tombs for 'john_doe'"
   - "close identity               # Closes gpg coffin/all tombs for active identity"

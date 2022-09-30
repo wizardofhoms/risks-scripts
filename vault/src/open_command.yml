@@ -1,7 +1,7 @@
 name: open
 help: 'Open an identity or some of its associated data stores'
 args:
-  - name: store
+  - name: resource 
     help: 'Datastore (tomb) or full identity (coffin/GPG/SSH,etc) to open'
     required: true
   - name: identity 
@@ -18,7 +18,6 @@ flags:
     short: -f
     help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
     arg: logfile
-    default: 'default'
 examples:
   - "open identity john_doe       # Opens gpg coffin and mgmt/pass/ssh/signal tombs"
   - "open gpg john_doe            # Opens the GPG keyring for identity 'john_doe'"         

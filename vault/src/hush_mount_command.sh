@@ -7,7 +7,7 @@ fi
 if is_hush_mounted ; then
     _message "Sdcard already mounted"
     play_sound
-    exit 0
+    return 0
 fi
 
 if ! is_luks_mapper_present ; then

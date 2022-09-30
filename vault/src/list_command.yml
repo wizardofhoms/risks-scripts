@@ -1,9 +1,9 @@
 name: list
 help: 'Show currently open data stores'
 args:
-- name: store
-  help: 'Datastore types to list'
-  required: true
+- name: resource 
+  help: 'Datastore types to list (all if not provided)'
+  required: false 
 examples:
   - "list coffins         # Lists open GPG coffins"
   - "list tombs           # Lists open tombs"
