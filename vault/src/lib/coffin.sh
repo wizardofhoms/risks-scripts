@@ -22,13 +22,13 @@ gen_coffin()
     _verbose "coffin" "Protecting against deletions"
     sudo chattr +i "${key_file}"
     _verbose "coffin" "Testing immutability of key file"
-    _verbose "coffin" "$(lsattr "${HUSH_DIR}")"
+    _verbose "coffin" "Output: \n $(lsattr "${HUSH_DIR}")"
     _verbose "coffin" "Output should look like (filename is encrypted):"
-    _verbose "—-i———e—- /home/user/.hush/JRklfdjklb334blkfd"
+    _verbose "coffin" "—-i———e—- /home/user/.hush/JRklfdjklb334blkfd"
 
     ## Creation
     _verbose "coffin" "Creating the coffin container (50MB)"
-    _run 'coffin' dd if=/dev/urandom of="${coffin_file}" bs=1M count=50
+    _run "coffin" dd if=/dev/urandom of="${coffin_file}" bs=1M count=50
     _verbose "coffin" "Laying the coffin inside the container"
 
     # Encryption
@@ -39,20 +39,20 @@ gen_coffin()
     _verbose "coffin" "Testing the coffin"
     _run 'coffin' sudo cryptsetup luksDump "${coffin_file}" 
     _catch "coffin" "Failed to dump coffin LUKS filesystem"
-    _verbose "coffin" "Normally, we should see the UUID of the coffin, and only key configured for it"
+    _verbose "coffin" "Normally, we should see the UUID of the coffin, and only one key configured for it"
 
     ##  Setup 
     _verbose "coffin" "Opening the coffin for setup"
-    _run sudo cryptsetup open --type luks "${coffin_file}" "${coffin_name}" --key-file "${key_file}"
+    _run "coffin" sudo cryptsetup open --type luks "${coffin_file}" "${coffin_name}" --key-file "${key_file}"
     _catch "coffin" "Failed to open the coffin LUKS filesystem"
 
     _verbose "coffin" "Testing coffin status"
-    _run sudo cryptsetup status "${coffin_name}" 
+    _run "coffin" sudo cryptsetup status "${coffin_name}" 
     _catch "coffin" "Failed to get status of coffin LUKS filesystem"
 
     ## Filesystem
     _verbose "coffin" "Formatting the coffin filesystem (ext4)"
-    sudo mkfs.ext4 -m 0 -L "${identity_fs}" "/dev/mapper/${coffin_name}"
+    _run "coffin" sudo mkfs.ext4 -m 0 -L "${identity_fs}" "/dev/mapper/${coffin_name}"
     _catch "coffin" "Failed to make ext4 filesystem on coffin partition"
 }
 
@@ -73,12 +73,11 @@ open_coffin()
 	mount_dir="${HOME}/.gnupg"
 
 	if [[ ! -f "${coffin_file}" ]]; then
-		echo "I'm looking for ${coffin_file} but no coffin file found in ${GRAVEYARD}"
-		exit 1
+		_failure "coffin" "I'm looking for ${coffin_file} but no coffin file found in ${GRAVEYARD}"
 	fi
 
 	if is_luks_mounted "/dev/mapper/${mapper}" ; then
-		_verbose "Coffin file ${coffin_file} is already open and mounted"
+		_verbose 'coffin' "Coffin file ${coffin_file} is already open and mounted"
 		return 0
 	fi
 
@@ -109,7 +108,7 @@ open_coffin()
     # names and content, this does not prevent our own obfuscated names; the end
     # result is that all NAMES are obfuscated twice (once us, once fscrypt) and
     # the contents are encrypted once (fscrypt).
-    echo "${pass}" | fscrypt unlock "${IDENTITY_GRAVEYARD_PATH}" --quiet
+    echo "${pass}" | _run "graveyard" sudo fscrypt unlock "${IDENTITY_GRAVEYARD_PATH}" --quiet
 
     _verbose "graveyard" "Identity directory (${IDENTITY_GRAVEYARD_PATH}) is unlocked"
 }
@@ -142,9 +141,14 @@ close_coffin()
 			_failure "risks" "Coffin file ${coffin_file} can not be closed"
 		fi
 	else
-		_verbose "Coffin file ${coffin_file} is already closed"
+		_verbose 'coffin' "Coffin file ${coffin_file} is already closed"
 		return 0
 	fi
+
+    # Lock the identity's graveyard directory
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}" "${pass}")
+    IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+    _run "fscrypt" sudo fscrypt lock "${IDENTITY_GRAVEYARD_PATH}"
 
     _set_identity '' # An empty  identity will trigger a wiping of the file 
 	_verbose "identity" "Coffin file ${coffin_file} has been closed"

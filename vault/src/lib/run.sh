@@ -23,9 +23,15 @@ _run ()
     local ret="$?"
 
     # Output the command's result depending on the verbose mode
-    # and if the command ran successfully.
+    # and if the command ran successfully. We check that either
+    # stdout or stderr are non-empty: sometimes commands might
+    # output to stderr, like wipe.
     if [[ $ret -eq 0 ]] && is_verbose_set ; then
-        _verbose "$section" "$COMMAND_STDOUT"
+        if [[ -n "$COMMAND_STDOUT" ]]; then
+            _verbose "$section" "$COMMAND_STDOUT"
+        elif [[ -n "$COMMAND_STDERR" ]]; then
+            _verbose "$section" "$COMMAND_STDERR"
+        fi
     fi
 
     # Return the command's exit code

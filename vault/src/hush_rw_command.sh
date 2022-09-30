@@ -11,7 +11,7 @@ fi
 
 sudo chown "${USER}" "${HUSH_DIR}"
 
-_warning "risks" "----------------------------------------"
-_message -n "risks" "Warning! HUSH is writable"
-_message -n "risks" "Do not unplug without umounting it !"
-_message -n "risks" "-------------------------------------"
+_warning "risks" "/----------------------------------------/"
+_message -n "risks" "Warning! HUSH is writable              \n"
+_message -n "risks" "Do not unplug without umounting it !   \n"
+_message -n "risks" "/----------------------------------------/ \n"

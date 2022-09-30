@@ -12,11 +12,12 @@ function _msg()
 {
     local progname="$2"
 	local msg="$3"
-	local i
-	command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
-	for i in {3..${#}}; do
-		msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
-	done
+
+	# local i
+	# command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
+	# for i in {3..${#}}; do
+	# 	msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
+	# done
 
 	local command="print -P"
 	local pchars=""

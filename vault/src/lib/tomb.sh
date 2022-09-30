@@ -33,7 +33,7 @@ new_graveyard ()
 
     # And setup fscrypt protectors on it.
     _verbose "graveyard" "Setting up fscrypt protectors on directory"
-    echo "${passphrase}" | fscrypt encrypt "${IDENTITY_GRAVEYARD_PATH}" \
+    echo "${passphrase}" | sudo fscrypt encrypt "${IDENTITY_GRAVEYARD_PATH}" \
        --quiet --source=custom_passphrase --name="${GRAVEYARD_DIRECTORY_ENC}"
 }
 
@@ -76,31 +76,27 @@ new_tomb()
     IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
     TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
 
-    # TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" "${passphrase}")
-    # IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
-    # TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMB_FILE_ENC}"
-
     # First make sure GPG keyring is accessible
     _verbose "tomb" "Opening identity ${IDENTITY}"
     open_coffin "${IDENTITY}" "${passphrase}"
 
     # And get the email recipient
     uid=$(gpg -K | grep uid | head -n 1)
-    RECIPIENT="${uid[3]}"
+    RECIPIENT=$(echo "$uid" | grep -E -o "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}\b")
 
     # Then dig
-    _verbose "tomb" "Digging tomb in ${TOMB_FILE}"
-    _run "tomb" tomb dig -s "${SIZE}" "${TOMB_FILE}" 
-    _catch "tomb" "Failed to dig tomb. Aborting"
-    hush_rw_command 
-    _verbose "tomb" "Forging tomb key and making it immutable"
-    _run "tomb" tomb forge -g -r "${RECIPIENT}" "${TOMB_KEY_FILE}" 
-    _catch "tomb" "Failed to forge keys. Aborting"
-    chattr +i "${TOMB_KEY_FILE}" 
-    hush_ro_command
-    _verbose "tomb" "Locking tomb with key"
-    _run "tomb" tomb lock -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" 
-    _catch "tomb" "Failed to lock tomb. Aborting"
+    _verbose "risks" "Digging tomb in ${TOMB_FILE}"
+    tomb dig -s "${SIZE}" "${TOMB_FILE}" 
+    _catch "risks" "Failed to dig tomb. Aborting"
+    _run "hush" risks_hush_rw_command 
+    _verbose "risks" "Forging tomb key and making it immutable"
+    tomb forge -g -r "${RECIPIENT}" "${TOMB_KEY_FILE}" 
+    _catch "risks" "Failed to forge keys. Aborting"
+    sudo chattr +i "${TOMB_KEY_FILE}" 
+    _verbose "risks" "Locking tomb with key"
+    tomb lock -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" 
+    _catch "risks" "Failed to lock tomb. Aborting"
+    _run "hush" risks_hush_ro_command
 }
 
 # open_tomb requires a cleartext resource name that the function will encrypt to resolve the correct tomb file.
@@ -129,12 +125,7 @@ open_tomb()
     IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
     TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
     
-    # TOMB_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.tomb" "${passphrase}")
-    # IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
-    # TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMB_FILE_ENC}"
-
     mapper=$(get_tomb_mapper "${TOMBID_ENC}")
-    # mapper=$(get_tomb_mapper "${TOMBID}")
 
 	case ${RESOURCE} in
 		gpg)
@@ -156,19 +147,18 @@ open_tomb()
 
 	if [[ "${mapper}" != "none" ]]; then
         if is_luks_mounted "/dev/mapper/tomb.${TOMBID_ENC}" ; then
-        # if is_luks_mounted "/dev/mapper/tomb.${TOMBID}" ; then
-            _verbose "Tomb ${TOMBID} is already open and mounted"
+            _verbose "risks" "Tomb ${TOMBID} is already open and mounted"
 			return 0
 		fi
 	fi
 
 	if [[ ! -f "${TOMB_FILE}" ]]; then
-		_warning "No tomb file ${TOMB_FILE} found"
+		_warning "risks" "No tomb file ${TOMB_FILE} found"
 		return 2
 	fi
 
     if [[ ! -f "${TOMB_KEY_FILE}" ]]; then
-        _warning "No key file ${TOMB_KEY_FILE} found"
+        _warning "risks" "No key file ${TOMB_KEY_FILE} found"
 		return 2
 	fi
 
@@ -185,7 +175,7 @@ open_tomb()
 	fi
 
     # And finally open the tomb
-	_run 'risks' tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
+	tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
     _catch 'risks' "Failed to open tomb"
 
     # Either add the only SSH key, or all of them if we have a script
@@ -236,7 +226,7 @@ close_tomb()
 
     # SSH tombs must all delete all SSH identities from the agent
 	if [[ "${RESOURCE}" == "ssh" ]]; then
-		ssh-add -D
+		_run "SSH" ssh-add -D
 	fi
 }
 

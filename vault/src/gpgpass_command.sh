@@ -18,7 +18,7 @@ identity="$(_identity_active_or_specified "${identity_name}")"
 # In addition: this call cannot fail because of "a wrong" passphrase.
 # It will just output something, which will or will not (if actually incorrect)
 # work when pasted in further GPG passphrase prompts.
-passphrase=$(get_passphrase "${identity}")
+passphrase=$(get_passphrase "${identity}" gpg)
 
 TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
 
@@ -26,5 +26,5 @@ echo -n "${passphrase}" | xclip -selection clipboard
 ( sleep "${TIMEOUT}"; echo -n "" | xclip -selection clipboard;) &
 
 _message "risks" "The passphrase has been saved in clipboard\n \
-Press CTRL+SHIFT+C to share the clipboard with another qube.\n \
-Local clipboard will be erased is ${TIMEOUT} seconds"       
+ Press CTRL+SHIFT+C to share the clipboard with another qube.\n \
+ Local clipboard will be erased is ${TIMEOUT} seconds"       

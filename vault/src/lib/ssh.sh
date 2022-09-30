@@ -7,8 +7,8 @@ gen_ssh_keys()
     local pass="$3"
 
     _verbose "SSH" "Creating and opening tomb file for SSH"
-    new_tomb "${SSH_TOMB_LABEL}" 20 "${IDENTITY}" "$pass"
-    open_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}"
+    _run "ssh" new_tomb "${SSH_TOMB_LABEL}" 20 "${IDENTITY}" "$pass"
+    _run "ssh" open_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "$pass"
 
     # Write multi-key loading script
     _verbose "SSH" "Writing multiple SSH-keypairs loading script (ssh-add)"
@@ -55,5 +55,5 @@ EOF
     _verbose "SSH" "Making keys immutable"
     sudo chattr +i "${HOME}"/.ssh/id_ed25519*
     _verbose "SSH" "Closing SSH tomb file"
-    close_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}"
+    _run "ssh" close_tomb "${SSH_TOMB_LABEL}" "${IDENTITY}" "${pass}"
 }

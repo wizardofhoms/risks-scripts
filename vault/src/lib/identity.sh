@@ -6,9 +6,11 @@ _set_identity ()
 {
     # If the identity is empty, wipe the identity file
     if [[ -z ${1} ]] && [[ -e ${RISKS_IDENTITY_FILE} ]]; then
+        identity=$(cat "${RISKS_IDENTITY_FILE}")
         wipe -s -f -P 10 "${RISKS_IDENTITY_FILE}"
-        _verbose "risks" "Identity '${1}' is now inactive, (name file deleted)"
-        _message "risks" "Identity '${1}' is now INACTIVE"
+
+        _verbose "risks" "Identity '${identity}' is now inactive, (name file deleted)"
+        _message "risks" "Identity '${identity}' is now INACTIVE"
         return
     fi
 
@@ -46,13 +48,13 @@ _identity_active ()
 # Exits the program if none is specified, or echoes the identity if found.
 _identity_active_or_specified ()
 {
-    echo "inavtice"
-    if [[ -z "${1}" ]] && ! _identity_active ; then
-        _failure "identity" "Command requires either an identity to be unlocked.\n \
-            Please use 'risks open identity <name>' or 'risks open gpg <name>' first."
+    if [[ -z "${1}" ]] ; then
+        if ! _identity_active ; then
+            _failure "identity" "Command requires either an identity to be unlocked.\n \
+ Please use 'risks open identity <name>' or 'risks open gpg <name>' first."
+        fi
     fi
 
-    echo "got here"
     # Print the identity
     if [[ -n "${1}" ]]; then
         print "${1}" && return
