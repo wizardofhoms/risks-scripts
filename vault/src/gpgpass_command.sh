@@ -5,11 +5,10 @@
 # this is used when some commands need both the passphrase as an input
 # to decrypt something (like files) and the user needs them for GPG prompts
 
-declare identity passphrase TIMEOUT
+declare TIMEOUT
 
 # Identity is optionality specified as an argument
-identity_name="${args[identity]}"
-identity="$(_identity_active_or_specified "${identity_name}")"
+IDENTITY="$(_identity_active_or_specified "${args[identity]}")"
 
 # Since we did not give any input (master) passphrase to this call,
 # spectre will prompt us for an input one. This input is already known
@@ -18,13 +17,13 @@ identity="$(_identity_active_or_specified "${identity_name}")"
 # In addition: this call cannot fail because of "a wrong" passphrase.
 # It will just output something, which will or will not (if actually incorrect)
 # work when pasted in further GPG passphrase prompts.
-passphrase=$(get_passphrase "${identity}" "${GPG_TOMB_LABEL}")
+GPG_PASS=$(get_passphrase "$IDENTITY" "$GPG_TOMB_LABEL")
 
 TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
 
-echo -n "${passphrase}" | xclip -selection clipboard
-( sleep "${TIMEOUT}"; echo -n "" | xclip -selection clipboard;) &
+echo -n "$GPG_PASS" | xclip -selection clipboard
+( sleep "$TIMEOUT"; echo -n "" | xclip -selection clipboard;) &
 
 _message "The passphrase has been saved in clipboard"
 _message "Press CTRL+SHIFT+C to share the clipboard with another qube."
-_message "Local clipboard will be erased is ${TIMEOUT} seconds"       
+_message "Local clipboard will be erased is $TIMEOUT seconds"       

@@ -52,7 +52,8 @@ _catch "Failed to make vfat32 filesystem"
 # Hush partition encryption setup 
 mkdir "${mount_point}" &> /dev/null
 _message "Creating LUKS filesystem"
-sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 --hash sha512 --iter-time 5000 --use-random luksFormat "$sd_enc_part"
+sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 --hash sha512 \
+    --iter-time 5000 --use-random luksFormat "$sd_enc_part"
 _catch "Failed to format drive with LUKS"
 
 _verbose "Checking LUKS partition status"

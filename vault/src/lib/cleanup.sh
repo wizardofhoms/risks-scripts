@@ -18,10 +18,10 @@ _defer_cleanup ()
 # Originally copied from tomb code.
 _endgame() {
 
-	option_value_contains -o ro || {
-		# Restore access time of sensitive files
-		[[ -z $TOMBFILESSTAT ]] || _restore_stat
-	}
+	# option_value_contains -o ro || {
+	# 	# Restore access time of sensitive files
+	# 	[[ -z $TOMBFILESSTAT ]] || _restore_stat
+	# }
 
 	# Prepare some random material to overwrite vars
 	local rr="$RANDOM"

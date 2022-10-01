@@ -127,53 +127,52 @@ cleanup_gpg_init()
 {
     local IDENTITY="$1"
     local email="$2"
-    local pass="$3"
 
     local TMP_FILENAME TMP coffin_name
 
     # Filenames
-    TMP_FILENAME=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}-gpg" "$pass")
+    TMP_FILENAME=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg")
     TMP="/tmp/${TMP_FILENAME}"
-    coffin_name=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$pass")
+    coffin_name=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
 
     # Making tmp directory
     _verbose "Creating temp directory and mounting coffin"
-    mkdir "${TMP}"
-    sudo mount /dev/mapper/"${coffin_name}" "${TMP}" 
-    _catch "Failed to mount coffin partition on ${TMP}"       
-    sudo chown "${USER}" "${TMP}"
+    mkdir "$TMP"
+    sudo mount /dev/mapper/"${coffin_name}" "$TMP" 
+    _catch "Failed to mount coffin partition on $TMP"       
+    sudo chown "$USER" "$TMP"
     _verbose "Testing coffin filesystem"
-    _verbose "$(mount | grep "${TMP_FILENAME}")"
+    _verbose "$(mount | grep "$TMP_FILENAME")"
 
     ## Moving GPG data into the coffin, and closing again
     _verbose "Copying GPG files in coffin"
-    cp -fR "${RAMDISK}"/* "${TMP}" || _warning "Failed to copy one or more files into coffin"
+    cp -fR "$RAMDISK"/* "$TMP" || _warning "Failed to copy one or more files into coffin"
     _verbose "Setting GPG files immutable"
-    sudo chattr +i "${TMP}"/private-keys-v1.d/*
+    sudo chattr +i "$TMP"/private-keys-v1.d/*
     _verbose "Closing coffin"
-    sudo chattr +i "${TMP}"/openpgp-revocs.d/*
-    sudo umount "${TMP}" || _warning "Failed to unmount tmp directory ${TMP}"
-    sudo cryptsetup close /dev/mapper/"${coffin_name}" 
+    sudo chattr +i "$TMP"/openpgp-revocs.d/*
+    sudo umount "$TMP" || _warning "Failed to unmount tmp directory $TMP"
+    sudo cryptsetup close /dev/mapper/"$coffin_name" 
     _catch "Failed to close LUKS filesystem for identity"
 
     # Clearing RAMDisk
     _verbose "Wiping and unmounting ramdisk"
-    _run sudo wipe -rf "${RAMDISK}"/*
-    _catch "Failed to wipe ${RAMDISK} directory"
-    sudo umount -l "${RAMDISK}" || _warning "Failed to unmount ramdisk ${RAMDISK}"
+    _run sudo wipe -rf "$RAMDISK"/*
+    _catch "Failed to wipe $RAMDISK directory"
+    sudo umount -l "$RAMDISK" || _warning "Failed to unmount ramdisk $RAMDISK"
 
     ## 5 - Final checks 
     _verbose "Checking directory contents"
-    _verbose "$(tree "${HUSH_DIR}" "${GRAVEYARD}")"
+    _verbose "$(tree "$HUSH_DIR" "$GRAVEYARD")"
     _verbose "Should look like this:           \n\n \
 /home/user/.hush                                    \n    \
     ├── fjdri3kff2i4rjkFA (joe-gpg.key)             \n    \
 /home/user/.graveyard                               \n    \
     ├── fejk38RjhfEf13 (joe-gpg.coffin) \n"
 
-    _verbose "Test opening and closing coffin for ${IDENTITY}"
-    close_coffin "${IDENTITY}" "${pass}"
-    open_coffin "${IDENTITY}" "${pass}"
+    _verbose "Test opening and closing coffin for $IDENTITY"
+    close_coffin "$IDENTITY"
+    open_coffin "$IDENTITY"
 
     ## 6 - Removing GPG private keys 
     _verbose "Removing GPG private keys"
@@ -185,12 +184,12 @@ cleanup_gpg_init()
 
     # Creating tomb file for private keys and moving them
     _verbose "Creating tomb file for identity ${IDENTITY}"
-    _run new_tomb "${GPG_TOMB_LABEL}" ${TOMB_SIZE} "${IDENTITY}" "$pass"
+    _run new_tomb "$GPG_TOMB_LABEL" $TOMB_SIZE "$IDENTITY"
     _verbose "Opening tomb file"
-    _run open_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
+    _run open_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 
     KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
-    _verbose "Keygrip: ${KEYGRIP}"
+    _verbose "Keygrip: $KEYGRIP"
 
     _verbose "Copying private data to tomb"
     _verbose "Private keys"
@@ -211,5 +210,5 @@ cleanup_gpg_init()
     _verbose "Printing GPG keyring. Should have 'sec#' instead of 'pub'"
     _verbose "$(gpg -K)"
     _verbose "Closing GPG tomb file"
-    _run close_tomb "${GPG_TOMB_LABEL}" "${IDENTITY}" "${pass}"
+    _run close_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 }

@@ -6,30 +6,28 @@ init_pass ()
 {
     local IDENTITY="${1}"       
     local email="${2}"
-    local passphrase="${3}"
 
     _verbose "Creating tomb file for pass"
-    _run new_tomb "${PASS_TOMB_LABEL}" 20 "${IDENTITY}" "$passphrase"
+    _run new_tomb "$PASS_TOMB_LABEL" 20 "$IDENTITY"
     _verbose "Opening password store"
-    _run open_tomb "${PASS_TOMB_LABEL}" "${IDENTITY}" "$passphrase"
-    _verbose "Initializating password store with recipient ${email}"
-    _run pass init "${email}"
+    _run open_tomb "$PASS_TOMB_LABEL" "$IDENTITY"
+    _verbose "Initializating password store with recipient $email"
+    _run pass init "$email"
     _verbose "Closing pass tomb file"
-    _run close_tomb "${PASS_TOMB_LABEL}" "${IDENTITY}" "$passphrase"
+    _run close_tomb "$PASS_TOMB_LABEL" "$IDENTITY"
 }
 
 # Creates a default management tomb in which, between others, the key=value store is being kept.
 init_mgmt ()
 {
     local IDENTITY="${1}"       
-    local passphrase="${2}"
 
     _verbose "Creating tomb file for management (key=value store, etc)"
-    _run new_tomb "${MGMT_TOMB_LABEL}" 10 "${IDENTITY}" "$passphrase"
+    _run new_tomb "$MGMT_TOMB_LABEL" 10 "$IDENTITY"
     _verbose "Opening management tomb"
-    _run open_tomb "${MGMT_TOMB_LABEL}" "${IDENTITY}" "$passphrase"
+    _run open_tomb "$MGMT_TOMB_LABEL" "${IDENTITY}"
     _verbose "Closing management tomb"
-    _run close_tomb "${MGMT_TOMB_LABEL}" "${IDENTITY}" "$passphrase"
+    _run close_tomb "$MGMT_TOMB_LABEL" "$IDENTITY"
 }
 
 # store_risks_scripts copies the various vault risks scripts in a special directory in the
@@ -37,12 +35,11 @@ init_mgmt ()
 # somewhere else, the user can quickly install and use the risks on the new machine.
 store_risks_scripts ()
 {
-    # local prg_path="$0"
-
     _message "Copying risks scripts onto the hush partition"
-    mkdir -p "${RISKS_SCRIPTS_INSTALL_PATH}"
-    sudo cp "$(which risks)" "${RISKS_SCRIPTS_INSTALL_PATH}"
-    sudo cp /usr/local/share/zsh/site-functions/_risks "${RISKS_SCRIPTS_INSTALL_PATH}"
+    mkdir -p "$RISKS_SCRIPTS_INSTALL_PATH"
+    sudo cp "$(which risks)" "$RISKS_SCRIPTS_INSTALL_PATH"
+    sudo chmod go-rwx "$RISKS_SCRIPTS_INSTALL_PATH"
+    sudo cp /usr/local/share/zsh/site-functions/_risks "$RISKS_SCRIPTS_INSTALL_PATH"
 
     cat >"${RISKS_SCRIPTS_INSTALL_PATH}/install" <<'EOF'
 #!/usr/bin/env zsh
@@ -59,6 +56,8 @@ if [[ ! -d "${BINARY_INSTALL_DIR}" ]]; then
     mkdir -p "${BINARY_INSTALL_DIR}"
 fi
 cp "${INSTALL_SCRIPT_PATH}" "${BINARY_INSTALL_DIR}"
+sudo chmod go-rwx "${INSTALL_SCRIPT_PATH}"
+sudo chmod u+x "${INSTALL_SCRIPT_PATH}"
 
 ## Completions --------
 #

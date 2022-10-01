@@ -13,28 +13,27 @@ get_tomb_mapper()
 new_graveyard ()
 {
     local IDENTITY="$1"
-    local passphrase="$2"
 
     local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
 
     # Always make sure the root graveyard directory exists
     if [[ ! -d ${GRAVEYARD} ]]; then
-            _verbose "Creating directory ${GRAVEYARD}"
-            mkdir -p "${GRAVEYARD}"
+            _verbose "Creating directory $GRAVEYARD"
+            mkdir -p "$GRAVEYARD"
     fi
 
     # The directory name in cleartext is simply the identity name
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}" "${passphrase}")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY" "$IDENTITY")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
 
     # Make the directory
     _verbose "Creating identity graveyard directory"
-    mkdir -p "${IDENTITY_GRAVEYARD_PATH}"
+    mkdir -p "$IDENTITY_GRAVEYARD_PATH"
 
     # And setup fscrypt protectors on it.
     _verbose "Setting up fscrypt protectors on directory"
-    echo "${passphrase}" | sudo fscrypt encrypt "${IDENTITY_GRAVEYARD_PATH}" \
-       --quiet --source=custom_passphrase --name="${GRAVEYARD_DIRECTORY_ENC}"
+    echo "$MASTER_PASS" | sudo fscrypt encrypt "$IDENTITY_GRAVEYARD_PATH" \
+       --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
 }
 
 # get_identity_graveyard returns the path to an identity's graveyard directory,
@@ -43,12 +42,11 @@ new_graveyard ()
 get_identity_graveyard ()
 {
     local IDENTITY="$1"
-    local passphrase="$2"
 
     local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
 
     # Compute the directory names and absolute paths
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}" "${passphrase}")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
 
     print "${IDENTITY_GRAVEYARD_PATH}"
@@ -60,7 +58,6 @@ new_tomb()
     local LABEL="$1"
     local SIZE="$2"
     local IDENTITY="$3"
-    local passphrase="$4"
     
     local TOMBID TOMBID_ENC TOMB_FILE 
     local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
@@ -68,33 +65,33 @@ new_tomb()
 
     # Filenames
     TOMBID="${IDENTITY}-${LABEL}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+    TOMBID_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID")
 
-    TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" "${passphrase}")
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "$IDENTITY" "${TOMBID}.key")
     TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
     
-    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
     TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
 
     # First make sure GPG keyring is accessible
-    _verbose "Opening identity ${IDENTITY}"
-    open_coffin "${IDENTITY}" "${passphrase}"
+    _verbose "Opening identity $IDENTITY"
+    open_coffin "$IDENTITY"
 
     # And get the email recipient
     uid=$(gpg -K | grep uid | head -n 1)
     RECIPIENT=$(echo "$uid" | grep -E -o "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}\b")
 
     # Then dig
-    _verbose "Digging tomb in ${TOMB_FILE}"
-    tomb dig -s "${SIZE}" "${TOMB_FILE}" 
+    _verbose "Digging tomb in $TOMB_FILE"
+    tomb dig -s "$SIZE" "$TOMB_FILE" 
     _catch "Failed to dig tomb. Aborting"
     _run risks_hush_rw_command 
     _verbose "Forging tomb key and making it immutable"
-    tomb forge -g -r "${RECIPIENT}" "${TOMB_KEY_FILE}" 
+    tomb forge -g -r "$RECIPIENT" "$TOMB_KEY_FILE" 
     _catch "Failed to forge keys. Aborting"
-    sudo chattr +i "${TOMB_KEY_FILE}" 
+    sudo chattr +i "$TOMB_KEY_FILE" 
     _verbose "Locking tomb with key"
-    tomb lock -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" 
+    tomb lock -g -k "$TOMB_KEY_FILE" "$TOMB_FILE" 
     _catch "Failed to lock tomb. Aborting"
     _run risks_hush_ro_command
 }
@@ -104,12 +101,10 @@ new_tomb()
 # on non-standard mount points, like gpg/ssh.
 # $1 - Name of the tomb
 # $2 - Identity
-# $3 - Passphrase
 open_tomb()
 {
 	local RESOURCE="${1}"
     local IDENTITY="${2}"
-    local passphrase=${3}
 
     local TOMBID TOMBID_ENC TOMB_FILE 
     local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
@@ -117,15 +112,15 @@ open_tomb()
 
     # Filenames
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+    TOMBID_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID")
 
-    TOMB_KEY_FILE_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}.key" "${passphrase}")
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID.key")
     TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
 
-    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "${IDENTITY}" "${passphrase}")
+    IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
     TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
     
-    mapper=$(get_tomb_mapper "${TOMBID_ENC}")
+    mapper=$(get_tomb_mapper "$TOMBID_ENC")
 
 	case ${RESOURCE} in
 		gpg)
@@ -148,9 +143,9 @@ open_tomb()
 	# checks if the gpg coffin is mounted, and open it first:
     # this also have for effect to unlock the identity's graveyard.
     local COFFIN_NAME
-    COFFIN_NAME=$(_encrypt_filename "${IDENTITY}" "coffin-${IDENTITY}-gpg" "$passphrase")
+    COFFIN_NAME=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
 	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
-        open_coffin "${IDENTITY}" "${passphrase}" 
+        open_coffin "$IDENTITY" 
 	fi
 
 	if [[ "${mapper}" != "none" ]]; then
@@ -160,27 +155,27 @@ open_tomb()
 		fi
 	fi
 
-	if [[ ! -f "${TOMB_FILE}" ]]; then
-		_warning "No tomb file ${TOMB_FILE} found"
+	if [[ ! -f "$TOMB_FILE" ]]; then
+		_warning "No tomb file $TOMB_FILE found"
 		return 2
 	fi
 
-    if [[ ! -f "${TOMB_KEY_FILE}" ]]; then
-        _warning "No key file ${TOMB_KEY_FILE} found"
+    if [[ ! -f "$TOMB_KEY_FILE" ]]; then
+        _warning "No key file $TOMB_KEY_FILE found"
 		return 2
 	fi
 
     # Make the mount point directory if needed
 	if [[ ! -d ${mount_dir} ]]; then
-        mkdir -p "${mount_dir}"
+        mkdir -p "$mount_dir"
 	fi
 
     # And finally open the tomb
-	tomb open -g -k "${TOMB_KEY_FILE}" "${TOMB_FILE}" "${mount_dir}"
+	tomb open -g -k "$TOMB_KEY_FILE" "$TOMB_FILE" "$mount_dir"
     _catch "Failed to open tomb"
 
     # Either add the only SSH key, or all of them if we have a script
-	if [[ "${RESOURCE}" == "ssh" ]]; then
+	if [[ "$RESOURCE" == "ssh" ]]; then
         local ssh_add_script="${HOME}/.ssh/ssh-add"
         if [[ -e ${ssh_add_script} ]]; then
             ${ssh_add_script}
@@ -194,11 +189,10 @@ close_tomb()
 {
 	local RESOURCE="${1}"
     local IDENTITY="${2}"
-    local passphrase=${3}
 
     # Filenames
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}")
 
     if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
@@ -234,12 +228,11 @@ slam_tomb()
 {
 	local RESOURCE="${1}"
     local IDENTITY="${2}"
-    local passphrase=${3}
 
     # Filenames
     # local FULL_LABEL="${IDENTITY}-${RESOURCE}"
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}" "${passphrase}")
+    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}")
 
     if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"

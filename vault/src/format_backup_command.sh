@@ -38,7 +38,6 @@ _catch "Failed to setup fscrypt metadata with root permissions"
 _message "Unmounting backup pendrive"
 _run sudo umount ${MOUNT_POINT} 
 _catch "Failed to unmount ${MOUNT_POINT}"
-_message 
 _run sudo cryptsetup close ${MAPPER} 
 _catch 
 

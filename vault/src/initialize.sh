@@ -1,5 +1,4 @@
 
-
 # Connected terminal
 typeset -H _TTY
 GPG_TTY=$(tty)  # Needed for GPG operations
@@ -9,28 +8,28 @@ export GPG_TTY
 setopt +o nomatch
 
 # Default tombs and corresponding mount points (CONSTANTS) .........................................
-typeset -r GPG_TOMB_LABEL="GPG"          # Stores an identity GPG private keys. Seldom opened
-typeset -r SSH_TOMB_LABEL="ssh"          # Stores SSH keypairs
-typeset -r MGMT_TOMB_LABEL="mgmt"        # Holds the key-value store, and anything the user wants.
-typeset -r PASS_TOMB_LABEL="pass"        # Holds the password store data
-typeset -r SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
+typeset -gr GPG_TOMB_LABEL="GPG"          # Stores an identity GPG private keys. Seldom opened
+typeset -gr SSH_TOMB_LABEL="ssh"          # Stores SSH keypairs
+typeset -gr MGMT_TOMB_LABEL="mgmt"        # Holds the key-value store, and anything the user wants.
+typeset -gr PASS_TOMB_LABEL="pass"        # Holds the password store data
+typeset -gr SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
 
 # Other default security-related default directories/names .........................................
-typeset -r RAMDISK="${HOME}/.gnupg"      # Actually not a tomb mount point: used by coffin
+typeset -gr RAMDISK="${HOME}/.gnupg"      # Actually not a tomb mount point: used by coffin
 
-typeset -r RISKS_IDENTITY_FILE="${HOME}/.identity"      # Currently unlocked identity stored in file
-typeset -r DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb 
-typeset -r RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
+typeset -gr RISKS_IDENTITY_FILE="${HOME}/.identity"      # Currently unlocked identity stored in file
+typeset -gr DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb 
+typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
 
 # Sensitive & and recurring variables used by program ..............................................
-typeset -H IDENTITY
-typeset -H EMAIL
-typeset -H MASTER_PASS
-typeset -H FILE_ENCRYPTION_KEY
-typeset -H GPG_PASS
+typeset -gH IDENTITY
+typeset -gH EMAIL
+typeset -gH MASTER_PASS
+typeset -gH FILE_ENCRYPTION_KEY
+typeset -gH GPG_PASS
 
 # Variables potentially overrode by user in their shell/rc .........................................
-GPGPASS_TIMEOUT=45            # Can be modified with --timeout flag on gpgpass command
+typeset -gH GPGPASS_TIMEOUT=45            # Can be modified with --timeout flag on gpgpass command
 
 # Password-store
 export PASSWORD_STORE_ENABLE_EXTENSIONS=true

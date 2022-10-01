@@ -1,12 +1,18 @@
 
-# Base identity parameters
+# Global variables to be set in this root function
+typeset -g IDENTITY EMAIL MASTER_PASS GPG_PASS
+
+# Base identity parameters, set globally.
 name="${args[name]}"
-email="${args[email]}"
 expiry="${args[expiry_date]}"
 
-# Base filesystem parameters
-PENDRIVE="${args[backup_device]}"
 IDENTITY="${name// /_}"
+EMAIL="${args[email]}"
+
+# Base filesystem parameters
+local pendrive="${args[backup_device]}"
+
+# Start work =================================================================
 
 _in_section 'risks' 6
 _message "Starting new identity generation process"
@@ -16,7 +22,7 @@ _warning "Do not unplug hush and backup devices during the process"
 # given will make spectre to prompt user for a master password. 
 # This passphrase is used for encrypting all file/directory names,
 # as well as fscrypt encryption.
-passphrase=$(get_passphrase "${IDENTITY}")
+MASTER_PASS=$(get_passphrase "$IDENTITY")
 
 _in_section 'gpg' && _message "Setting up RAMDisk and GPG backend"
 init_gpg
@@ -25,14 +31,16 @@ init_gpg
 # we use for encrypting file/directory names and contents.
 # This new key is also the one provided when using gpgpass command.
 _message "Generating GPG keys"
-gpg_passphrase=$(get_passphrase "${IDENTITY}" "${GPG_TOMB_LABEL}" "${passphrase}")
-echo -n "${gpg_passphrase}" | xclip -loops 1 -selection clipboard
-_warning "Passphrase copied to clipboard with one-time use only, for GPG prompt"
-_run gen_gpg_keys "${name}" "${email}" "${expiry}" "${gpg_passphrase}"
+
+GPG_PASS=$(get_passphrase "$IDENTITY" "$GPG_TOMB_LABEL")
+echo -n "$GPG_PASS" | xclip -loops 1 -selection clipboard
+_warning "GPG passphrase copied to clipboard with one-time use only"
+
+_run gen_gpg_keys "$name" "$EMAIL" "$expiry" "$GPG_PASS"
 
 # Setup the identity graveyard directory with fscrypt protection
 _in_section 'coffin' && _message "Creating and setting encrypted identity directory"
-new_graveyard "${IDENTITY}" "${passphrase}"
+new_graveyard "$IDENTITY"
 
 # At this point, we need access to the hush device, so make sure 
 # it's mounted and that we have read-write permissions.
@@ -44,31 +52,31 @@ _run risks_hush_rw_command
 # (not the identity's graveyard subdirectory, because we need access to
 # this file BEFORE anything else, since it contains the GPG keyring)
 _in_section 'coffin' && _message "Creating and testing GPG coffin container"
-gen_coffin "${IDENTITY}" "${passphrase}"
+gen_coffin "$IDENTITY"
 
 # Cleaning RAM disk, removing private keys from the keyring and test open/close 
 _in_section 'gpg' && _message "Cleaning and backing keyring privates"
-cleanup_gpg_init "${IDENTITY}" "${email}" "${passphrase}"
+cleanup_gpg_init "$IDENTITY" "$EMAIL"
 
 _in_section 'ssh' && _message "Generating SSH keypair and multi-key ssh-agent script" 
-gen_ssh_keys "${IDENTITY}" "${email}" "${passphrase}"
+gen_ssh_keys "$IDENTITY" "$EMAIL"
 
 _in_section 'pass' && _message "Initializing password-store"
-init_pass "${IDENTITY}" "${email}" "${passphrase}"
+init_pass "$IDENTITY" "$EMAIL"
 
 ## Create a tomb to use for admin storage: 
 # config files, etc, and set default key=values
 _in_section 'mgmt' && _message "Generating management tomb"
-init_mgmt "${IDENTITY}" "${passphrase}"
+init_mgmt "$IDENTITY"
 
 ## 8 - Create Signal tomb, set admin stuff and generate password
 # for the enrypted data directory in the Signal VM.
 _in_section 'signal' && _message "Generating Signal messenger tomb"
-_run new_tomb "${SIGNAL_TOMB_LABEL}" 20 "${IDENTITY}" "${passphrase}"
+_run new_tomb "$SIGNAL_TOMB_LABEL" 20 "$IDENTITY"
 #
 # ## 9 - Backup
 _in_section 'backup' && _message "Backing up all identities' data and related partitions"
-make_initial_identity_backup "${name}" "${PENDRIVE}" "${passphrase}" "${gpg_passphrase}"
+make_initial_identity_backup "$IDENTITY" "$pendrive"
 
 ## 10 - ALL DONE 
 echo && _success "risks" "Identity generation complete." 

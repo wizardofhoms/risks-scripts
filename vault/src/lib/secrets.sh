@@ -1,13 +1,11 @@
 
-# _encrypt_filename takes a filename, an identity and a passphrase as input, 
-# generates an password as output. This password/output is used as the new, 
-# encrypted name for the file.
-# usage: filename=$(_encrypt_filename "$file" "$user" "$pass")
+# _encrypt_filename taks a filename and an identity as input.
+# It uses the identity both as the username AND the input password,
+# so that we can avoid asking passwords to the identity each time.
 _encrypt_filename ()
 {
     local filename="$1"
     local identity="$2"
-    local pass="$3"
     local encrypted
 
     # -q            Quiet: just output the password/filename
@@ -16,7 +14,7 @@ _encrypt_filename ()
     # -F n          No config file output
     # -t n          Output a nine characters name, without symbols
     # -u ${user}    User for which to produce the password/name
-    encrypted=$(print "${pass}" | spectre -q -n -s 0 -F n -t n -u "${identity}" "${filename}")
+    encrypted=$(print "${identity}" | spectre -q -n -s 0 -F n -t n -u "${identity}" "${filename}")
     print "${encrypted}"
 }
 
@@ -29,7 +27,6 @@ get_passphrase ()
 {
     local identity=${1}
     local passname="${2}"
-    local master="${3}"
 
     local passphrase
 
@@ -43,15 +40,15 @@ get_passphrase ()
 
     # Forge command
     local cmd=(spectre -q -n -F n)
-    local spectre_params=(-t K -P 512 -u "${identity}" "${passname}")
+    local spectre_params=(-t K -P 512 -u "$identity" "$passname")
 
     # Optionally derive the passphrase we want from a master passphrase;
     # this has for effect of not prompting the user for it.
-    if [[ -n ${master} ]]; then
-        passphrase=$(print "${master}" | "${cmd[@]}" -s 0 "${spectre_params[@]}")
+    if [[ -n $MASTER_PASS ]]; then
+        passphrase=$(print "$MASTER_PASS" | "${cmd[@]}" -s 0 "${spectre_params[@]}")
     else
         passphrase=$("${cmd[@]}" "${spectre_params[@]}")
     fi
 
-    print "${passphrase}"
+    print "$passphrase"
 }
