@@ -25,3 +25,24 @@ is_luks_mounted()
 {
 	mount | grep "^${1}" &> /dev/null
 }
+
+# Check if a *block* device is encrypted
+# Synopsis: _is_encrypted_block /path/to/block/device
+# Return 0 if it is an encrypted block device
+_is_encrypted_block() {
+	local	 b=$1 # Path to a block device
+	local	 s="" # lsblk option -s (if available)
+
+	# Issue #163
+	# lsblk --inverse appeared in util-linux 2.22
+	# but --version is not consistent...
+	lsblk --help | grep -Fq -- --inverse
+	[[ $? -eq 0 ]] && s="--inverse"
+
+    _sudo lsblk $s -o type -n "$b" 2>/dev/null \
+		| grep -e -q '^crypt$'
+		# | egrep -q '^crypt$'
+
+	return $?
+}
+

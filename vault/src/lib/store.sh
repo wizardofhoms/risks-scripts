@@ -16,7 +16,7 @@ kvget() {
 		_failure "db" 'invalid param "key"'
 		return 1
 	}
-	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
 	VALUE="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
 	echo "$VALUE"
 	
@@ -31,7 +31,7 @@ kvset() {
         _failure "db" 'invalid param "key"'
 		return 1
 	}
-	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
 	test -d "$kv_user_dir" || mkdir "$kv_user_dir"
 	echo "$value" > "$kv_user_dir/$key"
     _message "${key} => ${value}"
@@ -44,7 +44,7 @@ kvdel() {
         _failure "db" 'invalid param "key"'
 		return 1
 	}
-	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
 	test -f "$kv_user_dir/$key" && rm -f "$kv_user_dir/$key"
     _message "Deleted key '${key}'"
 }
@@ -52,7 +52,7 @@ kvdel() {
 # list all key/value pairs to stdout
 # Usage: kvlist
 kvlist() {
-	kv_user_dir=${KV_USER_DIR:-$default_kv_user_dir}
+	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
 	for i in "$kv_user_dir/"*; do
 		if [ -f "$i" ]; then
 			key="$(basename "$i")"
@@ -64,5 +64,5 @@ kvlist() {
 # clear all key/value pairs in database
 # Usage: kvclear
 kvclear() {
-    rm -rf "${KV_USER_DIR:-$default_kv_user_dir}"
+    rm -rf "${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}"
 }
