@@ -2,7 +2,7 @@
 # Upon unlocking a given identity, sets the name as an ENV 
 # variable that we can use in further functions and commands.
 # $1 - The name to use. If empty, just resets the identity.
-_set_identity ()
+_set_active_identity ()
 {
     # If the identity is empty, wipe the identity file
     if [[ -z ${1} ]] && [[ -e ${RISKS_IDENTITY_FILE} ]]; then
@@ -50,8 +50,7 @@ _identity_active_or_specified ()
 {
     if [[ -z "${1}" ]] ; then
         if ! _identity_active ; then
-            _failure "identity" "Command requires either an identity to be unlocked.\n \
- Please use 'risks open identity <name>' or 'risks open gpg <name>' first."
+            _failure "Command requires either an identity to be active or given as argument"
         fi
     fi
 
@@ -61,4 +60,21 @@ _identity_active_or_specified ()
     fi
 
     print "$(cat "${RISKS_IDENTITY_FILE}")"
+}
+
+# _set_identity is used to propagate our various IDENTITY related variables
+# so that all functions that will be subsequently called can access them.
+#
+# This function also takes care of checking if there is already an active
+# identity that should be used, in case the argument is empty or none.
+#
+# $1 - The identity to use.
+_set_identity () {
+    local identity="$1"
+
+    # This will throw an error if we don't have an identity from any source.
+    IDENTITY=$(_identity_active_or_specified "$identity")
+
+    # Then set the file encryption key for for it.
+    FILE_ENCRYPTION_KEY=$(_set_file_encryption_key "$IDENTITY")
 }

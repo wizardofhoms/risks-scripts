@@ -1,28 +1,28 @@
 
 resource="${args[resource]}"
-# identity="$(_identity_active_or_specified "${args[identity]}")"
-IDENTITY="$(_identity_active_or_specified "${args[identity]}")"
+
+_set_identity "${args[identity]}"
 
 # Either only close the GPG keyring and coffin
 if [[ "$resource" == "gpg" ]] || [[ "$resource" == "coffin" ]]; then
     _message "Closing coffin and GPG keyring"
-    close_coffin "$IDENTITY"
+    close_coffin
     exit $?
 fi
 
 # Or close everything
 if [[ "$resource" == "identity" ]]; then
     _message "Closing Signal tomb ..."
-    _run close_tomb "$SIGNAL_TOMB_LABEL" "$IDENTITY"
+    _run close_tomb "$SIGNAL_TOMB_LABEL"
 
     _message "Closing PASS tomb ..."
-    _run close_tomb "$PASS_TOMB_LABEL" "$IDENTITY"
+    _run close_tomb "$PASS_TOMB_LABEL"
 
     _message "Closing SSH tomb ..."
-    _run close_tomb "$SSH_TOMB_LABEL" "$IDENTITY"
+    _run close_tomb "$SSH_TOMB_LABEL"
 
     _message "Closing Management tomb ..."
-    _run close_tomb "$MGMT_TOMB_LABEL" "$IDENTITY"
+    _run close_tomb "$MGMT_TOMB_LABEL"
 
     # Finally, find all other tombs...
     tombs=$(tomb list 2>&1 \
@@ -41,10 +41,10 @@ if [[ "$resource" == "identity" ]]; then
     done <<< "$tombs"
 
     _message "Closing GPG coffin ..."
-    close_coffin "$IDENTITY"
+    close_coffin
     exit 0
 fi
 
 # Or just a tomb
-close_tomb "$resource" "$IDENTITY"
+close_tomb "$resource"
 exit $?

@@ -2,8 +2,7 @@
 # Generate SSH keypair and sets up scripts for loading multiple keypairs
 gen_ssh_keys()
 {
-    local IDENTITY="$1"
-    local email="$2"
+    local email="$1"
 
     _verbose "Creating and opening tomb file for SSH"
     _run new_tomb "$SSH_TOMB_LABEL" 20 "$IDENTITY"

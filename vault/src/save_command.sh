@@ -2,8 +2,7 @@
 SOURCE_VM="${args[source_vm]}"    
 RESOURCE="${args[resource]}"   # Resource is a tomb file (root directory) in ~/.tomb
 
-IDENTITY="$(_identity_active_or_specified "${args[identity]}")"
-MASTER_PASS=$(get_passphrase "$IDENTITY")
+_set_identity "${args[identity]}"
 
 local source_dir dest_dir
 
@@ -15,7 +14,7 @@ if [[ ! -d $source_dir ]]; then
 fi
 
 # Open the related tomb for the tool 
-_run open_tomb "$RESOURCE" "$IDENTITY"
+_run open_tomb "$RESOURCE"
 _catch "Failed to open tomb"
 
 # And make the destination directory
@@ -28,5 +27,5 @@ mv "${source_dir}/"'*' "$dest_dir"
 # And close tomb if asked to
 if [[ "${args[--close-tomb]}" -eq 1 ]]; then
     _message "Closing tomb"
-    _run close_tomb "$RESOURCE" "$IDENTITY"
+    _run close_tomb "$RESOURCE"
 fi

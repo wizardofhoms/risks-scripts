@@ -3,8 +3,7 @@
 # we export them, along with a full backup of the hush img.
 make_initial_identity_backup () 
 {
-    local IDENTITY="$1"
-    local PENDRIVE="$2" 
+    local PENDRIVE="$1" 
 
     local MAPPER="pendev"
     local MOUNT_POINT="/tmp/pendrive"
@@ -13,7 +12,7 @@ make_initial_identity_backup ()
 
     # Identity and passwords
     _verbose "Opening identity $IDENTITY"
-    open_coffin "$IDENTITY"
+    open_coffin
 
     # Email recipient and key fingerprints
     uid=$(gpg -K | grep uid | head -n 1)
@@ -79,7 +78,7 @@ make_initial_identity_backup ()
 
     # Unmount and close everything before backing the hush image 
     _verbose "Closing identity $IDENTITY"
-    close_coffin "$IDENTITY"
+    close_coffin
 
     # Hush image backup
     _message "Backing hush partition"

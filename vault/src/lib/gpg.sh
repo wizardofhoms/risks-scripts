@@ -80,10 +80,10 @@ Key-Type: eddsa
 Key-Curve: Ed25519 
 Key-Usage: sign
 Key-Length: 4096
-Name-Real: ${name} 
-Name-Email: ${email} 
+Name-Real: $name 
+Name-Email: $email 
 Expire-Date: 0
-Passphrase: ${passphrase} 
+Passphrase: $GPG_PASS 
 %commit
 %echo done
 EOF
@@ -93,7 +93,7 @@ EOF
     _run gpg --batch --gen-key "${RAMDISK}/primary_key_unattended" 
     _catch "Failed to generate keys from batch file"
     _verbose "Deleting batch file"
-    _run wipe -f "${RAMDISK}/primary_key_unattended" 
+    _run wipe -f -P 10 "${RAMDISK}/primary_key_unattended" 
     _catch "Failed to wipe batch file: contains the identity passphrase"
 
     ## 2 - Subjeys creation 
@@ -104,15 +104,15 @@ EOF
     local gpg_base_cmd=(gpg --pinentry-mode loopback --batch --no-tty --yes --passphrase-fd 0 --quick-add-key "${fingerprint}")
 
     _verbose "Generating encryption subkey-pair"
-    echo "$passphrase" | "${gpg_base_cmd[@]}" cv25519 encr "${expiry_date}" &> /dev/null
+    echo "$GPG_PASS" | _run "${gpg_base_cmd[@]}" cv25519 encr "${expiry_date}" &> /dev/null
     _catch "Failed to generate encryption subkey-pair"
 
     _verbose "Generating signature subkey-pair"
-    echo "$passphrase" | "${gpg_base_cmd[@]}" ed25519 sign "${expiry_date}" &> /dev/null
+    echo "$GPG_PASS" | _run "${gpg_base_cmd[@]}" ed25519 sign "${expiry_date}" &> /dev/null
     _catch "Failed to generate signature subkey-pair"
 
     _verbose "Generating authentication subkey-pair"
-    echo "$passphrase" | "${gpg_base_cmd[@]}" ed25519 auth "${expiry_date}" &> /dev/null
+    echo "$GPG_PASS" | _run "${gpg_base_cmd[@]}" ed25519 auth "${expiry_date}" &> /dev/null
     _catch "subkeys" "Failed to generate authentication subkey-pair. Continuing still"
 
     _verbose "Directory structure:"
@@ -125,15 +125,14 @@ EOF
 # - Removes the private keys from the keyring that is to be used daily
 cleanup_gpg_init()
 {
-    local IDENTITY="$1"
-    local email="$2"
+    local email="$1"
 
     local TMP_FILENAME TMP coffin_name
 
     # Filenames
-    TMP_FILENAME=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg")
+    TMP_FILENAME=$(_encrypt_filename "${IDENTITY}-gpg")
     TMP="/tmp/${TMP_FILENAME}"
-    coffin_name=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
+    coffin_name=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 
     # Making tmp directory
     _verbose "Creating temp directory and mounting coffin"
@@ -171,8 +170,8 @@ cleanup_gpg_init()
     ├── fejk38RjhfEf13 (joe-gpg.coffin) \n"
 
     _verbose "Test opening and closing coffin for $IDENTITY"
-    close_coffin "$IDENTITY"
-    open_coffin "$IDENTITY"
+    close_coffin
+    open_coffin
 
     ## 6 - Removing GPG private keys 
     _verbose "Removing GPG private keys"

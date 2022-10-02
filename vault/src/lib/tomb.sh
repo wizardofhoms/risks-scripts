@@ -12,8 +12,6 @@ get_tomb_mapper()
 # graveyard for a given identity, with fscrypt support.
 new_graveyard ()
 {
-    local IDENTITY="$1"
-
     local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
 
     # Always make sure the root graveyard directory exists
@@ -23,7 +21,7 @@ new_graveyard ()
     fi
 
     # The directory name in cleartext is simply the identity name
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY" "$IDENTITY")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
 
     # Make the directory
@@ -32,7 +30,7 @@ new_graveyard ()
 
     # And setup fscrypt protectors on it.
     _verbose "Setting up fscrypt protectors on directory"
-    echo "$MASTER_PASS" | sudo fscrypt encrypt "$IDENTITY_GRAVEYARD_PATH" \
+    echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_GRAVEYARD_PATH" \
        --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
 }
 
@@ -46,7 +44,7 @@ get_identity_graveyard ()
     local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
 
     # Compute the directory names and absolute paths
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}" "${IDENTITY}")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
 
     print "${IDENTITY_GRAVEYARD_PATH}"
@@ -57,7 +55,6 @@ new_tomb()
 {
     local LABEL="$1"
     local SIZE="$2"
-    local IDENTITY="$3"
     
     local TOMBID TOMBID_ENC TOMB_FILE 
     local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
@@ -65,9 +62,9 @@ new_tomb()
 
     # Filenames
     TOMBID="${IDENTITY}-${LABEL}"
-    TOMBID_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID")
+    TOMBID_ENC=$(_encrypt_filename "$TOMBID")
 
-    TOMB_KEY_FILE_ENC=$(_encrypt_filename "$IDENTITY" "${TOMBID}.key")
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "${TOMBID}.key")
     TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
     
     IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
@@ -75,7 +72,7 @@ new_tomb()
 
     # First make sure GPG keyring is accessible
     _verbose "Opening identity $IDENTITY"
-    open_coffin "$IDENTITY"
+    open_coffin
 
     # And get the email recipient
     uid=$(gpg -K | grep uid | head -n 1)
@@ -104,7 +101,6 @@ new_tomb()
 open_tomb()
 {
 	local RESOURCE="${1}"
-    local IDENTITY="${2}"
 
     local TOMBID TOMBID_ENC TOMB_FILE 
     local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
@@ -112,9 +108,9 @@ open_tomb()
 
     # Filenames
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID")
+    TOMBID_ENC=$(_encrypt_filename "$TOMBID")
 
-    TOMB_KEY_FILE_ENC=$(_encrypt_filename "$IDENTITY" "$TOMBID.key")
+    TOMB_KEY_FILE_ENC=$(_encrypt_filename "$TOMBID.key")
     TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
 
     IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
@@ -143,9 +139,9 @@ open_tomb()
 	# checks if the gpg coffin is mounted, and open it first:
     # this also have for effect to unlock the identity's graveyard.
     local COFFIN_NAME
-    COFFIN_NAME=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
+    COFFIN_NAME=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
-        open_coffin "$IDENTITY" 
+        open_coffin
 	fi
 
 	if [[ "${mapper}" != "none" ]]; then
@@ -188,11 +184,10 @@ open_tomb()
 close_tomb()
 {
 	local RESOURCE="${1}"
-    local IDENTITY="${2}"
 
     # Filenames
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}")
+    TOMBID_ENC=$(_encrypt_filename "${TOMBID}")
 
     if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
@@ -227,12 +222,11 @@ close_tomb()
 slam_tomb()
 {
 	local RESOURCE="${1}"
-    local IDENTITY="${2}"
 
     # Filenames
     # local FULL_LABEL="${IDENTITY}-${RESOURCE}"
     TOMBID="${IDENTITY}-${RESOURCE}"
-    TOMBID_ENC=$(_encrypt_filename "${IDENTITY}" "${TOMBID}")
+    TOMBID_ENC=$(_encrypt_filename "${TOMBID}")
 
     if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
 		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"

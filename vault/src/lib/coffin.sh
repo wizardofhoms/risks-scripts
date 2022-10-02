@@ -2,21 +2,19 @@
 # Generates, setup and formats a LUKS partition to be used as a coffin identity files
 gen_coffin() 
 {
-    local IDENTITY="$1" 
-
     local key_filename key_file coffin_filename coffin_file coffin_name identity_fs
 
     # Filenames
-    key_filename=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg.key")
+    key_filename=$(_encrypt_filename "${IDENTITY}-gpg.key")
     key_file="${HUSH_DIR}/${key_filename}"
-    coffin_filename=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg.coffin")
+    coffin_filename=$(_encrypt_filename "${IDENTITY}-gpg.coffin")
     coffin_file="${GRAVEYARD}/${coffin_filename}"
-    coffin_name=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
-    identity_fs=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg")
+    coffin_name=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
+    identity_fs=$(_encrypt_filename "${IDENTITY}-gpg")
 
     ## Key
     _verbose "Generating coffin key (compatible with QRCode printing)"
-    get_passphrase "$IDENTITY" coffin > "$key_file"
+    head --bytes=64 /dev/urandom > "$key_file"
     _verbose "Protecting against deletions"
     sudo chattr +i "$key_file"
     _verbose "Testing immutability of key file"
@@ -28,14 +26,14 @@ gen_coffin()
     ## Creation
     _verbose "Creating the coffin container (50MB)"
     _run dd if=/dev/urandom of="$coffin_file" bs=1M count=50
-    _verbose "Laying the coffin inside the container"
 
     # Encryption
+    _verbose "Laying the coffin LUKS inside the container"
     _run sudo cryptsetup -v -q --cipher aes-xts-plain64 --master-key-file "$key_file" \
             --key-size 512 --hash sha512 --iter-time 5000 --use-random \
             luksFormat "${coffin_file}" "$key_file"
     _catch "Failed to lay setup and format the coffin LUKS filesystem"
-    _verbose "Testing the coffin"
+    _verbose "Testing coffin detailed output (luksDump)"
     _run sudo cryptsetup luksDump "$coffin_file" 
     _catch "Failed to dump coffin LUKS filesystem"
     _verbose "Normally, we should see the UUID of the coffin, and only one key configured for it"
@@ -58,15 +56,13 @@ gen_coffin()
 # open_coffin requires both an identity name and its corresponding passphrase
 open_coffin()
 {
-	local IDENTITY="${1}"
-
     local key_filename key_file coffin_filename coffin_file mapper mount_dir
 
-    key_filename=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg.key")
+    key_filename=$(_encrypt_filename "${IDENTITY}-gpg.key")
     key_file="${HUSH_DIR}/${key_filename}"
-    coffin_filename=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg.coffin")
+    coffin_filename=$(_encrypt_filename "${IDENTITY}-gpg.coffin")
     coffin_file="${GRAVEYARD}/${coffin_filename}"
-    mapper=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
+    mapper=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 
 	mount_dir="${HOME}/.gnupg"
 
@@ -97,29 +93,27 @@ open_coffin()
     sudo chmod 0700 "$mount_dir"
 
     # Set the identity as active, and unlock access to its GRAVEYARD directory
-    _set_identity "$IDENTITY"
+    _set_active_identity "$IDENTITY"
 
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY" "$IDENTITY")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/$GRAVEYARD_DIRECTORY_ENC"
 
     # Ask fscrypt to let us access it. While this will actually decrypt the files'
     # names and content, this does not prevent our own obfuscated names; the end
     # result is that all NAMES are obfuscated twice (once us, once fscrypt) and
     # the contents are encrypted once (fscrypt).
-    echo "$MASTER_PASS" | _run sudo fscrypt unlock "$IDENTITY_GRAVEYARD_PATH" --quiet
+    echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$IDENTITY_GRAVEYARD_PATH" --quiet
 
     _verbose "Identity directory ($IDENTITY_GRAVEYARD_PATH) is unlocked"
 }
 
 close_coffin()
 {
-    local IDENTITY="${1}"
-
     local coffin_filename coffin_file mapper mount_dir
 
-    coffin_filename=$(_encrypt_filename "$IDENTITY" "${IDENTITY}-gpg.coffin")
+    coffin_filename=$(_encrypt_filename "${IDENTITY}-gpg.coffin")
     coffin_file="${GRAVEYARD}/${coffin_filename}"
-    mapper=$(_encrypt_filename "$IDENTITY" "coffin-${IDENTITY}-gpg")
+    mapper=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 
 	mount_dir="${HOME}/.gnupg"
 
@@ -143,11 +137,11 @@ close_coffin()
 	fi
 
     # Lock the identity's graveyard directory
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY" "$IDENTITY")
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
     IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
     _run sudo fscrypt lock "${IDENTITY_GRAVEYARD_PATH}"
 
-    _set_identity # An empty  identity will trigger a wiping of the file 
+    _set_active_identity # An empty  identity will trigger a wiping of the file 
 	_verbose "Coffin file $coffin_file has been closed"
 }
 

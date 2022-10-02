@@ -31,8 +31,6 @@ _endgame() {
 
 	# Ensure no information is left in unallocated memory
 	IDENTITY="$rr";		        unset IDENTITY 
-	EMAIL="$rr";		        unset EMAIL 
-	MASTER_PASS="$rr";          unset MASTER_PASS 
 	FILE_ENCRYPTION_KEY="$rr";  unset FILE_ENCRYPTION_KEY 
 	GPG_PASS="$rr";		        unset GPG_PASS 
 }

@@ -8,7 +8,7 @@
 declare TIMEOUT
 
 # Identity is optionality specified as an argument
-IDENTITY="$(_identity_active_or_specified "${args[identity]}")"
+_set_identity "${args[identity]}"
 
 # Since we did not give any input (master) passphrase to this call,
 # spectre will prompt us for an input one. This input is already known
@@ -17,7 +17,7 @@ IDENTITY="$(_identity_active_or_specified "${args[identity]}")"
 # In addition: this call cannot fail because of "a wrong" passphrase.
 # It will just output something, which will or will not (if actually incorrect)
 # work when pasted in further GPG passphrase prompts.
-GPG_PASS=$(get_passphrase "$IDENTITY" "$GPG_TOMB_LABEL")
+GPG_PASS=$(get_passphrase "$GPG_TOMB_LABEL")
 
 TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
 

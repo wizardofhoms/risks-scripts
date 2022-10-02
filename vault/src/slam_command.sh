@@ -1,23 +1,22 @@
 
-# First set the identity and get its master passphrase
-IDENTITY="$(_identity_active_or_specified)"
-MASTER_PASS=$(get_passphrase "$IDENTITY")
+# First set the identity variables with the active one. 
+_set_identity ""
 
 _warning "risks" "Slaming identity $IDENTITY"
 
-_run slam_tomb "$SIGNAL_TOMB_LABEL" "$IDENTITY"
+_run slam_tomb "$SIGNAL_TOMB_LABEL"
 
 _message "Slaming PASS tomb ..."
-_run slam_tomb "$PASS_TOMB_LABEL" "$IDENTITY"
+_run slam_tomb "$PASS_TOMB_LABEL"
 
 _message "Slaming SSH tomb ..."
-_run slam_tomb "$SSH_TOMB_LABEL" "$IDENTITY"
+_run slam_tomb "$SSH_TOMB_LABEL"
 
 _message "Slaming Management tomb ..."
-_run slam_tomb "$MGMT_TOMB_LABEL" "$IDENTITY"
+_run slam_tomb "$MGMT_TOMB_LABEL"
 
 _message "Closing GPG coffin ..."
-close_coffin "$IDENTITY"
+close_coffin
 # done
 
 # Finally, find all other tombs...

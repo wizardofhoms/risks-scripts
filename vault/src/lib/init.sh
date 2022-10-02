@@ -4,8 +4,7 @@
 ## Creates a tomb storing the password-store and sets the latter up 
 init_pass () 
 {
-    local IDENTITY="${1}"       
-    local email="${2}"
+    local email="${1}"
 
     _verbose "Creating tomb file for pass"
     _run new_tomb "$PASS_TOMB_LABEL" 20 "$IDENTITY"
@@ -20,8 +19,6 @@ init_pass ()
 # Creates a default management tomb in which, between others, the key=value store is being kept.
 init_mgmt ()
 {
-    local IDENTITY="${1}"       
-
     _verbose "Creating tomb file for management (key=value store, etc)"
     _run new_tomb "$MGMT_TOMB_LABEL" 10 "$IDENTITY"
     _verbose "Opening management tomb"

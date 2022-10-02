@@ -21,10 +21,10 @@ typeset -gr RISKS_IDENTITY_FILE="${HOME}/.identity"      # Currently unlocked id
 typeset -gr DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb 
 typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
 
+typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
+
 # Sensitive & and recurring variables used by program ..............................................
 typeset -gH IDENTITY
-typeset -gH EMAIL
-typeset -gH MASTER_PASS
 typeset -gH FILE_ENCRYPTION_KEY
 typeset -gH GPG_PASS
 
