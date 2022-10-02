@@ -46,11 +46,14 @@ _identity_active ()
 # that either an identity is active, or that the argument is not empty.
 # $1 - An identity name
 # Exits the program if none is specified, or echoes the identity if found.
+# Returns:
+# 0 - Identity is non-nil, provided either from arg or by the active
+# 1 - None have been given
 _identity_active_or_specified ()
 {
     if [[ -z "${1}" ]] ; then
         if ! _identity_active ; then
-            _failure "Command requires either an identity to be active or given as argument"
+            return 1
         fi
     fi
 
@@ -74,7 +77,12 @@ _set_identity () {
 
     # This will throw an error if we don't have an identity from any source.
     IDENTITY=$(_identity_active_or_specified "$identity")
+    _catch "Command requires either an identity to be active or given as argument"
 
     # Then set the file encryption key for for it.
     FILE_ENCRYPTION_KEY=$(_set_file_encryption_key "$IDENTITY")
+}
+
+# check_no_active_identity is used when creating a new identity, so as to avoid
+check_no_active_identity () {
 }

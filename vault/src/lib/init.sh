@@ -32,7 +32,11 @@ init_mgmt ()
 # somewhere else, the user can quickly install and use the risks on the new machine.
 store_risks_scripts ()
 {
+    local udev_rules="$1"
+
     _message "Copying risks scripts onto the hush partition"
+
+    # Scripts/program
     mkdir -p "$RISKS_SCRIPTS_INSTALL_PATH"
     sudo cp "$(which risks)" "$RISKS_SCRIPTS_INSTALL_PATH"
     sudo chmod go-rwx "$RISKS_SCRIPTS_INSTALL_PATH"
@@ -46,7 +50,7 @@ local INSTALL_SCRIPT_PATH="$0"
 local BINARY_INSTALL_DIR="${HOME}/.local/bin"
 local COMPLETIONS_INSTALL_DIR="${HOME}/.local/share/zsh/site-functions"
 
-## Binary -------------
+## Binary 
 #
 echo "Installing risks script in ${BINARY_INSTALL_DIR}"
 if [[ ! -d "${BINARY_INSTALL_DIR}" ]]; then
@@ -56,7 +60,7 @@ cp "${INSTALL_SCRIPT_PATH}" "${BINARY_INSTALL_DIR}"
 sudo chmod go-rwx "${INSTALL_SCRIPT_PATH}"
 sudo chmod u+x "${INSTALL_SCRIPT_PATH}"
 
-## Completions --------
+## Completions 
 #
 echo "Installing risks completions in ${COMPLETIONS_INSTALL_DIR}"
 if [[ ! -d "${COMPLETIONS_INSTALL_DIR}" ]]; then
@@ -68,4 +72,15 @@ cp "${INSTALL_SCRIPT_DIR}/_risks" "${COMPLETIONS_INSTALL_DIR}"
 
 echo "Done installing risks scripts."
 EOF
+
+    # Hush device udev rules: UUID is evaluated at format time here,
+    # then installed onto the hush, so value freezed once and for all.
+    cat >"${RISKS_SCRIPTS_INSTALL_PATH}/install_udev_rules" <<EOF
+#!/bin/sh
+
+# Maps this device ID to be automatically mounted as /dev/hush mapper.
+${udev_rules}
+EOF
+
+    sudo chmod go-rwx "$RISKS_SCRIPTS_INSTALL_PATH/install_udev_rules"
 }

@@ -10,6 +10,7 @@ args:
   - name: identity 
     required: false 
     help: "Identity owning the tomb (optional if an identity is active)"
+    validate: identity_exists
 flags:
   - long: --close-tomb
     short: -c

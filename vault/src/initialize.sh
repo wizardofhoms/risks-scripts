@@ -20,6 +20,7 @@ typeset -gr RAMDISK="${HOME}/.gnupg"      # Actually not a tomb mount point: use
 typeset -gr RISKS_IDENTITY_FILE="${HOME}/.identity"      # Currently unlocked identity stored in file
 typeset -gr DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb 
 typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
+typeset -gr BACKUP_MOUNT_DIR="/tmp/pendrive"
 
 typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
 

@@ -27,11 +27,8 @@ _encrypt_filename ()
     print "${encrypted}"
 }
 
-# Returns a spectre-generated passphrase, given an identity, a passname and 
-# an optional password argument. Two arguments are mandatory (identity & 
-# passname), while the third one (master passphrase, is optional).
-#
-# usage: password=$(get_passphrase MyPassName)
+# Returns a spectre-generated secret key, given a single name as argument.
+# Uses the current IDENTITY as set by _set_identity <identity_name>
 get_passphrase ()
 {
     local passname="${1}"

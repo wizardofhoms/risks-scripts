@@ -4,6 +4,7 @@ args:
   - name: identity 
     required: false 
     help: "Identity for which to copy the GPG passphrase. Optional if an identity is active."
+    validate: identity_exists
 flags:
   - long: --timeout
     short: -t
