@@ -18,6 +18,7 @@ commands:
       - name: backup_device
         required: true
         help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+        validate: device
     flags:
       - long: --verbose
         short: -v
@@ -45,6 +46,7 @@ commands:
       - name: identity 
         required: false 
         help: "Identity for which to create the tomb. Optional: the active identity is used if no identity is specified"
+        validate: identity_exists
     flags:
       - long: --verbose
         short: -v
@@ -59,21 +61,3 @@ commands:
         required: false
     examples:
       - new tomb Data 100 john_doe
-
-  - name: backup
-    help: 'Create a new backup with all the data currenly available in the hush drive and the graveyard'
-    args:
-      - name: device
-        required: true
-        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
-    flags:
-      - long: --verbose
-        short: -v
-        help: "Show verbose logging"
-      - long: --log-file
-        short: -f
-        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
-        arg: logfile
-        required: false
-    examples:
-      - new backup /dev/xvdj

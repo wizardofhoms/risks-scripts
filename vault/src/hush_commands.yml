@@ -12,3 +12,31 @@ commands:
   - name: umount 
     help: 'Unmount the hush drive'
 
+  - name: format 
+    help: 'Format a drive for storing identity secrets (GPG/coffin/age keys)'
+    args:
+      - name: device
+        required: true
+        help: "Device file of the sdcard drive (must be a whole drive without a partition number, eg. /dev/sda)"
+        validate: file_exists
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+      - long: --size-percent
+        short: -P
+        arg: percent
+        default: "90"
+        required: false
+        help: "Size of encrypted partition, as a percentage of the entire drive"
+        conflicts: [ --size-absolute ]
+      - long: --size-absolute
+        short: -A
+        arg: size 
+        required: false
+        help: "Size of encrypted partition, in absolute terms, WITH unit (eg. 100G, 20M, etc)"
+        conflicts: [ --size-percent ]
+        validate: partition_size
+    examples:
+      - "hush format --size-absolute 200M /dev/xvdi   # The encrypted part will be 200M in size"
+      - "hush format --size-percent 70 /dev/xvdi      # The encrypted part takes 70% of the drive"

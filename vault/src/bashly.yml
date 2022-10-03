@@ -41,19 +41,22 @@ environment_variables:
 - name: GRAVEYARD 
   help: 'Directory where to store tomb files' 
   default: /home/user/.graveyard
+- name: BACKUP_MAPPER 
+  help: 'Name of LUKS mapper to backup partition' 
+  default: pendev 
 
 commands:
   # Drives/partitions
 - import: src/hush_commands.yml
-- import: src/format_commands.yml
-  # Identity/Stores management commands
+- import: src/backup_commands.yml
+  # Identity/stores management commands
 - import: src/new_commands.yml
 - import: src/open_command.yml
 - import: src/close_command.yml
 - import: src/list_command.yml
 - import: src/slam_command.yml
 - import: src/gpgpass_command.yml
-  # Data / tools commands
+  # Data/tools commands
 - import: src/load_command.yml
 - import: src/save_command.yml
 - import: src/kv_commands.yml

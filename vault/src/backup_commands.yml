@@ -1,0 +1,53 @@
+name: backup 
+help: 'Manage, mount, restore or use backup devices and partitions'
+
+commands:
+  # Common management
+  - name: mount
+    help: 'Mount the backup partition/device' 
+    args:
+      - name: backup_device
+        required: true
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+        validate: file_exists
+  - name: umount 
+    help: 'Unmount the current backup drive'
+
+  # Formatting, cyphering, etc
+  - name: format 
+    help: "Format and setup a drive for as a risks backup medium"
+    args:
+      - name: device
+        required: true
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+        validate: file_exists
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+    examples:
+      - backup format /dev/xvdi
+
+  # Backup usage, restore and related
+  - name: identity
+    help: 'Backup the graveyard and the GPG coffin file for the current identity, active or specified.'
+    args:
+      - name: identity 
+        required: false 
+        help: "Name of identity to backup. (Current identity if not specified)"
+        validate: identity_exists 
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+      - long: --log-file
+        short: -f
+        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+        arg: logfile
+        required: false
+    examples:
+      - backup identity john_doe      # Automatically backs john_doe graveyard and GPG coffin
+      - backup identity               # Backup the current identity
+
+  - name: hush 
+    help: "Backup only the raw hush device image"

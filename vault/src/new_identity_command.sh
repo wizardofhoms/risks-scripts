@@ -1,5 +1,5 @@
 
-local name identity expiry pendrive email
+local name identity expiry pendrive pendrive_error email
 
 # Base identity parameters, set globally.
 name="${args[name]}"
@@ -10,6 +10,28 @@ email="${args[email]}"
 
 # Base filesystem parameters
 pendrive="${args[backup_device]}"
+
+# Pre-run checks =============================================================
+
+# No identity should be active, because some important mount points will be
+# unaccessible or might risk ending in a dangling state.
+_run check_no_active_identity
+_catch "An identity seems to be active. Cannot safely create a new one."
+
+# Check the path to the backup drive is a LUKS device.
+pendrive_error=$(validate_device "$pendrive")
+if [[ -n $pendrive_error ]]; then 
+    _failure "Device file $pendrive seems not to be a LUKS filesystem."
+fi
+
+# Check the hush device is, if mounted, on a read-only state at this point.
+# We fail if it's read-write, because we should assume another process is
+# currently writing to it.
+if is_hush_mounted && [[ -w "$HUSH_DIR" ]]; then
+    _failure "Hush is currently mounted read-write. \n \
+   Please ensure nothing is writing to it and set it to read-only first"
+fi
+
 
 # Start work =================================================================
 
@@ -27,9 +49,9 @@ init_gpg
 
 # Generate GPG keypairs with a different passphrase than the one
 # we use for encrypting file/directory names and contents.
-# This new key is also the one provided when using gpgpass command.
 _message "Generating GPG keys"
 
+# This new key is also the one provided when using gpgpass command.
 GPG_PASS=$(get_passphrase "$GPG_TOMB_LABEL")
 echo -n "$GPG_PASS" | xclip -loops 1 -selection clipboard
 _warning "GPG passphrase copied to clipboard with one-time use only"
@@ -71,11 +93,22 @@ init_mgmt
 ## 8 - Create Signal tomb, set admin stuff and generate password
 # for the enrypted data directory in the Signal VM.
 _in_section 'signal' && _message "Generating Signal messenger tomb"
-_run new_tomb "$SIGNAL_TOMB_LABEL" 20 "$IDENTITY"
+_run new_tomb "$SIGNAL_TOMB_LABEL" 20
 #
 # ## 9 - Backup
-_in_section 'backup' && _message "Backing up all identities' data and related partitions"
-make_initial_identity_backup "$pendrive"
+_in_section 'backup' && _message "Setting identity backup and making initial one"
+
+# First, mount the backup drive     
+_run risks_backup_mount_command
+_catch "failed to decrypt and mount backup drive"
+
+_verbose "Setting graveyard backup for this identity"
+_run setup_identity_backup
+_catch "Failed to setup identity backup graveyard"
+
+_message "Backing up current identity data and hush partition"
+_run risks_backup_format_command
+_catch "Failed to correctly backup data"
 
 ## 10 - ALL DONE 
-echo && _success "risks" "Identity generation complete." 
+echo && _success "risks" "Identity generation complete." && echo

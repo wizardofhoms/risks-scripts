@@ -80,8 +80,14 @@ _verbose "Last command should give the following result:                     \n 
     /dev/mapper/hush on /home/user/.hush type ext4 (rw,relatime,data=ordered)       \n \
     /dev/mapper/hush on /rw/home/user/.hush type ext4 (rw,relatime,data=ordered)    \n\n"
 
+# Prepare a udev command string with correct UUID, to be written 
+# both on this system and on the hush if used on another computer.
+_message "Setting Udev rules for hush partition " 
+UUID=$(sudo cryptsetup luksUUID "${sd_enc_part}")
+local udev_rules='echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'${UUID}'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules'
+
 # Write our risks scripts in a special directory on the hush, and close the device.
-store_risks_scripts
+store_risks_scripts "$udev_rules"
 
 # Note that even if we fail to umount at $mount_point, we still try to cryptsetup close hush.
 _verbose "Closing and unmounting device"
@@ -92,10 +98,8 @@ _catch "Failed to close LUKS filesystem on ${SDCARD_ENC_PART_MAPPER}"
 
 # Setup udev identitiers mapping for hush partition 
 _message "Setting Udev rules for hush partition " 
-UUID=$(sudo cryptsetup luksUUID "${sd_enc_part}")
-sudo sh -c 'echo SUBSYSTEM==\"block\", ENV{ID_FS_UUID}==\"'${UUID}'\", SYMLINK+=\"hush\" > /etc/udev/rules.d/99-sdcard.rules'
+sudo sh -c "${udev_rules}"
 _catch "Failed to write udev mapper file with SDCard UUID"
 _verbose "Restarting udev service" 
 sudo udevadm control --reload-rules
 _success "Successfully formatted and prepared SDcard as hush device"
-
