@@ -18,4 +18,4 @@ fi
 
 play_sound "unplugged"
 
-_message "SDCARD is ready to be detached from this qube"
+_message "Hush device is unmounted and closed"

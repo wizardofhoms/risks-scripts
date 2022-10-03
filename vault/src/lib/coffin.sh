@@ -150,7 +150,7 @@ list_coffins()
 	local coffins_num=0
     local coffins
 
-    ls_filtered=(ls -1 --ignore={dmroot,control,hush} --ignore='tomb*')
+    ls_filtered=(ls -1 --ignore={dmroot,control,hush,pendev} --ignore='tomb*')
 
     if "${ls_filtered[@]}" &> /dev/null; then
 		coffins=$("${ls_filtered[@]}" /dev/mapper)

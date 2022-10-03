@@ -210,4 +210,7 @@ cleanup_gpg_init()
     _verbose "$(gpg -K)"
     _verbose "Closing GPG tomb file"
     _run close_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
+
+    # Cleanup files
+    rm -rf "$TMP"
 }

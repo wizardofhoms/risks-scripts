@@ -82,7 +82,3 @@ _set_identity () {
     # Then set the file encryption key for for it.
     FILE_ENCRYPTION_KEY=$(_set_file_encryption_key "$IDENTITY")
 }
-
-# check_no_active_identity is used when creating a new identity, so as to avoid
-check_no_active_identity () {
-}

@@ -15,8 +15,9 @@ pendrive="${args[backup_device]}"
 
 # No identity should be active, because some important mount points will be
 # unaccessible or might risk ending in a dangling state.
-_run check_no_active_identity
-_catch "An identity seems to be active. Cannot safely create a new one."
+if _identity_active ; then
+    _failure "An identity seems to be active. Cannot safely create a new one."
+fi
 
 # Check the path to the backup drive is a LUKS device.
 pendrive_error=$(validate_device "$pendrive")
@@ -44,6 +45,8 @@ _warning "Do not unplug hush and backup devices during the process"
 # so that all functions can use them.
 _set_identity "$identity"
 
+# GPG 
+#
 _in_section 'gpg' && _message "Setting up RAMDisk and GPG backend"
 init_gpg
 
@@ -79,6 +82,9 @@ gen_coffin
 _in_section 'gpg' && _message "Cleaning and backing keyring privates"
 cleanup_gpg_init "$email"
 
+
+## Builtin tombs
+#
 _in_section 'ssh' && _message "Generating SSH keypair and multi-key ssh-agent script" 
 gen_ssh_keys "$email"
 
@@ -94,21 +100,25 @@ init_mgmt
 # for the enrypted data directory in the Signal VM.
 _in_section 'signal' && _message "Generating Signal messenger tomb"
 _run new_tomb "$SIGNAL_TOMB_LABEL" 20
+
+
+## Backup
 #
-# ## 9 - Backup
 _in_section 'backup' && _message "Setting identity backup and making initial one"
 
-# First, mount the backup drive     
-_run risks_backup_mount_command
+risks_backup_mount_command
 _catch "failed to decrypt and mount backup drive"
 
+# Some setup is needed for this identity to have access to its backup
 _verbose "Setting graveyard backup for this identity"
 _run setup_identity_backup
 _catch "Failed to setup identity backup graveyard"
 
-_message "Backing up current identity data and hush partition"
-_run risks_backup_identity_command
+# And then actually back it up
+risks_backup_identity_command
 _catch "Failed to correctly backup data"
+
+risks_backup_umount_command
 
 ## 10 - ALL DONE 
 echo && _success "risks" "Identity generation complete." && echo

@@ -4,6 +4,7 @@ _set_identity ""
 
 _warning "risks" "Slaming identity $IDENTITY"
 
+_message "Slaming Signal tomb ..."
 _run slam_tomb "$SIGNAL_TOMB_LABEL"
 
 _message "Slaming PASS tomb ..."
@@ -27,6 +28,10 @@ tombs=$(tomb list 2>&1 \
 
 # ... and close them
 while read -r tomb_name ; do
+    if [[ -z $tomb_name ]]; then
+        continue
+    fi
+
     _message "Slaming tomb $tomb_name ..."
     _run tomb slam "$tomb_name"
 done <<< "$tombs"
@@ -36,3 +41,7 @@ echo
 _message "Unmounting hush partition"
 _run risks_hush_umount_command
 _catch "Failed to unmount hush partition"
+
+_message "Umounting backup device"
+_run risks_backup_umount_command
+_catch "Failed to umount backup device"
