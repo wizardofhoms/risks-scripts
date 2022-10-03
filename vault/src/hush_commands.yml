@@ -1,6 +1,6 @@
 # Hush partition commands #
 name: hush 
-help: 'Manage the hush partition mount points and read/write permissions'
+help: 'Format or manage the hush partition mount points and read/write permissions'
 
 commands:
   - name: mount

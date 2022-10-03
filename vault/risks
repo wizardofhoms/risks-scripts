@@ -26,13 +26,13 @@ risks_usage() {
 	echo
 	# :command.usage_commands
 	printf "Commands:\n"
-	echo "  hush      Manage the hush partition mount points and read/write permissions"
-	echo "  backup    Manage, mount, restore or use backup devices and partitions"
-	echo "  new       Create new identities, data stores or backups"
+	echo "  hush      Format or manage the hush partition mount points and read/write permissions"
+	echo "  backup    Create, manage, restore or use backup devices and partitions"
+	echo "  new       Create new identities or associated data stores/tombs"
 	echo "  open      Open an identity or some of its associated data stores"
 	echo "  close     Close an identity or some of its associated data stores"
 	echo "  list      Show currently open data stores"
-	echo "  slam      Close all active identities and unmount hush partition"
+	echo "  slam      Close all active identities and unmount hush/backup partitions"
 	echo "  gpgpass   Copy the identity GPG passphrase to the clipboard"
 	echo "  load      Copy some resource to a VM where to use it (completed)"
 	echo "  save      Move some data coming from another VM to a (tomb) directory"
@@ -96,11 +96,11 @@ risks_usage() {
 # :command.usage
 risks_hush_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks hush - Manage the hush partition mount points and read/write permissions\n"
+		printf "risks hush - Format or manage the hush partition mount points and read/write permissions\n"
 		echo
 
 	else
-		printf "risks hush - Manage the hush partition mount points and read/write permissions\n"
+		printf "risks hush - Format or manage the hush partition mount points and read/write permissions\n"
 		echo
 
 	fi
@@ -309,11 +309,11 @@ risks_hush_format_usage() {
 # :command.usage
 risks_backup_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks backup - Manage, mount, restore or use backup devices and partitions\n"
+		printf "risks backup - Create, manage, restore or use backup devices and partitions\n"
 		echo
 
 	else
-		printf "risks backup - Manage, mount, restore or use backup devices and partitions\n"
+		printf "risks backup - Create, manage, restore or use backup devices and partitions\n"
 		echo
 
 	fi
@@ -543,11 +543,11 @@ risks_backup_hush_usage() {
 # :command.usage
 risks_new_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks new - Create new identities, data stores or backups\n"
+		printf "risks new - Create new identities or associated data stores/tombs\n"
 		echo
 
 	else
-		printf "risks new - Create new identities, data stores or backups\n"
+		printf "risks new - Create new identities or associated data stores/tombs\n"
 		echo
 
 	fi
@@ -604,16 +604,6 @@ risks_new_identity_usage() {
 		# :flag.usage
 		echo "  --verbose, -v"
 		printf "    Show verbose logging\n"
-		echo
-
-		# :flag.usage
-		echo "  --log, -l"
-		printf "    Log the command's output to the identity log file, or the file path given\n    with -f/--log-file\n"
-		echo
-
-		# :flag.usage
-		echo "  --log-file, -f LOGFILE"
-		printf "    Path to log file, defaults to ~/.graveyard/<identity>.log\n"
 		echo
 
 		# :command.usage_args
@@ -679,16 +669,6 @@ risks_new_tomb_usage() {
 		printf "    Show verbose logging\n"
 		echo
 
-		# :flag.usage
-		echo "  --log, -l"
-		printf "    Log the command's output to the identity log file, or the file path given\n    with -f/--log-file\n"
-		echo
-
-		# :flag.usage
-		echo "  --log-file, -f LOGFILE"
-		printf "    Path to log file, defaults to ~/.graveyard/<identity>.log\n"
-		echo
-
 		# :command.usage_args
 		printf "Arguments:\n"
 
@@ -747,16 +727,6 @@ risks_open_usage() {
 		printf "    Show verbose logging\n"
 		echo
 
-		# :flag.usage
-		echo "  --log, -l"
-		printf "    Log the command's output to the identity log file, or the file path given\n    with -f/--log-file\n"
-		echo
-
-		# :flag.usage
-		echo "  --log-file, -f LOGFILE"
-		printf "    Path to log file, defaults to ~/.graveyard/<identity>.log\n"
-		echo
-
 		# :command.usage_args
 		printf "Arguments:\n"
 
@@ -811,16 +781,6 @@ risks_close_usage() {
 		# :flag.usage
 		echo "  --verbose, -v"
 		printf "    Show verbose logging\n"
-		echo
-
-		# :flag.usage
-		echo "  --log, -l"
-		printf "    Log the command's output to the identity log file, or the file path given\n    with -f/--log-file\n"
-		echo
-
-		# :flag.usage
-		echo "  --log-file, -f LOGFILE"
-		printf "    Path to log file, defaults to ~/.graveyard/<identity>.log\n"
 		echo
 
 		# :command.usage_args
@@ -892,11 +852,11 @@ risks_list_usage() {
 # :command.usage
 risks_slam_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks slam - Close all active identities and unmount hush partition\n"
+		printf "risks slam - Close all active identities and unmount hush/backup partitions\n"
 		echo
 
 	else
-		printf "risks slam - Close all active identities and unmount hush partition\n"
+		printf "risks slam - Close all active identities and unmount hush/backup partitions\n"
 		echo
 
 	fi
@@ -987,7 +947,7 @@ risks_load_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risks load RESOURCE SOURCE_VM [IDENTITY] [options]\n"
+	printf "  risks load RESOURCE DEST_VM [IDENTITY] [options]\n"
 	printf "  risks load --help | -h\n"
 	echo
 
@@ -1015,7 +975,7 @@ risks_load_usage() {
 		echo
 
 		# :argument.usage
-		echo "  SOURCE_VM"
+		echo "  DEST_VM"
 		printf "    Destination VM\n"
 		echo
 
@@ -2346,6 +2306,13 @@ get_passphrase ()
 }
 
 
+# _is_found() {
+# 	# returns 0 if binary is found in path
+# 	[[ -z $1 ]] && return 1
+# 	command -v "$1" 1>/dev/null 2>/dev/null
+# 	return $?
+# }
+
 # pinentry_assuan_getpass() {
 # 	# simply prints out commands for pinentry's stdin to activate the
 # 	# password dialog
@@ -2899,13 +2866,6 @@ play_sound()
 			return 1
 		;;
 	esac
-}
-
-_is_found() {
-	# returns 0 if binary is found in path
-	[[ -z $1 ]] && return 1
-	command -v "$1" 1>/dev/null 2>/dev/null
-	return $?
 }
 
 # src/lib/validations/format.sh
@@ -4868,29 +4828,6 @@ risks_new_identity_parse_requirements() {
 			shift
 			;;
 
-		# :flag.case
-		--log | -l )
-
-			# :flag.case_no_arg
-			args[--log]=1
-			shift
-			;;
-
-		# :flag.case
-		--log-file | -f )
-
-			# :flag.case_arg
-			if [[ -n ${2+x} ]]; then
-
-				args[--log-file]="$2"
-				shift
-				shift
-			else
-				printf "%s\n" "--log-file requires an argument: --log-file, -f LOGFILE"
-				exit 1
-			fi
-			;;
-
 		-?* )
 			printf "invalid option: %s\n" "$key"
 			exit 1
@@ -4977,29 +4914,6 @@ risks_new_tomb_parse_requirements() {
 			shift
 			;;
 
-		# :flag.case
-		--log | -l )
-
-			# :flag.case_no_arg
-			args[--log]=1
-			shift
-			;;
-
-		# :flag.case
-		--log-file | -f )
-
-			# :flag.case_arg
-			if [[ -n ${2+x} ]]; then
-
-				args[--log-file]="$2"
-				shift
-				shift
-			else
-				printf "%s\n" "--log-file requires an argument: --log-file, -f LOGFILE"
-				exit 1
-			fi
-			;;
-
 		-?* )
 			printf "invalid option: %s\n" "$key"
 			exit 1
@@ -5074,29 +4988,6 @@ risks_open_parse_requirements() {
 			shift
 			;;
 
-		# :flag.case
-		--log | -l )
-
-			# :flag.case_no_arg
-			args[--log]=1
-			shift
-			;;
-
-		# :flag.case
-		--log-file | -f )
-
-			# :flag.case_arg
-			if [[ -n ${2+x} ]]; then
-
-				args[--log-file]="$2"
-				shift
-				shift
-			else
-				printf "%s\n" "--log-file requires an argument: --log-file, -f LOGFILE"
-				exit 1
-			fi
-			;;
-
 		-?* )
 			printf "invalid option: %s\n" "$key"
 			exit 1
@@ -5161,29 +5052,6 @@ risks_close_parse_requirements() {
 			# :flag.case_no_arg
 			args[--verbose]=1
 			shift
-			;;
-
-		# :flag.case
-		--log | -l )
-
-			# :flag.case_no_arg
-			args[--log]=1
-			shift
-			;;
-
-		# :flag.case
-		--log-file | -f )
-
-			# :flag.case_arg
-			if [[ -n ${2+x} ]]; then
-
-				args[--log-file]="$2"
-				shift
-				shift
-			else
-				printf "%s\n" "--log-file requires an argument: --log-file, -f LOGFILE"
-				exit 1
-			fi
 			;;
 
 		-?* )
@@ -5419,9 +5287,9 @@ risks_load_parse_requirements() {
 
 				args[resource]=$1
 				shift
-			elif [[ -z ${args[source_vm]+x} ]]; then
+			elif [[ -z ${args[dest_vm]+x} ]]; then
 
-				args[source_vm]=$1
+				args[dest_vm]=$1
 				shift
 			elif [[ -z ${args[identity]+x} ]]; then
 				# :argument.validations
@@ -5444,11 +5312,11 @@ risks_load_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[resource]+x} ]]; then
-		printf "missing required argument: RESOURCE\nusage: risks load RESOURCE SOURCE_VM [IDENTITY] [options]\n"
+		printf "missing required argument: RESOURCE\nusage: risks load RESOURCE DEST_VM [IDENTITY] [options]\n"
 		exit 1
 	fi
-	if [[ -z ${args[source_vm]+x} ]]; then
-		printf "missing required argument: SOURCE_VM\nusage: risks load RESOURCE SOURCE_VM [IDENTITY] [options]\n"
+	if [[ -z ${args[dest_vm]+x} ]]; then
+		printf "missing required argument: DEST_VM\nusage: risks load RESOURCE DEST_VM [IDENTITY] [options]\n"
 		exit 1
 	fi
 

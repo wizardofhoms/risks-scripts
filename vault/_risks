@@ -1,7 +1,7 @@
 #compdef risks 
 #autoload
 
-# Entrypoint ----------------------------------------------------------------------------------
+# Entrypoint ================================================================================== 
 
 _risks() 
 {
@@ -18,41 +18,47 @@ _risks()
             hush)
                 _hush
                 ;;
+            backup)
+                _backup
+                ;;
             list)
-                _list 
+                _store_types
                 ;;
             gpgpass)
-                _identity 
-                ;;
-            format)
-                _format 
+                _gpgpass
                 ;;
             new)
                 _new 
                 ;;
-            open|close)
-                _stores 
+            open)
+                _open
+                ;;
+            close)
+                _close
                 ;;
             load)
-                _tools
+                _load
                 ;;
-                kv)
+            save)
+                _save
+                ;;
+            kv)
                 _kv
                 ;;
         esac
     else
         local -a subcmds
         subcmds=(
-            'format:Setup drives for either hush or backup partitions'
-            'hush:Manage the hush partition mount points and read/write permissions'
-            'new:Create new identities, backups or data stores'
+            'hush:Format or manage the hush partition mount points and read/write permissions'
+            'backup:Create, manage, restore or use backup devices and partitions'
+            'new:Create new identities or associated data stores/tombs'
             'open:Open an identity or some of its associated data stores'
-            'gpgpass:Copy the identity passphrase to the clipboard'
+            'close:Close an identity or some of its associated data stores'
             'list:Show currently open data stores'
+            'slam:Close all active identities and unmount hush/backup partitions'
+            'gpgpass:Copy the identity passphrase to the clipboard'
             'load:Copy some resource to a VM where to use it (completed)'
             'save:Move some data coming from another VM to a (tomb) directory'
-            'close:Close an identity or some of its associated data stores'
-            'slam:Close all active identities and unmount hush partition'
             'kv:Manage the small key=value store used by other commands/functions'
         )
 
@@ -60,10 +66,105 @@ _risks()
     fi
 }
 
-# Subcomands ----------------------------------------------------------------------------------
+# Subcomands ==================================================================================
+
+# Completes the commands for hush, without parameters
+_hush_commands () 
+{
+    local -a hushcmds 
+    hushcmds=(
+        'format:Format a drive for storing identity secrets (GPG/coffin/age keys)'
+        'mount:Mount the hush drive'
+        'umount:Unmount the hush drive'
+        'rw:Set read-write permissions on the hush partition'
+        'ro:Set read-only permissions on the hush partition'
+    )
+
+    _describe -t commands 'hush commands' hushcmds && ret=0
+}
+
+# Completion dispatcher for hush subcommand
+_hush ()
+{
+    local ret=1
+    local line state
+
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "${_flags_base[@]}" \
+        "1: :_hush_commands" \
+        "*::arg:->args" \
+        && ret=0
+
+    # Arguments completion
+    case $state in
+        args)
+            case $line[1] in
+            format)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    {-S,--size-percent}'[Size of encrypted partition, as a percentage of the entire drive]':'percentage of drive': \
+                    {-A,--size-absolute}'[Size of encrypted partition, in absolute terms, WITH unit (eg. 100G, 20M)]':'absolute size with unit (eg. 20M)': \
+                    '*:path to hush drive:_path_files -W /dev -g "xvd*" -P /dev/' \
+                    && ret=0
+                ;;
+            *)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    && ret=0
+                ;;
+            esac
+    esac
+}
+
+# Completes the commands for backup, without parameters
+_backup_commands () 
+{
+    local -a subcmds 
+    subcmds=(
+        "mount:Mount the backup partition/device"
+        "umount:Unmount the current backup drive"
+        "format:Format and setup a drive for as a risks backup medium"
+        "identity:Backup the graveyard and the GPG coffin file for the current identity, active or specified."
+        "hush:Backup only the raw hush device image"
+    )
+
+    _describe -t commands 'backup commands' subcmds && ret=0
+}
+
+# Completion dispatcher for backup subcommand
+_backup ()
+{
+    local ret=1
+    local line state
+
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "1: :_backup_commands" \
+        "*::arg:->args" \
+        && ret=0
+
+    # Arguments completion
+    case $state in
+        args)
+            case $line[1] in
+            format|mount)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    '1:path to backup drive:_path_files -W /dev -g "xvd*" -P /dev/' \
+                    && ret=0
+                ;;
+            *)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    && ret=0
+                ;;
+            esac
+    esac
+}
 
 # Completion for all arguments needed when creating a new store 
-_new() 
+_new () 
 {
     local line state
     _arguments -C \
@@ -72,7 +173,7 @@ _new()
 
     case "$state" in
         stores)
-            _arguments '1:stores:(identity backup tomb)' && ret=0
+            _arguments '1:stores:(identity tomb)' && ret=0
             ;;
         identities)
             case $words[2] in
@@ -82,41 +183,17 @@ _new()
                 tomb)
                     _new_tomb
                     ;;
-                backup)
-                    _arguments '*:device files:_path_files -W /dev -g "xvd*" -P /dev/'
-                    ;;
             esac
             ;;
     esac
 }
 
-# Completion for hush command
-_hush ()
-{
-    local line state
-    _arguments -C \
-        "1: :->subcmds"
-
-    case "$state" in
-        subcmds)
-            local -a subcmds
-            subcmds=(
-                'mount:Mount the hush drive'
-                'umount:Unmount the hush drive'
-                'rw:Set read-write permissions on the hush partition'
-                'ro:Set read-only permissions on the hush partition'
-            )
-
-            _describe -t commands 'hush commands' subcmds
-        ;;
-    esac
-}
-
 # Completion for arguments needed when creating a new identity
-_new_identity() 
+_new_identity () 
 {
     local line state
     _arguments -C \
+        "${_flags_base[@]}" \
         "2: :->name" \
         "3:arg:->recipient" \
         "4:arg:->duration" \
@@ -133,63 +210,72 @@ _new_identity()
             _message "quoted, human readable expiry duration for GPG keys" 
             ;;
         backup)
-            _arguments '*:device files:_path_files -W /dev -g "xvd*" -P /dev/'
+            _arguments '*:path to backup device file:_path_files -W /dev -g "xvd*" -P /dev/' && ret=0
             ;;
     esac
 }
 
 # Completion for arguments needed when creating a new tomb
-_new_tomb() 
+_new_tomb () 
 {
     local line state
     _arguments -C \
+        "${_flags_base[@]}" \
         "2: :->name" \
-        "3:arg:->recipient" \
-        "4:arg:->tomb_name" \
-        "5:arg :->size"
+        "3: :->size" \
+        "4:: :->identity"
 
     case "$state" in
         name)
-            _identity
-            ;;
-        recipient)
-            _message "mail address recipient to use for GPG" 
-            ;;
-        tomb_name)
             _message "Name of tomb to use" 
             ;;
         size)
             _message "Tomb size in MB" 
             ;;
+        identity)
+            _message "Optional, identity to use instead of the active one"
+            ;;
     esac
 }
 
-# Completions for commands that help create/setup/format sdcard/backup drives
-_format() 
+# Completion dispatcher for open command
+_open ()
 {
+    local ret=1
     local line state
-    _arguments -C \
-        "1: :->drives" \
-        "2::arg:->paths"
 
-    case "$state" in
-        drives)
-            local -a drives
-            drives=(
-                'hush:Device storing identity secrets (GPG/coffin/age keys)'
-                'backup:Device storing backup data (keys, hush.img, etc)'
-            )
-            _describe -t arguments 'drives' drives 
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "${_flags_base[@]}" \
+        "1: :_builtin_stores" \
+        "2::arg:->args" \
+        && ret=0
+
+    # Arguments completion
+    case $state in
+        args)
+            case $line[1] in
+            identity|gpg)
+                _message "identity name"
             ;;
-        paths)
-            _arguments '*:device files:_path_files -W /dev -g "xvd*" -P /dev/'
+            *)
+                _message "identity name (optional)"
             ;;
+            esac
     esac
 }
 
-# Completion for list command
-_list() {
-    _arguments '1:data stores:(coffins tombs)' && ret=0
+# Completion dispatcher for close command
+_close ()
+{
+    local ret=1
+    local line state
+
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "${_flags_base[@]}" \
+        "1: :_open_stores" \
+        && ret=0
 }
 
 # Completion for kv command (key=value store)]
@@ -208,7 +294,7 @@ _kv ()
             'clean:Delete all key=value pairs in the store'
         )
 
-        _describe -t commands 'key=value store commands' subcmds && ret=0
+        _describe -t commands 'key:value store commands' subcmds && ret=0
     }
 
     # Start checking/proposing for subcommands/arguments
@@ -235,82 +321,103 @@ _kv ()
 # Completions for load command
 _load ()
 {
+    _arguments \
+        {-c,--close-tomb}'[Immediately close the tomb after sending the files]' \
+        '1:tomb name (resource):_open_stores' \
+        '2:destination VM:' \
+        '3::identity name (optional if active):'
 }
 
 # Completions for the save command
 _save ()
 {
+    _arguments \
+        {-c,--close-tomb}'[Immediately close the tomb after saving the files]' \
+        '1:source VM:($(ls ~/QubesIncoming))' \
+        '2:tomb name (resource):_open_stores' \
+        '3::identity name (optional if active):'
+}
+
+_gpgpass ()
+{
+    _arguments \
+        {-t,--timeout}'[Clear the clipboard after this many seconds]':'clipboard wipe timeout (in seconds)': \
+        '1::identity name (optional if active):'
 }
 
 
-# Command arguments ---------------------------------------------------------------------------
+# Flags =======================================================================================
 
-# Completes all available identity names
-_identity() 
+# Flags that are present on all commands
+_flags_base=(
+    {-v,--verbose}'[Enable verbose logging]'
+    {-h,--help}'[Print help for the command]'
+    )
+
+
+# Command arguments ===========================================================================
+
+# Completes paths to devices that can be used as hush or backup devices/partitions
+_devices ()
 {
-    local gpg_dirs=(~/pubkeys/*)
-    local -a identities
+    _arguments '*:device files:_path_files -W /dev -g "xvd*" -P /dev/' && ret=0
+}
 
-    for dir in "${gpg_dirs[@]}"; do
-        local base=$(basename $dir) # Only get the dirname
-        local name=${base:4} # trim the "gpg-" part
-        identities+=($name)
+# Completes a list of possible store types (eg. coffin/tomb, etc)
+_store_types ()
+{
+    _arguments -C '1:data stores:(coffins tombs)' && ret=0
+}
+
+# Completes all stores created by default with an identity, which have
+# generally known and non-standard mount paths
+_builtin_stores ()
+{
+    # local -a builtin_stores 
+    # builtin_stores=(
+    #     'identity:"All datastores for given identity"' 
+    #     'gpg:"GPG coffin"' 
+    #     'mgmt:"Management tomb"' 
+    #     'pass:"Password-store tomb"' 
+    #     'ssh:"SSH keys tomb"' 
+    #     'signal:"Signal messenger data (contacts, history, etc)"' 
+    # )
+    #
+    # This line has a bug where completion descriptions are not justified
+    # _alternative "builtin_stores:builtin stores:((${builtin_stores[@]/:/\\:}))"
+
+    _alternative 'builtin_stores:builtin stores:(( \
+        identity\:"All datastores for given identity" \
+        gpg\:"GPG coffin" \
+        mgmt\:"Management tomb" \
+        pass\:"Password-store tomb" \
+        ssh\:"SSH keys tomb" \
+        signal\:"Signal messenger data (contacts, history, etc)" \
+        ))'
+}
+
+# Completes open builtin stores, and detected stores through grepping tomb list mounts
+_open_stores ()
+{
+    # First add builtins
+    _builtin_stores
+
+    # Then add the detected ones under another group heading
+    local exclude_builtins="mgmt|password-store|signal|ssh"
+
+    local -a tombs_mounts tomb_names
+    tombs_mounts=$(tomb list 2>&1 \
+        | sed -n '1~4p' \
+        | awk -F" " '{print $(6)}' \
+        | grep -Ev "($exclude_builtins)")
+
+    for tomb in "${tombs_mounts[@]}" ; do
+        tomb_names+=($(basename ${tomb}))
     done
 
-    _describe -t arguments 'identities' identities && ret=0
+    _alternative "open_tombs:other open tombs:(${tomb_names[@]})"
 }
 
-# Completes the stores for an identity, excluding those
-# that are usually moved to another VM for usage.
-_stores() 
-{
-    local line state
-    _arguments -C \
-        "1: :->datastores" \
-        "2:arg:->identities"
-
-    case "$state" in
-        datastores)
-            local -a datastores
-            datastores=(
-               'gpg:GPG coffin' 
-               'pass:Password-store tomb' 
-               'ssh:SSH keys tomb' 
-               'signal:Signal messenger data (contacts, history, etc)' 
-               'identity:All datastores for given identity' 
-            )
-            # _arguments '1:builtin stores:(gpg pass ssh identity)' && ret=0
-            _describe -t arguments 'builtin stores' datastores
-            ;;
-        identities)
-            _identity
-            ;;
-    esac
-}
-
-# Datastores that are used by external tools. These stores contain
-# data that is copied to other VMs for usage. Identical to _stores,
-# except that the number of possible candidates is smaller.
-_tools() 
-{
-    local line state
-    _arguments -C \
-        "1: :->tools" \
-        "2:arg:->identities"
-
-    case "$state" in
-        tools)
-            local -a tools 
-            tools=(
-                'signal:Signal messenger data (contacts, history, etc)' 
-                    )
-            _describe -t arguments 'tools data' tools 
-            ;;
-        identities)
-            _identity
-            ;;
-    esac
-}
 
 
 # don't run the completion function when being source-ed or eval-ed

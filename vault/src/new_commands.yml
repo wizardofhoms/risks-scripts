@@ -1,6 +1,6 @@
 # New identity/stores commands #
 name: new
-help: 'Create new identities, data stores or backups'
+help: 'Create new identities or associated data stores/tombs'
 
 commands:
   - name: identity 
@@ -24,16 +24,16 @@ commands:
         long: --verbose
         short: -v
         help: "Show verbose logging"
-      - &log
-        long: --log
-        short: -l
-        help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
-      - &logfile
-        long: --log-file
-        short: -f
-        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
-        arg: logfile
-        required: false
+      # - &log
+      #   long: --log
+      #   short: -l
+      #   help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+      # - &logfile
+      #   long: --log-file
+      #   short: -f
+      #   help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+      #   arg: logfile
+      #   required: false
     examples:
       - new identity 'John Doe' john.doe@mail.com '1 year' /dev/xvdj
 
@@ -52,7 +52,7 @@ commands:
         validate: identity_exists
     flags:
       - *verbose
-      - *log
-      - *logfile
+      # - *log
+      # - *logfile
     examples:
       - new tomb Data 100 john_doe

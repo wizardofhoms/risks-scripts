@@ -4,7 +4,7 @@ args:
   - name: resource
     required: true
     help: "Name of a tomb containing the data to be transfered. The tomb will be opened if needed"
-  - name: source_vm
+  - name: dest_vm 
     required: true
     help: "Destination VM"
   - name: identity 

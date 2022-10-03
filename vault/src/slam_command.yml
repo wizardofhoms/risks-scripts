@@ -3,4 +3,4 @@ flags:
   - long: --verbose
     short: -v
     help: "Show verbose logging"
-help: 'Close all active identities and unmount hush partition'
+help: 'Close all active identities and unmount hush/backup partitions'

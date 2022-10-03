@@ -1,5 +1,5 @@
 name: backup 
-help: 'Manage, mount, restore or use backup devices and partitions'
+help: 'Create, manage, restore or use backup devices and partitions'
 
 commands:
   # Common management

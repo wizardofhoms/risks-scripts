@@ -12,13 +12,13 @@ flags:
   - long: --verbose
     short: -v
     help: "Show verbose logging"
-  - long: --log
-    short: -l
-    help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
-  - long: --log-file
-    short: -f
-    help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
-    arg: logfile
+  # - long: --log
+  #   short: -l
+  #   help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+  # - long: --log-file
+  #   short: -f
+  #   help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+  #   arg: logfile
 examples:
   - "open identity john_doe       # Opens gpg coffin and mgmt/pass/ssh/signal tombs"
   - "open gpg john_doe            # Opens the GPG keyring for identity 'john_doe'"         

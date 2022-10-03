@@ -12,13 +12,13 @@ flags:
   - long: --verbose
     short: -v
     help: "Show verbose logging"
-  - long: --log
-    short: -l
-    help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
-  - long: --log-file
-    short: -f
-    help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
-    arg: logfile
+  # - long: --log
+  #   short: -l
+  #   help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
+  # - long: --log-file
+  #   short: -f
+  #   help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
+  #   arg: logfile
 examples:
   - "close identity john_doe      # Closes gpg coffin/all tombs for 'john_doe'"
   - "close identity               # Closes gpg coffin/all tombs for active identity"
