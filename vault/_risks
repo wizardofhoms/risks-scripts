@@ -412,7 +412,9 @@ _open_stores ()
         | grep -Ev "($exclude_builtins)")
 
     for tomb in "${tombs_mounts[@]}" ; do
-        tomb_names+=($(basename ${tomb}))
+        if [[ -n $tomb ]]; then
+            tomb_names+=($(basename ${tomb}))
+        fi
     done
 
     _alternative "open_tombs:other open tombs:(${tomb_names[@]})"
