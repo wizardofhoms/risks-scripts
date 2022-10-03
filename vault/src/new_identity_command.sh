@@ -107,7 +107,7 @@ _run setup_identity_backup
 _catch "Failed to setup identity backup graveyard"
 
 _message "Backing up current identity data and hush partition"
-_run risks_backup_format_command
+_run risks_backup_identity_command
 _catch "Failed to correctly backup data"
 
 ## 10 - ALL DONE 

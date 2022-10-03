@@ -20,13 +20,16 @@ commands:
         help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
         validate: device
     flags:
-      - long: --verbose
+      - &verbose
+        long: --verbose
         short: -v
         help: "Show verbose logging"
-      - long: --log
+      - &log
+        long: --log
         short: -l
         help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
-      - long: --log-file
+      - &logfile
+        long: --log-file
         short: -f
         help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
         arg: logfile
@@ -48,16 +51,8 @@ commands:
         help: "Identity for which to create the tomb. Optional: the active identity is used if no identity is specified"
         validate: identity_exists
     flags:
-      - long: --verbose
-        short: -v
-        help: "Show verbose logging"
-      - long: --log
-        short: -l
-        help: "Log the command's output to the identity log file, or the file path given with -f/--log-file"
-      - long: --log-file
-        short: -f
-        help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
-        arg: logfile
-        required: false
+      - *verbose
+      - *log
+      - *logfile
     examples:
       - new tomb Data 100 john_doe

@@ -5,18 +5,20 @@ version: 0.1.0
 # Required programs for all commands
 dependencies:
   # Filesystem
-  # - cryptsetup
-  # - fscrypt 
-  - steghide
   - wipe
   - tomb
+  # - cryptsetup
+  # - fscrypt 
+  # - steghide
   # - dosfstools
   # - e2fsprogs
+  
   # Encryption, non-filesystem related
-  - age
+  # - age
   - spectre
   - pass
   - gpg2
+
   # Agents and workflow
   - xclip
   - socat

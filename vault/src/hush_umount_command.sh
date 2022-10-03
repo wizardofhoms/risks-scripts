@@ -10,7 +10,7 @@ if is_hush_mounted ; then
     fi
 fi
 
-if ! is_luks_mapper_present "${SDCARD_ENC_PART_MAPPER}" ; then
+if is_luks_mapper_present "${SDCARD_ENC_PART_MAPPER}" ; then
     if ! sudo cryptsetup close "${SDCARD_ENC_PART_MAPPER}" ; then
         _failure "SDCARD can not be closed"
     fi

@@ -10,14 +10,14 @@ setup_identity_backup ()
 
     # The directory name in cleartext is simply the identity name
     GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-    IDENTITY_GRAVEYARD_PATH="${}/${GRAVEYARD_DIRECTORY_ENC}"
+    IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
 
     _verbose "Creating directory $IDENTITY_GRAVEYARD_PATH"
-    mkdir -p "$GRAVEYARD"
+    mkdir -p "$IDENTITY_BACKUP_GRAVEYARD_PATH"
 
     # And setup fscrypt protectors on it.
     _verbose "Setting up fscrypt protectors on directory"
-    echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_GRAVEYARD_PATH" \
+    echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_BACKUP_GRAVEYARD_PATH" \
        --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
     _catch "Failed to encrypt identity graveyard in backup"
 }
@@ -27,14 +27,16 @@ setup_identity_backup ()
 # the first place.
 backup_identity_gpg () 
 {
-    local backup_graveyard_root="$1"
+    local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
 
     local GRAVEYARD_COFFIN_FILE IDENTITY_COFFIN_PATH COFFIN_BACKUP_PATH 
 
     # The directory name in cleartext is simply the identity name
     GRAVEYARD_COFFIN_FILE=$(_encrypt_filename "coffin-$IDENTITY-gpg")
     IDENTITY_COFFIN_PATH="${GRAVEYARD}/${GRAVEYARD_COFFIN_FILE}"
-    COFFIN_BACKUP_PATH="${backup_graveyard_root}/${GRAVEYARD_COFFIN_FILE}"
+
+    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
+    COFFIN_BACKUP_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}/${GRAVEYARD_COFFIN_FILE}"
 
     if [[ -e ${IDENTITY_COFFIN_PATH} ]]; then
         sudo chattr -i "${IDENTITY_COFFIN_PATH}" 

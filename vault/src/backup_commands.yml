@@ -22,7 +22,8 @@ commands:
         help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
         validate: file_exists
     flags:
-      - long: --verbose
+      - &verbose
+        long: --verbose
         short: -v
         help: "Show verbose logging"
     examples:
@@ -37,9 +38,7 @@ commands:
         help: "Name of identity to backup. (Current identity if not specified)"
         validate: identity_exists 
     flags:
-      - long: --verbose
-        short: -v
-        help: "Show verbose logging"
+      - *verbose
       - long: --log-file
         short: -f
         help: "Path to log file, defaults to ~/.graveyard/<identity>.log"
