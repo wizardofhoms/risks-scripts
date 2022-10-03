@@ -3273,21 +3273,23 @@ risks_backup_identity_command() {
 
 	local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
 
-	local IDENTITY_GRAVEYARD_PATH IDENTITY_BACKUP_GRAVEYARD_PATH GRAVEYARD_DIRECTORY_ENC
-
-	GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-	IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
-	IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
-
 	# Ensure a backup is mounted
 	if ! is_luks_mapper_present "$BACKUP_MAPPER" ; then
 			_failure "No mounted backup medium found. Mount one with risks backup mount </dev/device>"
 	fi
 
 	# Ensure we have an active identity, which will be detected in this call
+	_set_identity
+
 	if ! _identity_active ; then
 			_failure "This command requires an identity to be active"
 	fi
+
+	local IDENTITY_GRAVEYARD_PATH IDENTITY_BACKUP_GRAVEYARD_PATH GRAVEYARD_DIRECTORY_ENC
+
+	GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
+	IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+	IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
 
 	_message "Backing up current identity data and hush partition"
 
