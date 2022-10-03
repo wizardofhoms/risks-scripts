@@ -2345,6 +2345,117 @@ get_passphrase ()
 		print "$passphrase"
 }
 
+
+# pinentry_assuan_getpass() {
+# 	# simply prints out commands for pinentry's stdin to activate the
+# 	# password dialog
+# 	cat <<EOF
+# OPTION ttyname=$TTY
+# OPTION lc-ctype=$LANG
+# SETTITLE $title
+# SETDESC $description
+# SETPROMPT Password:
+# GETPIN
+# EOF
+# }
+#
+# # Ask user for a password
+# # Wraps around the pinentry command, from the GnuPG project, as it
+# # provides better security and conveniently use the right toolkit.
+# ask_password() {
+#
+# 	local description="$1"
+# 	local title="${2:-Enter tomb password.}"
+# 	local output
+# 	local password
+# 	local gtkrc
+# 	local theme
+# 	local pass_asked
+#
+# 	# Distributions have broken wrappers for pinentry: they do
+# 	# implement fallback, but they disrupt the output somehow.	We are
+# 	# better off relying on less intermediaries, so we implement our
+# 	# own fallback mechanisms. Pinentry supported: curses, gtk-2, qt4, qt5
+# 	# and x11.
+#
+# 	# make sure LANG is set, default to C
+# 	LANG=${LANG:-C}
+#
+# 	_verbose "asking password with tty=$TTY lc-ctype=$LANG"
+#
+# 	pass_asked=0
+#
+# 	if [[ -n $WAYLAND_DISPLAY ]]; then
+# 		_verbose "wayland display detected"
+# 		_is_found "pinentry-gnome3" && {
+# 			_verbose "using pinentry-gnome3 on wayland"
+# 			output=$(pinentry_assuan_getpass | pinentry-gnome3)
+# 			pass_asked=1
+# 		}
+# 	fi
+# 	if [[ -n $DISPLAY ]] && [[ $pass_asked == 0 ]]; then
+# 		_verbose "X11 display detected"
+# 		if _is_found "pinentry-gtk-2"; then
+# 			_verbose "using pinentry-gtk2"
+# 			output=$(pinentry_assuan_getpass | pinentry-gtk-2)
+# 			pass_asked=1
+# 		elif _is_found "pinentry-x11"; then
+# 			_verbose "using pinentry-x11"
+# 			output=$(pinentry_assuan_getpass | pinentry-x11)
+# 			pass_asked=1
+# 		elif _is_found "pinentry-gnome3"; then
+# 			_verbose "using pinentry-gnome3 on X11"
+# 			output=$(pinentry_assuan_getpass | pinentry-gnome3)
+# 			pass_asked=1
+# 		elif _is_found "pinentry-qt5"; then
+# 			_verbose "using pinentry-qt5"
+# 			output=$(pinentry_assuan_getpass | pinentry-qt5)
+# 			pass_asked=1
+# 		elif _is_found "pinentry-qt4"; then
+# 			_verbose "using pinentry-qt4"
+# 			output=$(pinentry_assuan_getpass | pinentry-qt4)
+# 			pass_asked=1
+# 		fi
+# 	fi
+# 	if [[ $pass_asked == 0 ]]; then
+# 		_verbose "no display detected"
+# 		_is_found "pinentry-curses" && {
+# 			_verbose "using pinentry-curses with no display"
+# 			output=$(pinentry_assuan_getpass | pinentry-curses)
+# 			pass_asked=1
+# 		}
+# 	fi
+#
+# 	[[ $pass_asked == 0 ]] &&
+# 		_failure "Cannot find any pinentry-curses and no DISPLAY detected."
+#
+# 	# parse the pinentry output
+# 	local pinentry_error
+# 	for i in ${(f)output}; do
+# 		[[ "$i" =~ "^ERR.*" ]] && {
+# 			pinentry_error="${i[(w)3]}"
+# 		}
+#
+# 		# here the password is found
+# 		[[ "$i" =~ "^D .*" ]] && password="${i##D }";
+# 	done
+#
+# 	[[ ! -z $pinentry_error ]] && [[ -z $password ]] && {
+#         _warning "Pinentry error: ::1 error::" "${pinentry_error}"
+# 		print "canceled"
+# 		return 1
+# 	}
+#
+# 	[[ -z $password ]] && {
+# 		_warning "Empty password"
+# 		print "empty"
+# 		return 1
+# 	}
+#
+# 	print "$password"
+# 	return 0
+# }
+
 # src/lib/ssh.sh
 
 # Generate SSH keypair and sets up scripts for loading multiple keypairs
@@ -2788,6 +2899,13 @@ play_sound()
 			return 1
 		;;
 	esac
+}
+
+_is_found() {
+	# returns 0 if binary is found in path
+	[[ -z $1 ]] && return 1
+	command -v "$1" 1>/dev/null 2>/dev/null
+	return $?
 }
 
 # src/lib/validations/format.sh
@@ -3576,6 +3694,7 @@ risks_slam_command() {
 
 	_warning "risks" "Slaming identity $IDENTITY"
 
+	_message "Slaming Signal tomb ..."
 	_run slam_tomb "$SIGNAL_TOMB_LABEL"
 
 	_message "Slaming PASS tomb ..."
@@ -3599,6 +3718,10 @@ risks_slam_command() {
 
 	# ... and close them
 	while read -r tomb_name ; do
+			if [[ -z $tomb_name ]]; then
+					continue
+			fi
+
 			_message "Slaming tomb $tomb_name ..."
 			_run tomb slam "$tomb_name"
 	done <<< "$tombs"
