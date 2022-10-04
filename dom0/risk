@@ -29,7 +29,7 @@ risk_usage() {
 	echo "  hush     Manage the hush partition attach/detach from qubes"
 	echo "  backup   Manage backup devices attach/detach from qubes"
 	echo "  open     Open identities and/or associated stores in the vault only"
-	echo "  slam     Close identities and/or associated stores in the vault only, and detach hush/backup"
+	echo "  slam     Close identity, infrastructure and detach hush/backup at once"
 	echo "  close    Close identities and/or associated stores in the vault only"
 	echo "  init     Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
 	echo "  spin     Start entire identity infrastructure (or part of it) and move data they need"
@@ -62,13 +62,18 @@ risk_usage() {
 		echo
 
 		# :environment_variable.usage
-		echo "  DEFAULT_WHONIX_WS"
+		echo "  RISK_WHONIX_WS"
 		printf "    Default Whonix Workstation AppVM to use for identity client machine\n"
 		echo
 
 		# :environment_variable.usage
-		echo "  DEFAULT_VPN_VM"
+		echo "  RISK_VPN_VM"
 		printf "    Default AppVM to use for cloning new VPN qubes\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  RISK_SPLIT_BROWSER"
+		printf "    Default template to use for split-browser backend\n"
 		echo
 
 		# :environment_variable.usage
@@ -127,7 +132,7 @@ risk_hush_attach_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk hush attach [DEVICE] [VAULT_VM]\n"
+	printf "  risk hush attach [DEVICE] [VAULT_VM] [options]\n"
 	printf "  risk hush attach --help | -h\n"
 	echo
 
@@ -138,6 +143,12 @@ risk_hush_attach_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 		# :command.usage_args
@@ -232,7 +243,7 @@ risk_backup_attach_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk backup attach [DEVICE] [VAULT_VM]\n"
+	printf "  risk backup attach [DEVICE] [VAULT_VM] [options]\n"
 	printf "  risk backup attach --help | -h\n"
 	echo
 
@@ -243,6 +254,12 @@ risk_backup_attach_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 		# :command.usage_args
@@ -336,7 +353,7 @@ risk_open_identity_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk open identity IDENTITY\n"
+	printf "  risk open identity IDENTITY [options]\n"
 	printf "  risk open identity --help | -h\n"
 	echo
 
@@ -347,6 +364,12 @@ risk_open_identity_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 		# :command.usage_args
@@ -363,22 +386,18 @@ risk_open_identity_usage() {
 # :command.usage
 risk_slam_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risk slam - Close identities and/or associated stores in the vault only, and detach hush/backup\n"
+		printf "risk slam - Close identity, infrastructure and detach hush/backup at once\n"
 		echo
 
 	else
-		printf "risk slam - Close identities and/or associated stores in the vault only, and detach hush/backup\n"
+		printf "risk slam - Close identity, infrastructure and detach hush/backup at once\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risk slam [command]\n"
-	printf "  risk slam [command] --help | -h\n"
-	echo
-	# :command.usage_commands
-	printf "Commands:\n"
-	echo "  identity   Close the active identity and its associated builtin stores in the vault"
+	printf "  risk slam [options]\n"
+	printf "  risk slam --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -390,33 +409,10 @@ risk_slam_usage() {
 		printf "    Show this help\n"
 		echo
 
-	fi
-}
-
-# :command.usage
-risk_slam_identity_usage() {
-	if [[ -n $long_usage ]]; then
-		printf "risk slam identity - Close the active identity and its associated builtin stores in the vault\n"
-		echo
-
-	else
-		printf "risk slam identity - Close the active identity and its associated builtin stores in the vault\n"
-		echo
-
-	fi
-
-	printf "Usage:\n"
-	printf "  risk slam identity\n"
-	printf "  risk slam identity --help | -h\n"
-	echo
-
-	# :command.long_usage
-	if [[ -n $long_usage ]]; then
-		printf "Options:\n"
-
-		# :command.usage_fixed_flags
-		echo "  --help, -h"
-		printf "    Show this help\n"
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 	fi
@@ -468,7 +464,7 @@ risk_close_identity_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk close identity\n"
+	printf "  risk close identity [options]\n"
 	printf "  risk close identity --help | -h\n"
 	echo
 
@@ -479,6 +475,12 @@ risk_close_identity_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 	fi
@@ -497,7 +499,7 @@ risk_init_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk init IDENTITY\n"
+	printf "  risk init IDENTITY [options]\n"
 	printf "  risk init --help | -h\n"
 	echo
 
@@ -508,6 +510,27 @@ risk_init_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :flag.usage
+		echo "  --name, -N"
+		printf "    Use a different name for naming identity VMs\n"
+		echo
+
+		# :flag.usage
+		echo "  --no-gw, -G"
+		printf "    Don't create a Whonix gateway\n"
+		echo
+
+		# :flag.usage
+		echo "  --no-vpn, -V"
+		printf "    Don't create a VPN gateway\n"
 		echo
 
 		# :command.usage_args
@@ -534,7 +557,7 @@ risk_spin_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk spin [IDENTITY]\n"
+	printf "  risk spin [IDENTITY] [options]\n"
 	printf "  risk spin --help | -h\n"
 	echo
 
@@ -545,6 +568,12 @@ risk_spin_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 		# :command.usage_args
@@ -571,7 +600,7 @@ risk_fold_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risk fold [IDENTITY]\n"
+	printf "  risk fold [IDENTITY] [options]\n"
 	printf "  risk fold --help | -h\n"
 	echo
 
@@ -582,6 +611,12 @@ risk_fold_usage() {
 		# :command.usage_fixed_flags
 		echo "  --help, -h"
 		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
 		echo
 
 		# :command.usage_args
@@ -640,6 +675,37 @@ inspect_args() {
 }
 
 # :command.user_lib
+# src/lib/device.sh
+
+# Checks that a given device is attached to a given VM
+check_is_device_attached ()
+{
+		local block="$1"
+		local vm="$2"
+
+		local ovm=$(qvm-block list | grep "${block}" | awk {'print $4'} | cut -d" " -f1)
+		if [[ ${#ovm} -eq 0 ]] || [[ ${ovm} != "$vm" ]]; then
+				_failure "Device block $block is not mounted on vault ${vm}"
+		fi
+}
+
+# src/lib/identity.sh
+
+# check that no identity is active in the vault, and fail if there is.
+check_no_active_identity ()
+{
+		active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+		if [[ -n $active_identity ]]; then
+				# It might be the same
+				if [[ $active_identity == $1 ]]; then
+						_message "Identity $1 is already active"
+						exit 0
+				fi
+
+				_failure "Identity $active_identity is active. Close/slam/fold it and rerun this command"
+		fi
+}
+
 # src/lib/log.sh
 
 
@@ -839,6 +905,41 @@ _run ()
 		fi
 
 		# Return the command's exit code
+		return $ret
+}
+
+# run a command in a qube
+# $1 - Qube name
+# $@ - Command string to run
+_qrun () {
+		local vm="$1"
+		shift
+		local command="$*"
+
+		# Prepare the full command
+		local xterm_command='zsh -c "'"$command"'"'
+		local full_command=(qvm-run --pass-io "$vm" xterm -e "$xterm_command")
+
+		_verbose "Running command: ${full_command[*]}"
+
+		# Split io like in _run, and store the return value
+		# Note that we don't double quote the $full_command variable.
+		{
+				IFS=$'\n' read -r -d '' COMMAND_STDERR;
+				IFS=$'\n' read -r -d '' COMMAND_STDOUT;
+				(IFS=$'\n' read -r -d '' _ERRNO_; exit "${_ERRNO_}");
+		} < <((printf '\0%s\0%d\0' "$(${full_command[@]})" "${?}" 1>&2) 2>&1)
+
+		local ret="$?"
+
+		# Output the command's result depending on the verbose mode
+		# and if the command ran successfully like in _run also.
+		if [[ $ret -eq 0 ]] && is_verbose_set ; then
+				if [[ -n "$COMMAND_STDOUT" ]]; then
+						_verbose "$COMMAND_STDOUT"
+				fi
+		fi
+
 		return $ret
 }
 
@@ -1082,20 +1183,39 @@ risk_backup_detach_command() {
 # :command.function
 risk_open_identity_command() {
 	# src/open_identity_command.sh
-	echo "# this file is located in 'src/open_identity_command.sh'"
-	echo "# code for 'risk open identity' goes here"
-	echo "# you can edit it freely and regenerate (it will not be overwritten)"
-	inspect_args
+
+	local identity="${args[identity]}"
+
+	# 1 - Check that hush is mounted on vault
+	# TODO: change this, since it only checks for the default vault VM
+	check_is_device_attached "${SDCARD_BLOCK}" "${VAULT_VM}"
+
+	# 2 - Check that no identity is currently opened
+	# The second line should be empty, as opposed to being an encrypted coffin name
+	check_no_active_identity "$identity"
+
+	# 3 - Send commands to vault
+	_message "Opening identity $identity"
+
+	_qrun "$VAULT_VM" risks open identity "$identity"
+	_catch "Failed to open identity"
+
+	_message "Identity $identity is active"
 
 }
 
 # :command.function
-risk_slam_identity_command() {
-	# src/slam_identity_command.sh
-	echo "# this file is located in 'src/slam_identity_command.sh'"
-	echo "# code for 'risk slam identity' goes here"
-	echo "# you can edit it freely and regenerate (it will not be overwritten)"
-	inspect_args
+risk_slam_command() {
+	# src/slam_command.sh
+
+	# Get the active identity
+	local active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+
+	# Find all VMs linked to that identity;
+	# 1 - Web browsers/ appVMs
+	# 2 - NetVMs ; VPNs and gateway
+
+	# Slam the identity
 
 }
 
@@ -1112,10 +1232,56 @@ risk_close_identity_command() {
 # :command.function
 risk_init_command() {
 	# src/init_command.sh
-	echo "# this file is located in 'src/init_command.sh'"
-	echo "# code for 'risk init' goes here"
-	echo "# you can edit it freely and regenerate (it will not be overwritten)"
-	inspect_args
+
+	local identity="${args[identity]}"
+
+	# First open the identity, because we might need its credentials and stuff
+	# The identity argument is here, so this command has the arguments it needs
+	risk_open_identity_command
+	_catch "Failed to open identity $identity"
+
+	# Variable checks: a few variables should be found in the user configuration,
+	# mostly for knowing which templates to use.
+
+	# Else we're good to go
+	_message "Initializing infrastructure for identity $identity"
+
+	# If the user wants to use a different name for the VMs
+	local name
+	if [[ -n "${args[--name]}" ]]; then
+			name="${args[--name]}"
+	else
+			name="$identity"
+	fi
+	_message "Using name $name as VM base name"
+
+	# Network VMs ==============================================================
+	_message "Creating network VMs"
+
+	# 1 - Tor gateway
+	local gw="${name}-gw"
+
+	# 2 - VPNs
+	local vpn="${name}-vpn"
+
+	# Message VMs ==============================================================
+	_message "Creating messaging VMs"
+
+	local msg="${name}-msg"
+
+	# Browser VMs ==============================================================
+	_message "Creating web VMs"
+
+	# Browser VMs are disposable, but we make a template for this identity,
+	# since we might  either modify stuff in there, and we need them at least
+
+	# to have a different network route.
+	local web="${name}-web"
+
+	# Split-browser has its own dispVMs and bookmarks
+	local split_web="${name}-split-web"
+
+	_success "Successfully initialized infrastructure for identity $identity"
 
 }
 
@@ -1346,6 +1512,13 @@ risk_hush_attach_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1511,6 +1684,13 @@ risk_backup_attach_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1669,6 +1849,13 @@ risk_open_identity_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1694,7 +1881,7 @@ risk_open_identity_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[identity]+x} ]]; then
-		printf "missing required argument: IDENTITY\nusage: risk open identity IDENTITY\n"
+		printf "missing required argument: IDENTITY\nusage: risk open identity IDENTITY [options]\n"
 		exit 1
 	fi
 
@@ -1713,74 +1900,19 @@ risk_slam_parse_requirements() {
 	esac
 
 	# :command.command_filter
-	action=${1:-}
-
-	case $action in
-	-* )
-		;;
-
-	identity )
-		action="identity"
-		shift
-		risk_slam_identity_parse_requirements "$@"
-		shift $#
-		;;
-
-	# :command.command_fallback
-	"" )
-		risk_slam_usage
-		exit 1
-		;;
-
-	* )
-		printf "invalid command: %s\n" "$action"
-		exit 1
-		;;
-
-	esac
+	action="slam"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
 
-		-?* )
-			printf "invalid option: %s\n" "$key"
-			exit 1
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
 			;;
-
-		* )
-			# :command.parse_requirements_case
-			# :command.parse_requirements_case_simple
-			printf "invalid argument: %s\n" "$key"
-			exit 1
-
-			;;
-
-		esac
-	done
-
-}
-
-# :command.parse_requirements
-risk_slam_identity_parse_requirements() {
-	# :command.fixed_flags_filter
-	case "${1:-}" in
-	--help | -h )
-		long_usage=yes
-		risk_slam_identity_usage
-		exit
-		;;
-
-	esac
-
-	# :command.command_filter
-	action="slam identity"
-
-	# :command.parse_requirements_while
-	while [[ $# -gt 0 ]]; do
-		key="$1"
-		case "$key" in
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1881,6 +2013,13 @@ risk_close_identity_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1919,6 +2058,37 @@ risk_init_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		# :flag.case
+		--name | -N )
+
+			# :flag.case_no_arg
+			args[--name]=1
+			shift
+			;;
+
+		# :flag.case
+		--no-gw | -G )
+
+			# :flag.case_no_arg
+			args[--no-gw]=1
+			shift
+			;;
+
+		# :flag.case
+		--no-vpn | -V )
+
+			# :flag.case_no_arg
+			args[--no-vpn]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -1944,7 +2114,7 @@ risk_init_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[identity]+x} ]]; then
-		printf "missing required argument: IDENTITY\nusage: risk init IDENTITY\n"
+		printf "missing required argument: IDENTITY\nusage: risk init IDENTITY [options]\n"
 		exit 1
 	fi
 
@@ -1969,6 +2139,13 @@ risk_spin_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -2013,6 +2190,13 @@ risk_fold_parse_requirements() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -2054,6 +2238,15 @@ initialize() {
 	# Remove verbose errors when * don't yield any match in ZSH
 	setopt +o nomatch
 
+	# Default templates and VMs to use
+
+	typeset -rg WHONIX_GW_TEMPLATE="whonix-gw-16"
+	typeset -rg WHONIX_WS_TEMPLATE="whonix-ws-16"
+
+	# Working state and configurations
+	typeset -rg RISK_DIR="${HOME}/.risk"                       # Directory where risk stores its state
+	typeset -rg RISK_IDENTITIES_DIR="$RISK_DIR/identities"     # Idendities store their settings here
+
 	#----------------------------#
 
 	# Don't run as root
@@ -2064,15 +2257,11 @@ initialize() {
 
 	# Use colors unless told not to
 	{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
-	# Some options are only available during insecure mode
-	{ ! option_is_set --unsafe } && {
-			for opt in --tomb-pwd --tomb-old-pwd; do
-					{ option_is_set $opt } && {
-							exitv=127 _failure "You specified option ::1 option::, \
-							which is DANGEROUS and should only be used for testing\n \
-							If you really want so, add --unsafe" $opt }
-			done
-	}
+
+	#----------------------------#
+
+	[[ -e $RISK_DIR ]] || mkdir -p $RISK_DIR && _message "Creating RISK directory in $RISK_DIR"
+	[[ -e $RISK_IDENTITIES_DIR ]] || mkdir -p $RISK_IDENTITIES_DIR
 
 }
 
@@ -2154,14 +2343,6 @@ run() {
 			risk_slam_usage
 		else
 			risk_slam_command
-		fi
-
-	elif [[ $action == "slam identity" ]]; then
-		if [[ ${args[--help]:-} ]]; then
-			long_usage=yes
-			risk_slam_identity_usage
-		else
-			risk_slam_identity_command
 		fi
 
 	elif [[ $action == "close" ]]; then

@@ -21,39 +21,18 @@ _risk ()
             backup)
                 _backup
                 ;;
-            list)
-                _store_types
-                ;;
-            gpgpass)
-                _gpgpass
-                ;;
-            new)
-                _new 
-                ;;
-            open)
-                _open
-                ;;
-            close)
-                _close
-                ;;
-            load)
-                _load
-                ;;
-            save)
-                _save
-                ;;
-            kv)
-                _kv
-                ;;
         esac
     else
         local -a subcmds
         subcmds=(
-            'hush:Format or manage the hush partition mount points and read/write permissions'
-            'backup:Create, manage, restore or use backup devices and partitions'
-            'open:Open an identity or some of its associated data stores'
-            'close:Close an identity or some of its associated data stores'
-            'slam:Close all active identities and unmount hush/backup partitions'
+            'hush:Attach or detach the hush partition to vault'
+            'backup:Attach or detach a backup partition to vault'
+            'open:Open identity and/or associated stores in the vault only'
+            'close:Close identity and/or associated stores in the vault only'
+            'slam:Close identity and/or associated stores in the vault only, and detach hush/backup'
+            'init:Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)'
+            'spin:Start entire identity infrastructure (or part of it) and move data they need'
+            'fold:Stop an entire identity infrastructure (or part of it) and move back data to vault'
         )
 
         _describe -t commands 'commands' subcmds
