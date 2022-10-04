@@ -10,10 +10,12 @@ environment_variables:
   help: "Qubes path to backup device, such as 'sys-usb:sdb1'" 
 
 # Infrastructure
-- name: DEFAULT_WHONIX_WS
+- name: RISK_WHONIX_WS
   help: "Default Whonix Workstation AppVM to use for identity client machine"
-- name: DEFAULT_VPN_VM
+- name: RISK_VPN_VM
   help: "Default AppVM to use for cloning new VPN qubes"
+- name: RISK_SPLIT_BROWSER
+  help: "Default template to use for split-browser backend"
 - name: VAULT_VM
   help: "Default vault VM"
   default: vault

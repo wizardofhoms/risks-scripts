@@ -5,3 +5,16 @@ args:
   - name: identity
     help: "Name of the identity for which to initialize infrastructure"
     required: true
+flags:
+  - long: --verbose
+    short: -v
+    help: "Show verbose logging"
+  - long: --name
+    short: -N
+    help: "Use a different name for naming identity VMs"
+  - long: --no-gw
+    short: -G
+    help: "Don't create a Whonix gateway"
+  - long: --no-vpn
+    short: -V
+    help: "Don't create a VPN gateway"

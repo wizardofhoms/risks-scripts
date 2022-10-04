@@ -9,3 +9,7 @@ commands:
       - name: identity
         help: "Name of the identity to open"
         required: true
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"

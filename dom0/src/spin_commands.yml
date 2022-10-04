@@ -5,3 +5,7 @@ args:
   - name: identity
     help: "Identity for which to spin infrastructure (optional if one is active)"
     required: false 
+flags:
+  - long: --verbose
+    short: -v
+    help: "Show verbose logging"

@@ -14,5 +14,10 @@ commands:
         help: "(optional) qube to use as vault VM (defaults to VAULT_VM)"
         required: false
         validate: valid_vaultvm
+    flags:
+      - long: --verbose
+        short: -v
+        help: "Show verbose logging"
+
   - name: detach
     help: "Detach the hush device from its current qube, making sure it's not in a read-write state"
