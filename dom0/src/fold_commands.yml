@@ -1,0 +1,7 @@
+
+name: fold 
+help: "Stop an entire identity infrastructure (or part of it) and move back data to vault"
+args:
+  - name: identity
+    help: "Identity for which to fold infrastructure (optional if one is active)"
+    required: false 

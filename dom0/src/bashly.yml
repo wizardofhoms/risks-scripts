@@ -1,0 +1,33 @@
+name: risk 
+help: RISKS Dom0 management application
+version: 0.1.0
+
+environment_variables:
+# Usage
+- name: SDCARD_BLOCK 
+  help: "Qubes path to hush device, such as 'dom0:mmcblk01', or 'sys-usb:sda2', etc" 
+- name: BACKUP_BLOCK 
+  help: "Qubes path to backup device, such as 'sys-usb:sdb1'" 
+
+# Infrastructure
+- name: DEFAULT_WHONIX_WS
+  help: "Default Whonix Workstation AppVM to use for identity client machine"
+- name: DEFAULT_VPN_VM
+  help: "Default AppVM to use for cloning new VPN qubes"
+- name: VAULT_VM
+  help: "Default vault VM"
+  default: vault
+
+commands:
+  # Drives/partitions
+- import: src/hush_commands.yml
+- import: src/backup_commands.yml
+  # Identities
+- import: src/open_commands.yml
+- import: src/slam_commands.yml
+- import: src/close_commands.yml
+  # Infrastructure
+- import: src/init_commands.yml
+- import: src/spin_commands.yml
+- import: src/fold_commands.yml
+

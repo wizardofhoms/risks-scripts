@@ -1,0 +1,2168 @@
+#!/usr/bin/env zsh
+
+# :command.master_script
+
+# :command.version_command
+version_command() {
+	echo "$version"
+}
+
+# :command.usage
+risk_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk - RISKS Dom0 management application\n"
+		echo
+
+	else
+		printf "risk - RISKS Dom0 management application\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk [command]\n"
+	printf "  risk [command] --help | -h\n"
+	printf "  risk --version | -v\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  hush     Manage the hush partition attach/detach from qubes"
+	echo "  backup   Manage backup devices attach/detach from qubes"
+	echo "  open     Open identities and/or associated stores in the vault only"
+	echo "  slam     Close identities and/or associated stores in the vault only, and detach hush/backup"
+	echo "  close    Close identities and/or associated stores in the vault only"
+	echo "  init     Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
+	echo "  spin     Start entire identity infrastructure (or part of it) and move data they need"
+	echo "  fold     Stop an entire identity infrastructure (or part of it) and move back data to vault"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+		echo "  --version, -v"
+		printf "    Show version number\n"
+		echo
+
+		# :command.usage_environment_variables
+		printf "Environment Variables:\n"
+
+		# :environment_variable.usage
+		echo "  SDCARD_BLOCK"
+		printf "    Qubes path to hush device, such as 'dom0:mmcblk01', or 'sys-usb:sda2', etc\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  BACKUP_BLOCK"
+		printf "    Qubes path to backup device, such as 'sys-usb:sdb1'\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  DEFAULT_WHONIX_WS"
+		printf "    Default Whonix Workstation AppVM to use for identity client machine\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  DEFAULT_VPN_VM"
+		printf "    Default AppVM to use for cloning new VPN qubes\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  VAULT_VM"
+		printf "    Default vault VM\n"
+		printf "    Default: vault\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_hush_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk hush - Manage the hush partition attach/detach from qubes\n"
+		echo
+
+	else
+		printf "risk hush - Manage the hush partition attach/detach from qubes\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk hush [command]\n"
+	printf "  risk hush [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  attach   Attach the hush device to a qube. Accepts optional args to override default hush/vault"
+	echo "  detach   Detach the hush device from its current qube, making sure it's not in a read-write state"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_hush_attach_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk hush attach - Attach the hush device to a qube. Accepts optional args to override default hush/vault\n"
+		echo
+
+	else
+		printf "risk hush attach - Attach the hush device to a qube. Accepts optional args to override default hush/vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk hush attach [DEVICE] [VAULT_VM]\n"
+	printf "  risk hush attach --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  DEVICE"
+		printf "    (optional) qubes path to device to use as hush (defaults to SDCARD_BLOCK)\n"
+		echo
+
+		# :argument.usage
+		echo "  VAULT_VM"
+		printf "    (optional) qube to use as vault VM (defaults to VAULT_VM)\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_hush_detach_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk hush detach - Detach the hush device from its current qube, making sure it's not in a read-write state\n"
+		echo
+
+	else
+		printf "risk hush detach - Detach the hush device from its current qube, making sure it's not in a read-write state\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk hush detach\n"
+	printf "  risk hush detach --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_backup_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk backup - Manage backup devices attach/detach from qubes\n"
+		echo
+
+	else
+		printf "risk backup - Manage backup devices attach/detach from qubes\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk backup [command]\n"
+	printf "  risk backup [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  attach   Attach a backup device to a qube. Accepts optional args to override default backup/vault"
+	echo "  detach   Detach the backup device from its current qube, making sure it's not in a read-write state"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_backup_attach_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk backup attach - Attach a backup device to a qube. Accepts optional args to override default backup/vault\n"
+		echo
+
+	else
+		printf "risk backup attach - Attach a backup device to a qube. Accepts optional args to override default backup/vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk backup attach [DEVICE] [VAULT_VM]\n"
+	printf "  risk backup attach --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  DEVICE"
+		printf "    (optional) qubes path to device to use as backup (defaults to BACKUP_BLOCK)\n"
+		echo
+
+		# :argument.usage
+		echo "  VAULT_VM"
+		printf "    (optional) qube to use as vault VM (defaults to VAULT_VM)\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_backup_detach_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk backup detach - Detach the backup device from its current qube, making sure it's not in a read-write state\n"
+		echo
+
+	else
+		printf "risk backup detach - Detach the backup device from its current qube, making sure it's not in a read-write state\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk backup detach\n"
+	printf "  risk backup detach --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_open_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk open - Open identities and/or associated stores in the vault only\n"
+		echo
+
+	else
+		printf "risk open - Open identities and/or associated stores in the vault only\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk open [command]\n"
+	printf "  risk open [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  identity   Open an identity and its associated builtin stores in the vault"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_open_identity_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk open identity - Open an identity and its associated builtin stores in the vault\n"
+		echo
+
+	else
+		printf "risk open identity - Open an identity and its associated builtin stores in the vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk open identity IDENTITY\n"
+	printf "  risk open identity --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  IDENTITY"
+		printf "    Name of the identity to open\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_slam_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk slam - Close identities and/or associated stores in the vault only, and detach hush/backup\n"
+		echo
+
+	else
+		printf "risk slam - Close identities and/or associated stores in the vault only, and detach hush/backup\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk slam [command]\n"
+	printf "  risk slam [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  identity   Close the active identity and its associated builtin stores in the vault"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_slam_identity_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk slam identity - Close the active identity and its associated builtin stores in the vault\n"
+		echo
+
+	else
+		printf "risk slam identity - Close the active identity and its associated builtin stores in the vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk slam identity\n"
+	printf "  risk slam identity --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_close_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk close - Close identities and/or associated stores in the vault only\n"
+		echo
+
+	else
+		printf "risk close - Close identities and/or associated stores in the vault only\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk close [command]\n"
+	printf "  risk close [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  identity   Close the active identity and its associated builtin stores in the vault"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_close_identity_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk close identity - Close the active identity and its associated builtin stores in the vault\n"
+		echo
+
+	else
+		printf "risk close identity - Close the active identity and its associated builtin stores in the vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk close identity\n"
+	printf "  risk close identity --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_init_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk init - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
+		echo
+
+	else
+		printf "risk init - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk init IDENTITY\n"
+	printf "  risk init --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  IDENTITY"
+		printf "    Name of the identity for which to initialize infrastructure\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_spin_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk spin - Start entire identity infrastructure (or part of it) and move data they need\n"
+		echo
+
+	else
+		printf "risk spin - Start entire identity infrastructure (or part of it) and move data they need\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk spin [IDENTITY]\n"
+	printf "  risk spin --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  IDENTITY"
+		printf "    Identity for which to spin infrastructure (optional if one is active)\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_fold_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk fold - Stop an entire identity infrastructure (or part of it) and move back data to vault\n"
+		echo
+
+	else
+		printf "risk fold - Stop an entire identity infrastructure (or part of it) and move back data to vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk fold [IDENTITY]\n"
+	printf "  risk fold --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  IDENTITY"
+		printf "    Identity for which to fold infrastructure (optional if one is active)\n"
+		echo
+
+	fi
+}
+
+# :command.normalize_input
+normalize_input() {
+	local arg flags
+
+	while [[ $# -gt 0 ]]; do
+		arg="$1"
+		if [[ $arg =~ ^(--[a-zA-Z0-9_\-]+)=(.+)$ ]]; then
+			input+=("${BASH_REMATCH[1]}")
+			input+=("${BASH_REMATCH[2]}")
+		elif [[ $arg =~ ^(-[a-zA-Z0-9])=(.+)$ ]]; then
+			input+=("${BASH_REMATCH[1]}")
+			input+=("${BASH_REMATCH[2]}")
+		elif [[ $arg =~ ^-([a-zA-Z0-9][a-zA-Z0-9]+)$ ]]; then
+			flags="${BASH_REMATCH[1]}"
+			for (( i=0 ; i < ${#flags} ; i++ )); do
+				input+=("-${flags:i:1}")
+			done
+		else
+			input+=("$arg")
+		fi
+
+		shift
+	done
+}
+# :command.inspect_args
+inspect_args() {
+	readarray -t sorted_keys < <(printf '%s\n' "${!args[@]}" | sort)
+	if (( ${#args[@]} )); then
+		echo args:
+		for k in "${sorted_keys[@]}"; do echo "- \${args[$k]} = ${args[$k]}"; done
+	else
+		echo args: none
+	fi
+
+	if (( ${#other_args[@]} )); then
+		echo
+		echo other_args:
+		echo "- \${other_args[*]} = ${other_args[*]}"
+		for i in "${!other_args[@]}"; do
+			echo "- \${other_args[$i]} = ${other_args[$i]}"
+		done
+	fi
+}
+
+# :command.user_lib
+# src/lib/log.sh
+
+
+# Section is set either by functions or simple calls,
+# so that logging can inform on the component working.
+section='risk'
+
+# When multiple sections are used within a single risks
+# operation, we padd them, for clearer/better aesthetics.
+section_padding=0
+
+# Simple way of setting the section and to update the padding
+_in_section ()
+{
+		section="$1"
+		if [[ -n "${2}" ]]; then
+				section_padding="$2"
+		fi
+}
+
+
+function is_verbose_set () {
+		if [[ "${args[--verbose]}" -eq 1 ]]; then
+				return 0
+		else
+				return 1
+		fi
+}
+
+# Messaging function with pretty coloring
+function _msg()
+
+{
+		# Check if we have been provided a section name,
+
+		# and if not, that the section is set to a default.
+		if [[ ${#@} -lt 3 ]]; then
+				local progname="$section"
+				if [[ -z "$progname" ]]; then
+						progname='risks'
+				fi
+				local msg="$2"
+		else
+				local progname="$2"
+				local msg="$3"
+		fi
+
+		# Padd the program/section name
+		progname="$(printf %"${section_padding}"s "${progname}")"
+
+		# Apply any translation for non-english users
+	# local i
+	# command -v gettext 1>/dev/null 2>/dev/null && msg="$(gettext -s "$3")"
+	# for i in {3..${#}}; do
+	# 	msg=${(S)msg//::$(($i - 2))*::/$*[$i]}
+	# done
+
+	local command="print -P"
+	local pchars=""
+	local pcolor="normal"
+	local fd=2
+	local -i returncode
+
+	case "$1" in
+		inline)
+			command+=" -n"; pchars=" > "; pcolor="yellow"
+			;;
+		message)
+			pchars=" . "; pcolor="white"
+			;;
+		verbose)
+			pchars="[D]"; pcolor="blue"
+			;;
+		success)
+			pchars="(*)"; pcolor="green"
+			;;
+		warning)
+			pchars="[W]"; pcolor="yellow"
+			;;
+		failure)
+			pchars="[E]"; pcolor="red"
+			returncode=1
+			;;
+		print)
+			progname=""
+			fd=1
+			;;
+		*)
+			pchars="[F]"; pcolor="red"
+			msg="Developer oops!  Usage: _msg MESSAGE_TYPE \"MESSAGE_CONTENT\""
+			returncode=127
+			;;
+	esac
+
+	[[ -n $_MSG_FD_OVERRIDE ]] && fd=$_MSG_FD_OVERRIDE
+
+		# If there is a log-file specified with flag --log-file,
+		# output the message to it, instead of the current file descriptor
+		logfile="${args[--log-file]}"
+		if [[ -n "${logfile}" ]]; then
+				${=command} "${progname}" "${pchars}" "${msg}" >> "$logfile"
+				return $returncode
+		fi
+
+		# Else, print to stdout, with colors
+	if [[ -t $fd ]]; then
+			 [[ -n "$progname" ]] && progname="$fg[magenta]$progname$reset_color"
+			 [[ -n "$pchars" ]] && pchars="$fg_bold[$pcolor]$pchars$reset_color"
+			 msg="$fg[$pcolor]$msg$reset_color"
+	fi
+
+		${=command} "${progname}" "${pchars}" "${msg}" >&"$fd"
+	return $returncode
+}
+
+function _message() {
+	local notice="message"
+	[[ "$1" = "-n" ]] && shift && notice="inline"
+		option_is_set -q || _msg "$notice" "$@"
+	return 0
+}
+
+function _verbose() {
+		is_verbose_set && _msg verbose "$@"
+	return 0
+}
+
+function _success() {
+		option_is_set -q || _msg success "$@"
+	return 0
+}
+
+function _warning() {
+		option_is_set -q || _msg warning "$@"
+	return 1
+}
+
+# failure first prints the message we have passed following the catch
+# of an error exit code, and then looks at the contents of erroring
+# command's stderr buffer, which is printed just below our message.
+# We then exit the program.
+function _failure()
+
+{
+	typeset -i exitcode=${exitv:-1}
+
+		_msg failure "$@"
+		if [[ -n "$COMMAND_STDERR" ]]; then
+				_msg inline "$COMMAND_STDERR"
+		fi
+
+	# Be sure we forget the secrets we were told
+		exit "$exitcode"
+}
+
+# function _failure() {
+# 	typeset -i exitcode=${exitv:-1}
+#     option_is_set -q || _msg failure "$@"
+# 	# be sure we forget the secrets we were told
+#     exit "$exitcode"
+# }
+
+function _print() {
+		option_is_set -q || _msg print "$@"
+	return 0
+}
+
+# src/lib/run.sh
+
+COMMAND_STDOUT=''           # Stores a command's stdout output.
+COMMAND_STDERR=''           # Stores a command's stderr output.
+
+# do a command, splitting and storing stdout/stderr output and printing
+# the former to screen only if the command is ran with verbose flag.
+# Returns the command's exit code, so we can catch any errors and inform.
+_run ()
+{
+		# The STDOUT/STDERR variables are populated, which
+		# makes their content available to any subsequent call
+		# to _failure, which needs STDERR output
+		{
+				IFS=$'\n' read -r -d '' COMMAND_STDERR;
+				IFS=$'\n' read -r -d '' COMMAND_STDOUT;
+				(IFS=$'\n' read -r -d '' _ERRNO_; exit "${_ERRNO_}");
+		} < <((printf '\0%s\0%d\0' "$("$@")" "${?}" 1>&2) 2>&1)
+
+		local ret="$?"
+
+		# Output the command's result depending on the verbose mode
+		# and if the command ran successfully. We check that either
+		# stdout or stderr are non-empty: sometimes commands might
+		# output to stderr, like wipe.
+		if [[ $ret -eq 0 ]] && is_verbose_set ; then
+				if [[ -n "$COMMAND_STDOUT" ]]; then
+						_verbose "$COMMAND_STDOUT"
+				fi
+		fi
+
+		# Return the command's exit code
+		return $ret
+}
+
+# Checks the return code of a command, and if not successful,
+# fails with the associated error message. Usage:
+# catch $ret "hush" "Failed to execute this command"
+function _catch ()
+{
+		local ret="$?"
+
+		if [[ ! $ret -eq 0 ]]; then
+				_failure "$@"
+		fi
+}
+
+# src/lib/utils.sh
+
+# Return 0 if is set, 1 otherwise
+option_is_set() {
+	local -i r	 # the return code (0 = set, 1 = unset)
+
+	[[ -n ${(k)OPTS[$1]} ]];
+	r=$?
+
+	[[ $2 == "out" ]] && {
+		[[ $r == 0 ]] && { print 'set' } || { print 'unset' }
+	}
+
+	return $r;
+}
+
+# src/lib/validations/validate_devices.sh
+
+validate_device () {
+		local block="$1"
+
+		# And check not already attached to another qube
+		ovm=$(qvm-block list | grep "${block}" | awk {'print $4'} | cut -d" " -f1)
+		if [[ ${#ovm} -gt 0 ]]; then
+
+				# if [ "${ovm}" == "${vm}" ]; then
+				#     echo "Block ${SDCARD_BLOCK} is already attached to ${vm}"
+				#     exit 0
+				# fi
+
+				echo -e "Block ${SDCARD_BLOCK} is currently attached to ${ovm}."
+				echo "Please umount it properly from there and rerun this program."
+				return
+
+				# slam tombs open in the vm
+				#qvm-run -u user ${ovm} '/usr/local/bin/tomb slam all'
+
+				# umount sdcard from the vm
+				#qvm-run -u user ${ovm} '/usr/local/bin/risks umount sdcard'
+
+				# detach the sdcard
+				#qvm-block detach ${ovm} ${block}
+						#if [ $? != 0 ]; then
+				#	echo "Block ${block} can not be detached from ${ovm}. Aborted."
+				#	exit
+				#fi
+
+		fi
+}
+
+# src/lib/validations/validate_dir_exists.sh
+validate_dir_exists() {
+	[[ -d "$1" ]] || echo "must be an existing directory"
+}
+
+# src/lib/validations/validate_file_exists.sh
+validate_file_exists() {
+	[[ -f "$1" ]] || echo "must be an existing file"
+}
+
+# src/lib/validations/validate_integer.sh
+validate_integer() {
+	[[ "$1" =~ ^[0-9]+$ ]] || echo "must be an integer"
+}
+
+# src/lib/validations/validate_not_empty.sh
+validate_not_empty() {
+	[[ -z "$1" ]] && echo "must not be empty"
+}
+
+# src/lib/validations/validate_vm.sh
+
+# does the vm exist?
+validate_vm_exits () {
+		vm=""
+		for item in $(qvm-ls | grep -v dom0 | awk '{print $1}' | grep "${1}")
+		do
+				if [ "${item}" == "${1}" ]; then
+						vm=${1}
+				fi
+		done
+		if [ ${#vm} -eq 0 ]; then
+				echo "No vm with name ${1} exists or can not be used. Aborted."
+				return
+		fi
+}
+
+# Checks that the vault VM obeys a few requirements, like no network
+validate_valid_vaultvm () {
+		vm=""
+		for item in $(qvm-ls | grep -v dom0 | awk '{print $1}' | grep "${1}")
+		do
+				if [ "${item}" == "${1}" ]; then
+						vm=${1}
+				fi
+		done
+		if [ ${#vm} -eq 0 ]; then
+				echo "No vm with name ${1} exists or can not be used. Aborted."
+				return
+		fi
+
+		netvm=$(qvm-prefs "${vm}" | grep "netvm" | awk '{print $3}')
+		if [ "${netvm}" != "None" ]; then
+				echo "${vm} might be connected to the internet. Aborted."
+				echo "Check: qvm-prefs ${vm} | grep netvm"
+		fi
+}
+
+# :command.command_functions
+
+# :command.function
+risk_hush_attach_command() {
+	# src/hush_attach_command.sh
+
+	local block vm
+
+	block="${args[device]-$SDCARD_BLOCK}"
+	vm="${args[vault_vm]-$VAULT_VM}"
+
+	# If the validations were not performed because
+
+	# we use a default environment variable for the
+	# vault VM, perform them again here.
+	local error_invalid_vm=$(validate_valid_vaultvm "$vm")
+	if [[ -n "$error_invalid_vm" ]]; then
+			_failure "$error_invalid_vm"
+	fi
+
+	# Do the same for the hush device
+	local error_device=$(validate_device "$block")
+	if [[ -n "$error_device" ]]; then
+			_failure "$error_device"
+	fi
+
+	# is the vm running?
+	qvm-ls | grep Running | awk {'print $1'} | grep "^"${vm}"$" &> /dev/null
+	if [ "$?" != "0" ]; then
+			_verbose "Starting VM $vm"
+			qvm-start "${vm}"
+		sleep 15
+	fi
+
+	# finally attach the sdcard encrypted partition to the qube
+	qvm-block attach "${vm}" "${block}"
+	if [[ $? -eq 0 ]]; then
+		_success "Block ${SDCARD_BLOCK} has been attached to ${vm}"
+	else
+		_success "Block ${SDCARD_BLOCK} can not be attached to ${vm}"
+	fi
+
+}
+
+# :command.function
+risk_hush_detach_command() {
+	# src/hush_detach_command.sh
+
+	local block="${args[device]-$SDCARD_BLOCK}"
+
+}
+
+# :command.function
+risk_backup_attach_command() {
+	# src/backup_attach_command.sh
+	echo "# this file is located in 'src/backup_attach_command.sh'"
+	echo "# code for 'risk backup attach' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_backup_detach_command() {
+	# src/backup_detach_command.sh
+	echo "# this file is located in 'src/backup_detach_command.sh'"
+	echo "# code for 'risk backup detach' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_open_identity_command() {
+	# src/open_identity_command.sh
+	echo "# this file is located in 'src/open_identity_command.sh'"
+	echo "# code for 'risk open identity' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_slam_identity_command() {
+	# src/slam_identity_command.sh
+	echo "# this file is located in 'src/slam_identity_command.sh'"
+	echo "# code for 'risk slam identity' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_close_identity_command() {
+	# src/close_identity_command.sh
+	echo "# this file is located in 'src/close_identity_command.sh'"
+	echo "# code for 'risk close identity' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_init_command() {
+	# src/init_command.sh
+	echo "# this file is located in 'src/init_command.sh'"
+	echo "# code for 'risk init' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_spin_command() {
+	# src/spin_command.sh
+	echo "# this file is located in 'src/spin_command.sh'"
+	echo "# code for 'risk spin' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_fold_command() {
+	# src/fold_command.sh
+	echo "# this file is located in 'src/fold_command.sh'"
+	echo "# code for 'risk fold' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.parse_requirements
+parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--version | -v )
+		version_command
+		exit
+		;;
+
+	--help | -h )
+		long_usage=yes
+		risk_usage
+		exit
+		;;
+
+	esac
+
+	# :command.environment_variables_filter
+	export VAULT_VM="${VAULT_VM:-vault}"
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	hush )
+		action="hush"
+		shift
+		risk_hush_parse_requirements "$@"
+		shift $#
+		;;
+
+	backup )
+		action="backup"
+		shift
+		risk_backup_parse_requirements "$@"
+		shift $#
+		;;
+
+	open )
+		action="open"
+		shift
+		risk_open_parse_requirements "$@"
+		shift $#
+		;;
+
+	slam )
+		action="slam"
+		shift
+		risk_slam_parse_requirements "$@"
+		shift $#
+		;;
+
+	close )
+		action="close"
+		shift
+		risk_close_parse_requirements "$@"
+		shift $#
+		;;
+
+	init )
+		action="init"
+		shift
+		risk_init_parse_requirements "$@"
+		shift $#
+		;;
+
+	spin )
+		action="spin"
+		shift
+		risk_spin_parse_requirements "$@"
+		shift $#
+		;;
+
+	fold )
+		action="fold"
+		shift
+		risk_fold_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_hush_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_hush_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	attach )
+		action="attach"
+		shift
+		risk_hush_attach_parse_requirements "$@"
+		shift $#
+		;;
+
+	detach )
+		action="detach"
+		shift
+		risk_hush_detach_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_hush_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_hush_attach_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_hush_attach_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="hush attach"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[device]+x} ]]; then
+				# :argument.validations
+				if [[ -n $(validate_device "$1") ]]; then
+					printf "validation error in %s:\n%s\n" "DEVICE" "$(validate_device "$1")"
+					exit 1
+				fi
+
+				args[device]=$1
+				shift
+			elif [[ -z ${args[vault_vm]+x} ]]; then
+				# :argument.validations
+				if [[ -n $(validate_valid_vaultvm "$1") ]]; then
+					printf "validation error in %s:\n%s\n" "VAULT_VM" "$(validate_valid_vaultvm "$1")"
+					exit 1
+				fi
+
+				args[vault_vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_hush_detach_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_hush_detach_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="hush detach"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_backup_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_backup_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	attach )
+		action="attach"
+		shift
+		risk_backup_attach_parse_requirements "$@"
+		shift $#
+		;;
+
+	detach )
+		action="detach"
+		shift
+		risk_backup_detach_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_backup_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_backup_attach_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_backup_attach_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="backup attach"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[device]+x} ]]; then
+				# :argument.validations
+				if [[ -n $(validate_device "$1") ]]; then
+					printf "validation error in %s:\n%s\n" "DEVICE" "$(validate_device "$1")"
+					exit 1
+				fi
+
+				args[device]=$1
+				shift
+			elif [[ -z ${args[vault_vm]+x} ]]; then
+				# :argument.validations
+				if [[ -n $(validate_valid_vaultvm "$1") ]]; then
+					printf "validation error in %s:\n%s\n" "VAULT_VM" "$(validate_valid_vaultvm "$1")"
+					exit 1
+				fi
+
+				args[vault_vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_backup_detach_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_backup_detach_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="backup detach"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_open_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_open_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	identity )
+		action="identity"
+		shift
+		risk_open_identity_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_open_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_open_identity_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_open_identity_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="open identity"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[identity]+x} ]]; then
+
+				args[identity]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[identity]+x} ]]; then
+		printf "missing required argument: IDENTITY\nusage: risk open identity IDENTITY\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_slam_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_slam_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	identity )
+		action="identity"
+		shift
+		risk_slam_identity_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_slam_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_slam_identity_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_slam_identity_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="slam identity"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_close_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_close_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	identity )
+		action="identity"
+		shift
+		risk_close_identity_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_close_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_close_identity_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_close_identity_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="close identity"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_init_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_init_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="init"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[identity]+x} ]]; then
+
+				args[identity]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[identity]+x} ]]; then
+		printf "missing required argument: IDENTITY\nusage: risk init IDENTITY\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_spin_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_spin_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="spin"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[identity]+x} ]]; then
+
+				args[identity]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_fold_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_fold_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="fold"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[identity]+x} ]]; then
+
+				args[identity]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.initialize
+initialize() {
+	version="0.1.0"
+	long_usage=''
+	set -e
+
+	# src/initialize.sh
+
+	# Connected terminal
+	typeset -H _TTY
+	GPG_TTY=$(tty)  # Needed for GPG operations
+	export GPG_TTY
+
+	# Remove verbose errors when * don't yield any match in ZSH
+	setopt +o nomatch
+
+	#----------------------------#
+
+	# Don't run as root
+	if [[ $EUID -eq 0 ]]; then
+		 echo "This script must be run as user"
+		 exit 2
+	fi
+
+	# Use colors unless told not to
+	{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
+	# Some options are only available during insecure mode
+	{ ! option_is_set --unsafe } && {
+			for opt in --tomb-pwd --tomb-old-pwd; do
+					{ option_is_set $opt } && {
+							exitv=127 _failure "You specified option ::1 option::, \
+							which is DANGEROUS and should only be used for testing\n \
+							If you really want so, add --unsafe" $opt }
+			done
+	}
+
+}
+
+# :command.run
+run() {
+	declare -A args=()
+	declare -a other_args=()
+	declare -a input=()
+	normalize_input "$@"
+	parse_requirements "${input[@]}"
+
+	if [[ $action == "hush" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_hush_usage
+		else
+			risk_hush_command
+		fi
+
+	elif [[ $action == "hush attach" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_hush_attach_usage
+		else
+			risk_hush_attach_command
+		fi
+
+	elif [[ $action == "hush detach" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_hush_detach_usage
+		else
+			risk_hush_detach_command
+		fi
+
+	elif [[ $action == "backup" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_backup_usage
+		else
+			risk_backup_command
+		fi
+
+	elif [[ $action == "backup attach" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_backup_attach_usage
+		else
+			risk_backup_attach_command
+		fi
+
+	elif [[ $action == "backup detach" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_backup_detach_usage
+		else
+			risk_backup_detach_command
+		fi
+
+	elif [[ $action == "open" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_open_usage
+		else
+			risk_open_command
+		fi
+
+	elif [[ $action == "open identity" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_open_identity_usage
+		else
+			risk_open_identity_command
+		fi
+
+	elif [[ $action == "slam" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_slam_usage
+		else
+			risk_slam_command
+		fi
+
+	elif [[ $action == "slam identity" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_slam_identity_usage
+		else
+			risk_slam_identity_command
+		fi
+
+	elif [[ $action == "close" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_close_usage
+		else
+			risk_close_command
+		fi
+
+	elif [[ $action == "close identity" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_close_identity_usage
+		else
+			risk_close_identity_command
+		fi
+
+	elif [[ $action == "init" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_init_usage
+		else
+			risk_init_command
+		fi
+
+	elif [[ $action == "spin" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_spin_usage
+		else
+			risk_spin_command
+		fi
+
+	elif [[ $action == "fold" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_fold_usage
+		else
+			risk_fold_command
+		fi
+
+	elif [[ $action == "root" ]]; then
+		root_command
+	fi
+}
+
+initialize
+run "$@"

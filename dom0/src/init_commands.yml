@@ -1,0 +1,7 @@
+
+name: init
+help: "Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
+args:
+  - name: identity
+    help: "Name of the identity for which to initialize infrastructure"
+    required: true

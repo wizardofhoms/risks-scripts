@@ -1,0 +1,7 @@
+
+name: close
+help: "Close identities and/or associated stores in the vault only"
+
+commands:
+  - name: identity
+    help: "Close the active identity and its associated builtin stores in the vault"

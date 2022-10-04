@@ -1,0 +1,18 @@
+
+name: hush 
+help: "Manage the hush partition attach/detach from qubes"
+
+commands:
+  - name: attach
+    help: "Attach the hush device to a qube. Accepts optional args to override default hush/vault"
+    args:
+      - name: device
+        help: "(optional) qubes path to device to use as hush (defaults to SDCARD_BLOCK)"
+        required: false
+        validate: device
+      - name: vault_vm 
+        help: "(optional) qube to use as vault VM (defaults to VAULT_VM)"
+        required: false
+        validate: valid_vaultvm
+  - name: detach
+    help: "Detach the hush device from its current qube, making sure it's not in a read-write state"
