@@ -32,5 +32,5 @@ fi
 #----------------------------#
 ## Configuration directories ##
 
-[[ -e $RISK_DIR ]] || mkdir -p $RISK_DIR && _message "Creating RISK directory in $RISK_DIR"
+[[ -e $RISK_DIR ]] || { mkdir -p $RISK_DIR && _message "Creating RISK directory in $RISK_DIR" }
 [[ -e $RISK_IDENTITIES_DIR ]] || mkdir -p $RISK_IDENTITIES_DIR

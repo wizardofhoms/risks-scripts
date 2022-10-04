@@ -21,6 +21,12 @@ _risk ()
             backup)
                 _backup
                 ;;
+            open)
+                _open
+                ;;
+            close)
+                _close
+                ;;
         esac
     else
         local -a subcmds
@@ -129,6 +135,66 @@ _backup ()
             esac
     esac
 }
+
+# Subcommands for open command
+_open_commands ()
+{
+    local -a subcmds 
+    subcmds=(
+        'identity:Open an identity and its associated builtin stores in the vault'
+    )
+
+    _describe -t commands 'open commands' subcmds && ret=0
+}
+
+# Completion dispatcher for open command
+_open ()
+{
+    local ret=1
+    local line state
+
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "${_flags_base[@]}" \
+        "1: :_open_commands" \
+        "*::arg:->args" \
+        && ret=0
+
+    # Arguments completion
+    case $state in
+        args)
+            case $line[1] in
+            identity)
+                _message "identity name"
+            ;;
+            esac
+    esac
+}
+
+# Subcommands for close command
+_close_commands ()
+{
+    local -a subcmds 
+    subcmds=(
+        'identity:Close the active identity and its associated builtin stores in the vault'
+    )
+
+    _describe -t commands 'close commands' subcmds && ret=0
+}
+
+# Completion dispatcher for close command
+_close ()
+{
+    local ret=1
+    local line state
+
+    # Register subcommands and argument patterns
+    _arguments -C \
+        "${_flags_base[@]}" \
+        "1: :_close_commands" \
+        && ret=0
+}
+
 
 # Flags =======================================================================================
 
