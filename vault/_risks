@@ -1,4 +1,4 @@
-#compdef risks 
+#compdef _risks risks 
 #autoload
 
 # Entrypoint ================================================================================== 
@@ -350,8 +350,8 @@ _gpgpass ()
 
 # Flags that are present on all commands
 _flags_base=(
-    {-v,--verbose}'[Enable verbose logging]'
-    {-h,--help}'[Print help for the command]'
+    '(-v --verbose)'{-v,--verbose}'[Enable verbose logging]'
+    '(- : *)'{-h,--help}'[Print help for the command]'
     )
 
 
