@@ -26,14 +26,10 @@ risk_usage() {
 	echo
 	# :command.usage_commands
 	printf "Commands:\n"
-	echo "  hush     Manage the hush partition attach/detach from qubes"
-	echo "  backup   Manage backup devices attach/detach from qubes"
-	echo "  open     Open identities and/or associated stores in the vault only"
-	echo "  slam     Close identity, infrastructure and detach hush/backup at once"
-	echo "  close    Close identities and/or associated stores in the vault only"
-	echo "  init     Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
-	echo "  spin     Start entire identity infrastructure (or part of it) and move data they need"
-	echo "  fold     Stop an entire identity infrastructure (or part of it) and move back data to vault"
+	echo "  hush       Manage the hush partition attach/detach from qubes"
+	echo "  backup     Manage backup devices attach/detach from qubes"
+	echo "  identity   Create, manage and use identities and/or use their machines"
+	echo "  vpn        Create, configure, manage and use VPN gateways for an identity."
 	echo
 
 	# :command.long_usage
@@ -62,6 +58,17 @@ risk_usage() {
 		echo
 
 		# :environment_variable.usage
+		echo "  RISK_VPN_TEMPLATE"
+		printf "    Default TemplateVM to use for VPN VMs\n"
+		printf "    Default: sys-vpn\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  RISK_SPLIT_BROWSER_TEMPLATE"
+		printf "    Default template to use for split-browser backend\n"
+		echo
+
+		# :environment_variable.usage
 		echo "  RISK_WHONIX_WS"
 		printf "    Default Whonix Workstation AppVM to use for identity client machine\n"
 		echo
@@ -73,7 +80,13 @@ risk_usage() {
 
 		# :environment_variable.usage
 		echo "  RISK_SPLIT_BROWSER"
-		printf "    Default template to use for split-browser backend\n"
+		printf "    Default AppVM to clone for split-browser backend\n"
+		echo
+
+		# :environment_variable.usage
+		echo "  RISK_DEFAULT_NETVM"
+		printf "    Default VM to use as a firewall VM, to which either Tor or VPN gateways are\n    bound\n"
+		printf "    Default: sys-firewall\n"
 		echo
 
 		# :environment_variable.usage
@@ -308,24 +321,29 @@ risk_backup_detach_usage() {
 }
 
 # :command.usage
-risk_open_usage() {
+risk_identity_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risk open - Open identities and/or associated stores in the vault only\n"
+		printf "risk identity - Create, manage and use identities and/or use their machines\n"
 		echo
 
 	else
-		printf "risk open - Open identities and/or associated stores in the vault only\n"
+		printf "risk identity - Create, manage and use identities and/or use their machines\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risk open [command]\n"
-	printf "  risk open [command] --help | -h\n"
+	printf "  risk identity [command]\n"
+	printf "  risk identity [command] --help | -h\n"
 	echo
 	# :command.usage_commands
 	printf "Commands:\n"
-	echo "  identity   Open an identity and its associated builtin stores in the vault"
+	echo "  create   Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
+	echo "  delete   Destroys an identity and all its associated machines and data"
+	echo "  open     Simply open the identity store in the vault"
+	echo "  close    Simply close the identity store in the vault"
+	echo "  start    Start the identity in the vault and all of its enabled VMs"
+	echo "  stop     Stops all machines belonging to an identity, and close its vault if active."
 	echo
 
 	# :command.long_usage
@@ -341,166 +359,20 @@ risk_open_usage() {
 }
 
 # :command.usage
-risk_open_identity_usage() {
+risk_identity_create_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risk open identity - Open an identity and its associated builtin stores in the vault\n"
+		printf "risk identity create - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
 		echo
 
 	else
-		printf "risk open identity - Open an identity and its associated builtin stores in the vault\n"
+		printf "risk identity create - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risk open identity IDENTITY [options]\n"
-	printf "  risk open identity --help | -h\n"
-	echo
-
-	# :command.long_usage
-	if [[ -n $long_usage ]]; then
-		printf "Options:\n"
-
-		# :command.usage_fixed_flags
-		echo "  --help, -h"
-		printf "    Show this help\n"
-		echo
-
-		# :command.usage_flags
-		# :flag.usage
-		echo "  --verbose, -v"
-		printf "    Show verbose logging\n"
-		echo
-
-		# :command.usage_args
-		printf "Arguments:\n"
-
-		# :argument.usage
-		echo "  IDENTITY"
-		printf "    Name of the identity to open\n"
-		echo
-
-	fi
-}
-
-# :command.usage
-risk_slam_usage() {
-	if [[ -n $long_usage ]]; then
-		printf "risk slam - Close identity, infrastructure and detach hush/backup at once\n"
-		echo
-
-	else
-		printf "risk slam - Close identity, infrastructure and detach hush/backup at once\n"
-		echo
-
-	fi
-
-	printf "Usage:\n"
-	printf "  risk slam [options]\n"
-	printf "  risk slam --help | -h\n"
-	echo
-
-	# :command.long_usage
-	if [[ -n $long_usage ]]; then
-		printf "Options:\n"
-
-		# :command.usage_fixed_flags
-		echo "  --help, -h"
-		printf "    Show this help\n"
-		echo
-
-		# :command.usage_flags
-		# :flag.usage
-		echo "  --verbose, -v"
-		printf "    Show verbose logging\n"
-		echo
-
-	fi
-}
-
-# :command.usage
-risk_close_usage() {
-	if [[ -n $long_usage ]]; then
-		printf "risk close - Close identities and/or associated stores in the vault only\n"
-		echo
-
-	else
-		printf "risk close - Close identities and/or associated stores in the vault only\n"
-		echo
-
-	fi
-
-	printf "Usage:\n"
-	printf "  risk close [command]\n"
-	printf "  risk close [command] --help | -h\n"
-	echo
-	# :command.usage_commands
-	printf "Commands:\n"
-	echo "  identity   Close the active identity and its associated builtin stores in the vault"
-	echo
-
-	# :command.long_usage
-	if [[ -n $long_usage ]]; then
-		printf "Options:\n"
-
-		# :command.usage_fixed_flags
-		echo "  --help, -h"
-		printf "    Show this help\n"
-		echo
-
-	fi
-}
-
-# :command.usage
-risk_close_identity_usage() {
-	if [[ -n $long_usage ]]; then
-		printf "risk close identity - Close the active identity and its associated builtin stores in the vault\n"
-		echo
-
-	else
-		printf "risk close identity - Close the active identity and its associated builtin stores in the vault\n"
-		echo
-
-	fi
-
-	printf "Usage:\n"
-	printf "  risk close identity [options]\n"
-	printf "  risk close identity --help | -h\n"
-	echo
-
-	# :command.long_usage
-	if [[ -n $long_usage ]]; then
-		printf "Options:\n"
-
-		# :command.usage_fixed_flags
-		echo "  --help, -h"
-		printf "    Show this help\n"
-		echo
-
-		# :command.usage_flags
-		# :flag.usage
-		echo "  --verbose, -v"
-		printf "    Show verbose logging\n"
-		echo
-
-	fi
-}
-
-# :command.usage
-risk_init_usage() {
-	if [[ -n $long_usage ]]; then
-		printf "risk init - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
-		echo
-
-	else
-		printf "risk init - Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)\n"
-		echo
-
-	fi
-
-	printf "Usage:\n"
-	printf "  risk init IDENTITY [options]\n"
-	printf "  risk init --help | -h\n"
+	printf "  risk identity create IDENTITY [options]\n"
+	printf "  risk identity create --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -519,18 +391,58 @@ risk_init_usage() {
 		echo
 
 		# :flag.usage
-		echo "  --name, -N"
+		echo "  --name, -N NAME"
 		printf "    Use a different name for naming identity VMs\n"
 		echo
 
 		# :flag.usage
+		echo "  --label, -L COLOR"
+		printf "    Specify a label color to be used for all VMs belonging to this identity\n"
+		echo
+
+		# :flag.usage
 		echo "  --no-gw, -G"
-		printf "    Don't create a Whonix gateway\n"
+		printf "    Don't create a Whonix TOR gateway\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-gw-from TOR_GW"
+		printf "    Instead of creating the TOR gateway from a template, clone an existing TOR\n    AppVM\n"
 		echo
 
 		# :flag.usage
 		echo "  --no-vpn, -V"
 		printf "    Don't create a VPN gateway\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-vpn-from VPN_GW"
+		printf "    Instead of creating the VPN gateway from a template, clone an existing VPN\n    AppVM\n"
+		echo
+
+		# :flag.usage
+		echo "  --vpn-over-tor"
+		printf "    Instead of routing TOR traffic through the VPN, route the VPN traffic\n    through TOR\n"
+		echo
+
+		# :flag.usage
+		echo "  --no-messenger, -M"
+		printf "    Don't create a Messenger VM (for Signal and other message services)\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-messenger-from MESSENGER_VM"
+		printf "    Instead of creating the Messenger VM from a template, clone an existing\n    Messenger AppVM\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-web-from WEB_VM"
+		printf "    Instead of creating the Web browsing VM from a template, clone an existing\n    browser AppVM\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-split-from SPLIT_BROWSER_VM"
+		printf "    Instead of creating the split-browser VM from a template, clone an existing\n    one\n"
 		echo
 
 		# :command.usage_args
@@ -545,20 +457,20 @@ risk_init_usage() {
 }
 
 # :command.usage
-risk_spin_usage() {
+risk_identity_delete_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risk spin - Start entire identity infrastructure (or part of it) and move data they need\n"
+		printf "risk identity delete - Destroys an identity and all its associated machines and data\n"
 		echo
 
 	else
-		printf "risk spin - Start entire identity infrastructure (or part of it) and move data they need\n"
+		printf "risk identity delete - Destroys an identity and all its associated machines and data\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risk spin [IDENTITY] [options]\n"
-	printf "  risk spin --help | -h\n"
+	printf "  risk identity delete IDENTITY [options]\n"
+	printf "  risk identity delete --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -581,27 +493,27 @@ risk_spin_usage() {
 
 		# :argument.usage
 		echo "  IDENTITY"
-		printf "    Identity for which to spin infrastructure (optional if one is active)\n"
+		printf "    Identity to delete along with machines\n"
 		echo
 
 	fi
 }
 
 # :command.usage
-risk_fold_usage() {
+risk_identity_open_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risk fold - Stop an entire identity infrastructure (or part of it) and move back data to vault\n"
+		printf "risk identity open - Simply open the identity store in the vault\n"
 		echo
 
 	else
-		printf "risk fold - Stop an entire identity infrastructure (or part of it) and move back data to vault\n"
+		printf "risk identity open - Simply open the identity store in the vault\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risk fold [IDENTITY] [options]\n"
-	printf "  risk fold --help | -h\n"
+	printf "  risk identity open IDENTITY [options]\n"
+	printf "  risk identity open --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -624,7 +536,438 @@ risk_fold_usage() {
 
 		# :argument.usage
 		echo "  IDENTITY"
-		printf "    Identity for which to fold infrastructure (optional if one is active)\n"
+		printf "    Identity to open in the vault\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_identity_close_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk identity close - Simply close the identity store in the vault\n"
+		echo
+
+	else
+		printf "risk identity close - Simply close the identity store in the vault\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk identity close [options]\n"
+	printf "  risk identity close --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_identity_start_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk identity start - Start the identity in the vault and all of its enabled VMs\n"
+		echo
+
+	else
+		printf "risk identity start - Start the identity in the vault and all of its enabled VMs\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk identity start IDENTITY [options]\n"
+	printf "  risk identity start --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  IDENTITY"
+		printf "    Identity to start\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_identity_stop_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk identity stop - Stops all machines belonging to an identity, and close its vault if active.\n"
+		echo
+
+	else
+		printf "risk identity stop - Stops all machines belonging to an identity, and close its vault if active.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk identity stop [options]\n"
+	printf "  risk identity stop --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn - Create, configure, manage and use VPN gateways for an identity.\n"
+		echo
+
+	else
+		printf "risk vpn - Create, configure, manage and use VPN gateways for an identity.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn [command]\n"
+	printf "  risk vpn [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  create   Create VPN gateway from a template, or by cloning an existing one."
+	echo "  setup    Manage, import network configurations and run associated setup wizards"
+	echo "  start    Start a VPN gateway in the background"
+	echo "  stop     Stop a VPN gateway"
+	echo "  enable   Automatically start a VPN gateway when starting the identity."
+	echo "  delete   Delete a VPN gateway"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_create_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn create - Create VPN gateway from a template, or by cloning an existing one.\n"
+		echo
+
+	else
+		printf "risk vpn create - Create VPN gateway from a template, or by cloning an existing one.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn create [options]\n"
+	printf "  risk vpn create --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :flag.usage
+		echo "  --name, -N NAME"
+		printf "    Use a different name for naming identity VMs\n"
+		echo
+
+		# :flag.usage
+		echo "  --label, -L COLOR"
+		printf "    Specify a label color to be used for all VMs belonging to this identity\n"
+		echo
+
+		# :flag.usage
+		echo "  --no-vpn, -V"
+		printf "    Don't create a VPN gateway\n"
+		echo
+
+		# :flag.usage
+		echo "  --clone-vpn-from VPN_GW"
+		printf "    Instead of creating the VPN gateway from a template, clone an existing VPN\n    AppVM\n"
+		echo
+
+		# :flag.usage
+		echo "  --vpn-over-tor"
+		printf "    Instead of routing TOR traffic through the VPN, route the VPN traffic\n    through TOR\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_setup_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn setup - Manage, import network configurations and run associated setup wizards\n"
+		echo
+
+	else
+		printf "risk vpn setup - Manage, import network configurations and run associated setup wizards\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn setup VM [options]\n"
+	printf "  risk vpn setup --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :flag.usage
+		echo "  --config-in, -c CONFIG_VM"
+		printf "    VM in which to browse for VPN configuration(s)\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  VM"
+		printf "    gateway VM to operate setup on\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_start_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn start - Start a VPN gateway in the background\n"
+		echo
+
+	else
+		printf "risk vpn start - Start a VPN gateway in the background\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn start VM [options]\n"
+	printf "  risk vpn start --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  VM"
+		printf "    gateway VM to start\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_stop_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn stop - Stop a VPN gateway\n"
+		echo
+
+	else
+		printf "risk vpn stop - Stop a VPN gateway\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn stop VM [options]\n"
+	printf "  risk vpn stop --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  VM"
+		printf "    gateway VM to stop\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_enable_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn enable - Automatically start a VPN gateway when starting the identity.\n"
+		echo
+
+	else
+		printf "risk vpn enable - Automatically start a VPN gateway when starting the identity.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn enable VM [options]\n"
+	printf "  risk vpn enable --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  VM"
+		printf "    gateway VM to enable autostart for\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risk_vpn_delete_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk vpn delete - Delete a VPN gateway\n"
+		echo
+
+	else
+		printf "risk vpn delete - Delete a VPN gateway\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk vpn delete VM [options]\n"
+	printf "  risk vpn delete --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_flags
+		# :flag.usage
+		echo "  --verbose, -v"
+		printf "    Show verbose logging\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  VM"
+		printf "    gateway VM to delete\n"
 		echo
 
 	fi
@@ -873,6 +1216,43 @@ function _print() {
 	return 0
 }
 
+# src/lib/messenger.sh
+
+# Creates a new Messaging AppVM.
+# $1 - Name to use for new VM
+# $2 - Netvm for this VM
+
+# $3 - Label
+create_messenger_vm ()
+{
+		local msg="${1}-msg"
+		local netvm="${2-$RISK_DEFAULT_NETVM}"
+		local gw_label="${3-orange}"
+
+		local -a create_command
+		create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$WHONIX_WS_TEMPLATE")
+
+		_message "Creating messaging VM (name: $msg / netvm: $netvm / template: $WHONIX_WS_TEMPLATE)"
+}
+
+# very similar to create_messenger_vm , except that we clone
+
+# an existing AppVM instead of creating a new one from a Template.
+clone_messenger_vm ()
+{
+		local msg="${1}-msg"
+		local gw_clone="$2"
+		local netvm="${3-$RISK_DEFAULT_NETVM}"
+		local gw_label="${4-orange}"
+
+		create_command+=(qvm-clone "${gw_clone}" "${msg}")
+
+		local label_command=(qvm-prefs "$msg" label "$gw_label")
+		local netvm_command=(qvm-prefs "$msg" netvm "$netvm")
+
+		_message "Cloning messaging VM (name: $msg / netvm: $netvm / template: $gw_clone)"
+}
+
 # src/lib/run.sh
 
 COMMAND_STDOUT=''           # Stores a command's stdout output.
@@ -953,6 +1333,41 @@ function _catch ()
 		if [[ ! $ret -eq 0 ]]; then
 				_failure "$@"
 		fi
+}
+
+# src/lib/tor_gateway.sh
+
+# Creates a new TOR Whonix gateway AppVM.
+# $1 - Name to use for new VM
+# $2 - Netvm for this gateway
+# $3 - Label
+create_tor_gateway ()
+{
+		local gw="${1}-gw"
+		local netvm="${2-$RISK_DEFAULT_NETVM}"
+		local gw_label="${3-yellow}"
+
+		local -a create_command
+		create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$WHONIX_GW_TEMPLATE")
+
+		_message "Creating TOR gateway VM (name: $gw / netvm: $netvm / template: $WHONIX_GW_TEMPLATE)"
+}
+
+# very similar to create_tor_gateway, except that we clone an existing
+# gateway AppVM instead of creating a new one from a Template.
+clone_tor_gateway ()
+{
+		local gw="${1}-gw"
+		local gw_clone="$2"
+		local netvm="${3-$RISK_DEFAULT_NETVM}"
+		local gw_label="${4-yellow}"
+
+		create_command+=(qvm-clone "${gw_clone}" "${gw}")
+
+		local label_command=(qvm-prefs "$gw" label "$gw_label")
+		local netvm_command=(qvm-prefs "$gw" netvm "$netvm")
+
+		_message "Cloning TOR gateway VM (name: $gw / netvm: $netvm / template: $gw_clone)"
 }
 
 # src/lib/utils.sh
@@ -1063,6 +1478,107 @@ validate_valid_vaultvm () {
 		fi
 }
 
+# src/lib/vpn_gateway.sh
+#!/usr/bin/env bash
+
+# Creates a new VPN gateway from a TemplateVM
+create_vpn_gateway ()
+{
+		local gw="${1}-gw"
+		local netvm="${2-$RISK_DEFAULT_NETVM}"
+		local gw_label="${3-blue}"
+
+		local -a create_command
+		create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$RISK_VPN_TEMPLATE")
+
+		_message "Creating VPN gateway VM (name: $gw / netvm: $netvm / template: $RISK_VPN_TEMPLATE)"
+}
+
+# Creates a new VPN gateway from an existing VPN AppVM
+
+clone_vpn_gateway ()
+{
+		local gw="${1}-vpn"
+		local gw_clone="$2"
+		local netvm="${3-$RISK_DEFAULT_NETVM}"
+		local gw_label="${4-blue}"
+
+		# Create the VPN
+		local -a create_command
+		create_command+=(qvm-clone "${gw_clone}" "${gw}")
+
+		local label_command=(qvm-prefs "$gw" label "$gw_label")
+		local netvm_command=(qvm-prefs "$gw" netvm "$netvm")
+
+		_message "Cloning VPN gateway VM (name: $gw / netvm: $netvm / template: $gw_clone)"
+
+		# For now disposable are not allowed, since it would create too many VMs,
+
+		# and complicate a bit the setup steps for VPNs. If the clone is a template
+		# for disposables, unset it
+		local disp_template
+		# disp_template=$(qvm-prefs "${gw}" template_for_dispvms)
+		# [[ "$disp_template" = "True" ]] && qvm-prefs "${gw}" template_for_dispvms False
+}
+
+# src/lib/web.sh
+
+# Create a web browsing VM from a template
+create_browser_vm ()
+{
+		local web="${1}-web"
+		local netvm="${2-$RISK_DEFAULT_NETVM}"
+		local web_label="${3-orange}"
+
+		local -a create_command
+		create_command+=(qvm-create --property netvm="$netvm" --label "$web_label" --template "$WHONIX_WS_TEMPLATE")
+
+		_message "Creating web VM (name: $web / netvm: $netvm / template: $WHONIX_WS_TEMPLATE)"
+}
+
+# Clone a web browsing VM from an existing one
+clone_browser_vm ()
+{
+		local web="${1}-web"
+		local web_clone="$2"
+		local netvm="${3-$RISK_DEFAULT_NETVM}"
+		local web_label="${4-orange}"
+
+		create_command+=(qvm-clone "${web_clone}" "${web}")
+
+		local label_command=(qvm-prefs "$web" label "$web_label")
+		local netvm_command=(qvm-prefs "$web" netvm "$netvm")
+
+		_message "Cloning web VM (name: $web / netvm: $netvm / template: $web_clone)"
+}
+
+# Create a split-browser VM from a template
+create_split_browser_vm ()
+{
+		local web="${1}-split-web"
+		local web_label="${2-gray}"
+
+		local -a create_command
+		create_command+=(qvm-create --property netvm=None --label "$web_label" --template "$RISK_SPLIT_BROWSER_TEMPLATE")
+
+		_message "Creating split-browser (name: $web / netvm: $netvm / template: $RISK_SPLIT_BROWSER_TEMPLATE)"
+}
+
+# Clone an existing split-browser VM, and change its dispvms
+clone_split_browser_vm ()
+{
+		local web="${1}-split-web"
+		local web_clone="$2"
+		local web_label="${3-gray}"
+
+		create_command+=(qvm-clone "${web_clone}" "${web}")
+
+		local label_command=(qvm-prefs "$web" label "$web_label")
+		local netvm_command=(qvm-prefs "$web" netvm None)
+
+		_message "Cloning split-browser VM (name: $web / netvm: $netvm / template: $web_clone)"
+}
+
 # :command.command_functions
 
 # :command.function
@@ -1100,9 +1616,9 @@ risk_hush_attach_command() {
 	# finally attach the sdcard encrypted partition to the qube
 	qvm-block attach "${vm}" "${block}"
 	if [[ $? -eq 0 ]]; then
-		_success "Block ${SDCARD_BLOCK} has been attached to ${vm}"
+		_success "Block ${block} has been attached to ${vm}"
 	else
-		_success "Block ${SDCARD_BLOCK} can not be attached to ${vm}"
+		_success "Block ${block} can not be attached to ${vm}"
 	fi
 
 }
@@ -1110,16 +1626,10 @@ risk_hush_attach_command() {
 # :command.function
 risk_hush_detach_command() {
 	# src/hush_detach_command.sh
-
-	local block="${SDCARD_BLOCK}"
-	local vm="${VAULT_VM}"
-
-	qvm-block detach "${vm}" "${block}"
-	if [[ $? -eq 0 ]]; then
-		_success "Block ${SDCARD_BLOCK} has been detached from to ${vm}"
-	else
-		_success "Block ${SDCARD_BLOCK} can not be detached from ${vm}"
-	fi
+	echo "# this file is located in 'src/hush_detach_command.sh'"
+	echo "# code for 'risk hush detach' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
 
 }
 
@@ -1181,8 +1691,139 @@ risk_backup_detach_command() {
 }
 
 # :command.function
-risk_open_identity_command() {
-	# src/open_identity_command.sh
+risk_identity_create_command() {
+	# src/identity_create_command.sh
+
+	local identity="${args[identity]}"
+
+	# Identity checks and basic setup ==========================================
+
+	# First open the identity, because we might need its credentials and stuff
+	# The identity argument is here, so this command has the arguments it needs
+	active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+	if [[ -n $active_identity ]]; then
+			# It might be the same
+			if [[ $active_identity != "$identity" ]]; then
+					_failure "Another identity ($identity) is active. Close/slam/fold it and rerun this command"
+			fi
+	else
+			risk_open_identity_command
+			_catch "Failed to open identity $identity"
+	fi
+
+	# Make a directory for this identity, and store the associated VM name
+	local identity_dir="${RISK_IDENTITIES_DIR}/$identity"
+	[[ -e ${identity_dir} ]] || mkdir -p "$identity_dir"
+
+	# Else we're good to go
+	_message "Initializing infrastructure for identity $identity"
+
+	# Default settings and values ==============================================
+
+	# If the user wants to use a different name for the VMs
+	local name="${args[--name]-$identity}"
+	echo "$name" > "${identity_dir}/vm_name"
+
+	_message "Using name '$name' as VM base name"
+
+	local label="${args[--label]}"
+
+	# Prepare the root NetVM for this identity
+
+	# Network VMs ==============================================================
+	_message "Creating network VMs:"
+
+	# 1 - Tor gateway, if not explicitly disabled
+	if [[ ${args[--no-gw]} -eq 0 ]]; then
+			local gw_netvm
+
+			# We either clone the gateway from an existing one,
+			# or we create it from a template.
+			if [[ -n ${args[--clone-gw-from]} ]]; then
+					local clone="${args[--clone-gw-from]}"
+					clone_tor_gateway "$name" "$clone" "$gw_netvm" "$label"
+			else
+					create_tor_gateway "$name" "$gw_netvm" "$label"
+			fi
+	else
+			_message "Skipping TOR gateway"
+	fi
+
+	# 2 - VPNs, if not explicitly disabled
+	if [[ ${args[--no-vpn]} -eq 0 ]]; then
+			local vpn_netvm
+
+			# We either clone the gateway from an existing one,
+			# or we create it from a template.
+			if [[ -n ${args[--clone-vpn-from]} ]]; then
+					local clone="${args[--clone-vpn-from]}"
+					clone_vpn_gateway "$name" "$clone" "$vpn_netvm" "$label"
+			else
+					create_vpn_gateway "$name" "$vpn_netvm" "$label"
+			fi
+	else
+			_message "Skipping VPN gateway"
+	fi
+
+	# 3 - Setting up the network routes
+	if [[ ${args[--vpn-over-tor]} -eq 1 ]]; then
+			echo
+	fi
+
+	# At this point we should know the name of the VM to be used as NetVM
+	# for the subsquent machines, such as web browsing and messaging VMs.
+
+	# Message VMs ==============================================================
+	_message "Creating messaging VMs:"
+
+	if [[ ${args[--no-messenger]} -eq 0 ]]; then
+			local msg="${name}-msg"
+	else
+			_message "Skipping messaging VM"
+	fi
+
+	# Browser VMs ==============================================================
+	_message "Creating web VMs:"
+
+	# Browser VMs are disposable, but we make a template for this identity,
+	# since we might  either modify stuff in there, and we need them at least
+
+	# to have a different network route.
+	if [[ -n ${args[--clone-web-from]} ]]; then
+			local web_netvm
+
+			local clone="${args[--clone-web-from]}"
+			clone_browser_vm "$name" "$clone" "$web_netvm" "$label"
+	else
+			create_browser_vm "$name" "$web_netvm" "$label"
+	fi
+
+	# Split-browser has its own dispVMs and bookmarks
+	local split_web="${name}-split-web"
+	if [[ -n ${args[--clone-split-from]} ]]; then
+			local clone="${args[--clone-split-from]}"
+			clone_split_browser_vm "$name" "$clone" "$label"
+	else
+			create_split_browser_vm "$name" "$label"
+	fi
+
+	_success "Successfully initialized infrastructure for identity $identity"
+
+}
+
+# :command.function
+risk_identity_delete_command() {
+	# src/identity_delete_command.sh
+	echo "# this file is located in 'src/identity_delete_command.sh'"
+	echo "# code for 'risk identity delete' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_identity_open_command() {
+	# src/identity_open_command.sh
 
 	local identity="${args[identity]}"
 
@@ -1205,23 +1846,8 @@ risk_open_identity_command() {
 }
 
 # :command.function
-risk_slam_command() {
-	# src/slam_command.sh
-
-	# Get the active identity
-	local active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
-
-	# Find all VMs linked to that identity;
-	# 1 - Web browsers/ appVMs
-	# 2 - NetVMs ; VPNs and gateway
-
-	# Slam the identity
-
-}
-
-# :command.function
-risk_close_identity_command() {
-	# src/close_identity_command.sh
+risk_identity_close_command() {
+	# src/identity_close_command.sh
 
 	# Check we have an active identity
 	active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
@@ -1231,81 +1857,91 @@ risk_close_identity_command() {
 	fi
 
 	_message "Closing identity $active_identity"
+
 	_qrun "$VAULT_VM" risks close identity "$active_identity"
+	_catch "Failed to close identity $active_identity"
+
+	_message "Identity $active_identity is closed"
 
 }
 
 # :command.function
-risk_init_command() {
-	# src/init_command.sh
+risk_identity_start_command() {
+	# src/identity_start_command.sh
 
 	local identity="${args[identity]}"
 
-	# First open the identity, because we might need its credentials and stuff
-	# The identity argument is here, so this command has the arguments it needs
-	risk_open_identity_command
-	_catch "Failed to open identity $identity"
-
-	# Variable checks: a few variables should be found in the user configuration,
-	# mostly for knowing which templates to use.
-
-	# Else we're good to go
-	_message "Initializing infrastructure for identity $identity"
-
-	# If the user wants to use a different name for the VMs
-	local name
-	if [[ -n "${args[--name]}" ]]; then
-			name="${args[--name]}"
-	else
-			name="$identity"
-	fi
-	_message "Using name $name as VM base name"
-
-	# Network VMs ==============================================================
-	_message "Creating network VMs"
-
-	# 1 - Tor gateway
-	local gw="${name}-gw"
-
-	# 2 - VPNs
-	local vpn="${name}-vpn"
-
-	# Message VMs ==============================================================
-	_message "Creating messaging VMs"
-
-	local msg="${name}-msg"
-
-	# Browser VMs ==============================================================
-	_message "Creating web VMs"
-
-	# Browser VMs are disposable, but we make a template for this identity,
-	# since we might  either modify stuff in there, and we need them at least
-
-	# to have a different network route.
-	local web="${name}-web"
-
-	# Split-browser has its own dispVMs and bookmarks
-	local split_web="${name}-split-web"
-
-	_success "Successfully initialized infrastructure for identity $identity"
+	# Get the name for VMs
+	local identity_dir="${RISK_IDENTITIES_DIR}/$identity"
+	local name="$(cat "${identity_dir}/vm_name")"
 
 }
 
 # :command.function
-risk_spin_command() {
-	# src/spin_command.sh
-	echo "# this file is located in 'src/spin_command.sh'"
-	echo "# code for 'risk spin' goes here"
+risk_identity_stop_command() {
+	# src/identity_stop_command.sh
+	echo "# this file is located in 'src/identity_stop_command.sh'"
+	echo "# code for 'risk identity stop' goes here"
 	echo "# you can edit it freely and regenerate (it will not be overwritten)"
 	inspect_args
 
 }
 
 # :command.function
-risk_fold_command() {
-	# src/fold_command.sh
-	echo "# this file is located in 'src/fold_command.sh'"
-	echo "# code for 'risk fold' goes here"
+risk_vpn_create_command() {
+	# src/vpn_create_command.sh
+	echo "# this file is located in 'src/vpn_create_command.sh'"
+	echo "# code for 'risk vpn create' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_vpn_setup_command() {
+	# src/vpn_setup_command.sh
+	echo "# this file is located in 'src/vpn_setup_command.sh'"
+	echo "# code for 'risk vpn setup' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_vpn_start_command() {
+	# src/vpn_start_command.sh
+	echo "# this file is located in 'src/vpn_start_command.sh'"
+	echo "# code for 'risk vpn start' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_vpn_stop_command() {
+	# src/vpn_stop_command.sh
+	echo "# this file is located in 'src/vpn_stop_command.sh'"
+	echo "# code for 'risk vpn stop' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_vpn_enable_command() {
+	# src/vpn_enable_command.sh
+	echo "# this file is located in 'src/vpn_enable_command.sh'"
+	echo "# code for 'risk vpn enable' goes here"
+	echo "# you can edit it freely and regenerate (it will not be overwritten)"
+	inspect_args
+
+}
+
+# :command.function
+risk_vpn_delete_command() {
+	# src/vpn_delete_command.sh
+	echo "# this file is located in 'src/vpn_delete_command.sh'"
+	echo "# code for 'risk vpn delete' goes here"
 	echo "# you can edit it freely and regenerate (it will not be overwritten)"
 	inspect_args
 
@@ -1329,6 +1965,8 @@ parse_requirements() {
 	esac
 
 	# :command.environment_variables_filter
+	export RISK_VPN_TEMPLATE="${RISK_VPN_TEMPLATE:-sys-vpn}"
+	export RISK_DEFAULT_NETVM="${RISK_DEFAULT_NETVM:-sys-firewall}"
 	export VAULT_VM="${VAULT_VM:-vault}"
 
 	# :command.command_filter
@@ -1352,45 +1990,17 @@ parse_requirements() {
 		shift $#
 		;;
 
-	open )
-		action="open"
+	identity )
+		action="identity"
 		shift
-		risk_open_parse_requirements "$@"
+		risk_identity_parse_requirements "$@"
 		shift $#
 		;;
 
-	slam )
-		action="slam"
+	vpn )
+		action="vpn"
 		shift
-		risk_slam_parse_requirements "$@"
-		shift $#
-		;;
-
-	close )
-		action="close"
-		shift
-		risk_close_parse_requirements "$@"
-		shift $#
-		;;
-
-	init )
-		action="init"
-		shift
-		risk_init_parse_requirements "$@"
-		shift $#
-		;;
-
-	spin )
-		action="spin"
-		shift
-		risk_spin_parse_requirements "$@"
-		shift $#
-		;;
-
-	fold )
-		action="fold"
-		shift
-		risk_fold_parse_requirements "$@"
+		risk_vpn_parse_requirements "$@"
 		shift $#
 		;;
 
@@ -1775,12 +2385,12 @@ risk_backup_detach_parse_requirements() {
 }
 
 # :command.parse_requirements
-risk_open_parse_requirements() {
+risk_identity_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risk_open_usage
+		risk_identity_usage
 		exit
 		;;
 
@@ -1793,16 +2403,51 @@ risk_open_parse_requirements() {
 	-* )
 		;;
 
-	identity )
-		action="identity"
+	create )
+		action="create"
 		shift
-		risk_open_identity_parse_requirements "$@"
+		risk_identity_create_parse_requirements "$@"
+		shift $#
+		;;
+
+	delete )
+		action="delete"
+		shift
+		risk_identity_delete_parse_requirements "$@"
+		shift $#
+		;;
+
+	open )
+		action="open"
+		shift
+		risk_identity_open_parse_requirements "$@"
+		shift $#
+		;;
+
+	close )
+		action="close"
+		shift
+		risk_identity_close_parse_requirements "$@"
+		shift $#
+		;;
+
+	start )
+		action="start"
+		shift
+		risk_identity_start_parse_requirements "$@"
+		shift $#
+		;;
+
+	stop )
+		action="stop"
+		shift
+		risk_identity_stop_parse_requirements "$@"
 		shift $#
 		;;
 
 	# :command.command_fallback
 	"" )
-		risk_open_usage
+		risk_identity_usage
 		exit 1
 		;;
 
@@ -1837,228 +2482,19 @@ risk_open_parse_requirements() {
 }
 
 # :command.parse_requirements
-risk_open_identity_parse_requirements() {
+risk_identity_create_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risk_open_identity_usage
+		risk_identity_create_usage
 		exit
 		;;
 
 	esac
 
 	# :command.command_filter
-	action="open identity"
-
-	# :command.parse_requirements_while
-	while [[ $# -gt 0 ]]; do
-		key="$1"
-		case "$key" in
-		# :flag.case
-		--verbose | -v )
-
-			# :flag.case_no_arg
-			args[--verbose]=1
-			shift
-			;;
-
-		-?* )
-			printf "invalid option: %s\n" "$key"
-			exit 1
-			;;
-
-		* )
-			# :command.parse_requirements_case
-			# :command.parse_requirements_case_simple
-			if [[ -z ${args[identity]+x} ]]; then
-
-				args[identity]=$1
-				shift
-			else
-				printf "invalid argument: %s\n" "$key"
-				exit 1
-			fi
-
-			;;
-
-		esac
-	done
-
-	# :command.required_args_filter
-	if [[ -z ${args[identity]+x} ]]; then
-		printf "missing required argument: IDENTITY\nusage: risk open identity IDENTITY [options]\n"
-		exit 1
-	fi
-
-}
-
-# :command.parse_requirements
-risk_slam_parse_requirements() {
-	# :command.fixed_flags_filter
-	case "${1:-}" in
-	--help | -h )
-		long_usage=yes
-		risk_slam_usage
-		exit
-		;;
-
-	esac
-
-	# :command.command_filter
-	action="slam"
-
-	# :command.parse_requirements_while
-	while [[ $# -gt 0 ]]; do
-		key="$1"
-		case "$key" in
-		# :flag.case
-		--verbose | -v )
-
-			# :flag.case_no_arg
-			args[--verbose]=1
-			shift
-			;;
-
-		-?* )
-			printf "invalid option: %s\n" "$key"
-			exit 1
-			;;
-
-		* )
-			# :command.parse_requirements_case
-			# :command.parse_requirements_case_simple
-			printf "invalid argument: %s\n" "$key"
-			exit 1
-
-			;;
-
-		esac
-	done
-
-}
-
-# :command.parse_requirements
-risk_close_parse_requirements() {
-	# :command.fixed_flags_filter
-	case "${1:-}" in
-	--help | -h )
-		long_usage=yes
-		risk_close_usage
-		exit
-		;;
-
-	esac
-
-	# :command.command_filter
-	action=${1:-}
-
-	case $action in
-	-* )
-		;;
-
-	identity )
-		action="identity"
-		shift
-		risk_close_identity_parse_requirements "$@"
-		shift $#
-		;;
-
-	# :command.command_fallback
-	"" )
-		risk_close_usage
-		exit 1
-		;;
-
-	* )
-		printf "invalid command: %s\n" "$action"
-		exit 1
-		;;
-
-	esac
-
-	# :command.parse_requirements_while
-	while [[ $# -gt 0 ]]; do
-		key="$1"
-		case "$key" in
-
-		-?* )
-			printf "invalid option: %s\n" "$key"
-			exit 1
-			;;
-
-		* )
-			# :command.parse_requirements_case
-			# :command.parse_requirements_case_simple
-			printf "invalid argument: %s\n" "$key"
-			exit 1
-
-			;;
-
-		esac
-	done
-
-}
-
-# :command.parse_requirements
-risk_close_identity_parse_requirements() {
-	# :command.fixed_flags_filter
-	case "${1:-}" in
-	--help | -h )
-		long_usage=yes
-		risk_close_identity_usage
-		exit
-		;;
-
-	esac
-
-	# :command.command_filter
-	action="close identity"
-
-	# :command.parse_requirements_while
-	while [[ $# -gt 0 ]]; do
-		key="$1"
-		case "$key" in
-		# :flag.case
-		--verbose | -v )
-
-			# :flag.case_no_arg
-			args[--verbose]=1
-			shift
-			;;
-
-		-?* )
-			printf "invalid option: %s\n" "$key"
-			exit 1
-			;;
-
-		* )
-			# :command.parse_requirements_case
-			# :command.parse_requirements_case_simple
-			printf "invalid argument: %s\n" "$key"
-			exit 1
-
-			;;
-
-		esac
-	done
-
-}
-
-# :command.parse_requirements
-risk_init_parse_requirements() {
-	# :command.fixed_flags_filter
-	case "${1:-}" in
-	--help | -h )
-		long_usage=yes
-		risk_init_usage
-		exit
-		;;
-
-	esac
-
-	# :command.command_filter
-	action="init"
+	action="identity create"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
@@ -2075,13 +2511,40 @@ risk_init_parse_requirements() {
 		# :flag.case
 		--name | -N )
 
-			# :flag.case_no_arg
-			args[--name]=1
-			shift
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--name]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--name requires an argument: --name, -N NAME"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--label | -L )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--label]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--label requires an argument: --label, -L COLOR"
+				exit 1
+			fi
 			;;
 
 		# :flag.case
 		--no-gw | -G )
+			# :flag.conflicts
+			if [[ -n "${args[--clone-gw-from --vpn-over-tor]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-gw-from --vpn-over-tor"
+				exit 1
+			fi
 
 			# :flag.case_no_arg
 			args[--no-gw]=1
@@ -2089,10 +2552,188 @@ risk_init_parse_requirements() {
 			;;
 
 		# :flag.case
+		--clone-gw-from )
+			# :flag.conflicts
+			if [[ -n "${args[--no-gw]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-gw"
+				exit 1
+			fi
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-gw-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-gw-from requires an argument: --clone-gw-from TOR_GW"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
 		--no-vpn | -V )
+			# :flag.conflicts
+			if [[ -n "${args[--clone-vpn-from --vpn-over-tor]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-vpn-from --vpn-over-tor"
+				exit 1
+			fi
 
 			# :flag.case_no_arg
 			args[--no-vpn]=1
+			shift
+			;;
+
+		# :flag.case
+		--clone-vpn-from )
+			# :flag.conflicts
+			if [[ -n "${args[--no-vpn]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-vpn"
+				exit 1
+			fi
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-vpn-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-vpn-from requires an argument: --clone-vpn-from VPN_GW"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--vpn-over-tor )
+			# :flag.conflicts
+			if [[ -n "${args[--no-vpn --no-gw]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-vpn --no-gw"
+				exit 1
+			fi
+
+			# :flag.case_no_arg
+			args[--vpn-over-tor]=1
+			shift
+			;;
+
+		# :flag.case
+		--no-messenger | -M )
+			# :flag.conflicts
+			if [[ -n "${args[--clone-messenger-from]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-messenger-from"
+				exit 1
+			fi
+
+			# :flag.case_no_arg
+			args[--no-messenger]=1
+			shift
+			;;
+
+		# :flag.case
+		--clone-messenger-from )
+			# :flag.conflicts
+			if [[ -n "${args[--no-messenger]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-messenger"
+				exit 1
+			fi
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-messenger-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-messenger-from requires an argument: --clone-messenger-from MESSENGER_VM"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--clone-web-from )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-web-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-web-from requires an argument: --clone-web-from WEB_VM"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--clone-split-from )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-split-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-split-from requires an argument: --clone-split-from SPLIT_BROWSER_VM"
+				exit 1
+			fi
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[identity]+x} ]]; then
+
+				args[identity]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[identity]+x} ]]; then
+		printf "missing required argument: IDENTITY\nusage: risk identity create IDENTITY [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_identity_delete_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_identity_delete_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="identity delete"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
 			shift
 			;;
 
@@ -2120,26 +2761,26 @@ risk_init_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[identity]+x} ]]; then
-		printf "missing required argument: IDENTITY\nusage: risk init IDENTITY [options]\n"
+		printf "missing required argument: IDENTITY\nusage: risk identity delete IDENTITY [options]\n"
 		exit 1
 	fi
 
 }
 
 # :command.parse_requirements
-risk_spin_parse_requirements() {
+risk_identity_open_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risk_spin_usage
+		risk_identity_open_usage
 		exit
 		;;
 
 	esac
 
 	# :command.command_filter
-	action="spin"
+	action="identity open"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
@@ -2169,6 +2810,57 @@ risk_spin_parse_requirements() {
 				printf "invalid argument: %s\n" "$key"
 				exit 1
 			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[identity]+x} ]]; then
+		printf "missing required argument: IDENTITY\nusage: risk identity open IDENTITY [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_identity_close_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_identity_close_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="identity close"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
 
 			;;
 
@@ -2178,19 +2870,19 @@ risk_spin_parse_requirements() {
 }
 
 # :command.parse_requirements
-risk_fold_parse_requirements() {
+risk_identity_start_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risk_fold_usage
+		risk_identity_start_usage
 		exit
 		;;
 
 	esac
 
 	# :command.command_filter
-	action="fold"
+	action="identity start"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
@@ -2225,6 +2917,570 @@ risk_fold_parse_requirements() {
 
 		esac
 	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[identity]+x} ]]; then
+		printf "missing required argument: IDENTITY\nusage: risk identity start IDENTITY [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_identity_stop_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_identity_stop_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="identity stop"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_vpn_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	create )
+		action="create"
+		shift
+		risk_vpn_create_parse_requirements "$@"
+		shift $#
+		;;
+
+	setup )
+		action="setup"
+		shift
+		risk_vpn_setup_parse_requirements "$@"
+		shift $#
+		;;
+
+	start )
+		action="start"
+		shift
+		risk_vpn_start_parse_requirements "$@"
+		shift $#
+		;;
+
+	stop )
+		action="stop"
+		shift
+		risk_vpn_stop_parse_requirements "$@"
+		shift $#
+		;;
+
+	enable )
+		action="enable"
+		shift
+		risk_vpn_enable_parse_requirements "$@"
+		shift $#
+		;;
+
+	delete )
+		action="delete"
+		shift
+		risk_vpn_delete_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risk_vpn_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_vpn_create_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_create_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn create"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		# :flag.case
+		--name | -N )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--name]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--name requires an argument: --name, -N NAME"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--label | -L )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--label]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--label requires an argument: --label, -L COLOR"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--no-vpn | -V )
+			# :flag.conflicts
+			if [[ -n "${args[--clone-vpn-from --vpn-over-tor]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-vpn-from --vpn-over-tor"
+				exit 1
+			fi
+
+			# :flag.case_no_arg
+			args[--no-vpn]=1
+			shift
+			;;
+
+		# :flag.case
+		--clone-vpn-from )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--clone-vpn-from]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--clone-vpn-from requires an argument: --clone-vpn-from VPN_GW"
+				exit 1
+			fi
+			;;
+
+		# :flag.case
+		--vpn-over-tor )
+			# :flag.conflicts
+			if [[ -n "${args[--no-vpn --no-gw]:-}" ]]; then
+				printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-vpn --no-gw"
+				exit 1
+			fi
+
+			# :flag.case_no_arg
+			args[--vpn-over-tor]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_vpn_setup_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_setup_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn setup"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		# :flag.case
+		--config-in | -c )
+
+			# :flag.case_arg
+			if [[ -n ${2+x} ]]; then
+
+				args[--config-in]="$2"
+				shift
+				shift
+			else
+				printf "%s\n" "--config-in requires an argument: --config-in, -c CONFIG_VM"
+				exit 1
+			fi
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[vm]+x} ]]; then
+
+				args[vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[vm]+x} ]]; then
+		printf "missing required argument: VM\nusage: risk vpn setup VM [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_vpn_start_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_start_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn start"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[vm]+x} ]]; then
+
+				args[vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[vm]+x} ]]; then
+		printf "missing required argument: VM\nusage: risk vpn start VM [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_vpn_stop_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_stop_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn stop"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[vm]+x} ]]; then
+
+				args[vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[vm]+x} ]]; then
+		printf "missing required argument: VM\nusage: risk vpn stop VM [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_vpn_enable_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_enable_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn enable"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[vm]+x} ]]; then
+
+				args[vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[vm]+x} ]]; then
+		printf "missing required argument: VM\nusage: risk vpn enable VM [options]\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risk_vpn_delete_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_vpn_delete_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="vpn delete"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+		# :flag.case
+		--verbose | -v )
+
+			# :flag.case_no_arg
+			args[--verbose]=1
+			shift
+			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[vm]+x} ]]; then
+
+				args[vm]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[vm]+x} ]]; then
+		printf "missing required argument: VM\nusage: risk vpn delete VM [options]\n"
+		exit 1
+	fi
 
 }
 
@@ -2235,6 +3491,7 @@ initialize() {
 	
 
 	# src/initialize.sh
+	#!/usr/bin/env bash
 
 	# Connected terminal
 	typeset -H _TTY
@@ -2327,68 +3584,116 @@ run() {
 			risk_backup_detach_command
 		fi
 
-	elif [[ $action == "open" ]]; then
+	elif [[ $action == "identity" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_open_usage
+			risk_identity_usage
 		else
-			risk_open_command
+			risk_identity_command
 		fi
 
-	elif [[ $action == "open identity" ]]; then
+	elif [[ $action == "identity create" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_open_identity_usage
+			risk_identity_create_usage
 		else
-			risk_open_identity_command
+			risk_identity_create_command
 		fi
 
-	elif [[ $action == "slam" ]]; then
+	elif [[ $action == "identity delete" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_slam_usage
+			risk_identity_delete_usage
 		else
-			risk_slam_command
+			risk_identity_delete_command
 		fi
 
-	elif [[ $action == "close" ]]; then
+	elif [[ $action == "identity open" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_close_usage
+			risk_identity_open_usage
 		else
-			risk_close_command
+			risk_identity_open_command
 		fi
 
-	elif [[ $action == "close identity" ]]; then
+	elif [[ $action == "identity close" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_close_identity_usage
+			risk_identity_close_usage
 		else
-			risk_close_identity_command
+			risk_identity_close_command
 		fi
 
-	elif [[ $action == "init" ]]; then
+	elif [[ $action == "identity start" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_init_usage
+			risk_identity_start_usage
 		else
-			risk_init_command
+			risk_identity_start_command
 		fi
 
-	elif [[ $action == "spin" ]]; then
+	elif [[ $action == "identity stop" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_spin_usage
+			risk_identity_stop_usage
 		else
-			risk_spin_command
+			risk_identity_stop_command
 		fi
 
-	elif [[ $action == "fold" ]]; then
+	elif [[ $action == "vpn" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risk_fold_usage
+			risk_vpn_usage
 		else
-			risk_fold_command
+			risk_vpn_command
+		fi
+
+	elif [[ $action == "vpn create" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_create_usage
+		else
+			risk_vpn_create_command
+		fi
+
+	elif [[ $action == "vpn setup" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_setup_usage
+		else
+			risk_vpn_setup_command
+		fi
+
+	elif [[ $action == "vpn start" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_start_usage
+		else
+			risk_vpn_start_command
+		fi
+
+	elif [[ $action == "vpn stop" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_stop_usage
+		else
+			risk_vpn_stop_command
+		fi
+
+	elif [[ $action == "vpn enable" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_enable_usage
+		else
+			risk_vpn_enable_command
+		fi
+
+	elif [[ $action == "vpn delete" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_vpn_delete_usage
+		else
+			risk_vpn_delete_command
 		fi
 
 	elif [[ $action == "root" ]]; then

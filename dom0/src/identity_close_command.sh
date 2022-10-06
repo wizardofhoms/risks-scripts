@@ -7,4 +7,8 @@ if [[ -z $active_identity ]]; then
 fi
 
 _message "Closing identity $active_identity"
+
 _qrun "$VAULT_VM" risks close identity "$active_identity"
+_catch "Failed to close identity $active_identity"
+
+_message "Identity $active_identity is closed"

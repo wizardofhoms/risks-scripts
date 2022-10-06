@@ -1,0 +1,99 @@
+name: identity
+help: Create, manage and use identities and/or use their machines
+
+commands:
+  - name: create 
+    help: "Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)"
+    args:
+      - name: identity
+        help: "Name of the identity for which to initialize infrastructure"
+        required: true
+    flags:
+      - &verbose      
+        long: --verbose
+        short: -v
+        help: "Show verbose logging"
+      - long: --name
+        short: -N
+        help: "Use a different name for naming identity VMs"
+        arg: name 
+      - long: --label
+        short: -L
+        help: "Specify a label color to be used for all VMs belonging to this identity"
+        arg: color 
+        # Tor gateway options
+      - long: --no-gw
+        short: -G
+        help: "Don't create a Whonix TOR gateway"
+        conflicts: [ --clone-gw-from --vpn-over-tor ]
+      - long: --clone-gw-from
+        help: "Instead of creating the TOR gateway from a template, clone an existing TOR AppVM"
+        arg: tor_gw 
+        conflicts: [ --no-gw ]
+        # VPN gateway options
+      - long: --no-vpn
+        short: -V
+        help: "Don't create a VPN gateway"
+        conflicts: [ --clone-vpn-from --vpn-over-tor ]
+      - long: --clone-vpn-from
+        help: "Instead of creating the VPN gateway from a template, clone an existing VPN AppVM"
+        arg: vpn_gw 
+        conflicts: [ --no-vpn ]
+        # Other network options
+      - long: --vpn-over-tor
+        help: "Instead of routing TOR traffic through the VPN, route the VPN traffic through TOR"
+        conflicts: [ --no-vpn --no-gw ]
+        # Messengers
+      - long: --no-messenger
+        short: -M
+        help: "Don't create a Messenger VM (for Signal and other message services)"
+        conflicts: [ --clone-messenger-from ]
+      - long: --clone-messenger-from
+        help: "Instead of creating the Messenger VM from a template, clone an existing Messenger AppVM"
+        arg: messenger_vm 
+        conflicts: [ --no-messenger ]
+        # Browsers
+      - long: --clone-web-from
+        help: "Instead of creating the Web browsing VM from a template, clone an existing browser AppVM"
+        arg: web_vm 
+      - long: --clone-split-from
+        help: "Instead of creating the split-browser VM from a template, clone an existing one"
+        arg: split_browser_vm 
+
+  - name: delete
+    help: Destroys an identity and all its associated machines and data
+    args:
+      - name: identity
+        help: "Identity to delete along with machines"
+        required: true
+    flags:
+      - *verbose
+      
+  - name: open
+    help: Simply open the identity store in the vault
+    args:
+      - name: identity
+        help: "Identity to open in the vault"
+        required: true
+    flags:
+      - *verbose
+
+  - name: close 
+    help: Simply close the identity store in the vault
+    flags:
+      - *verbose
+
+  - name: start
+    help: Start the identity in the vault and all of its enabled VMs
+    args:
+      - name: identity
+        help: "Identity to start"
+        required: true
+    flags:
+      - *verbose
+  
+  - name: stop
+    help: Stops all machines belonging to an identity, and close its vault if active.
+    flags:
+      - *verbose
+

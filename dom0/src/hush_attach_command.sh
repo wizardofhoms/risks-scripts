@@ -29,8 +29,8 @@ fi
 # finally attach the sdcard encrypted partition to the qube
 qvm-block attach "${vm}" "${block}"
 if [[ $? -eq 0 ]]; then
-	_success "Block ${SDCARD_BLOCK} has been attached to ${vm}"
+	_success "Block ${block} has been attached to ${vm}"
 else
-	_success "Block ${SDCARD_BLOCK} can not be attached to ${vm}"
+	_success "Block ${block} can not be attached to ${vm}"
 fi
 

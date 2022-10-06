@@ -1,11 +1,4 @@
-
-local block="${SDCARD_BLOCK}"
-local vm="${VAULT_VM}"
-
-qvm-block detach "${vm}" "${block}"
-if [[ $? -eq 0 ]]; then
-	_success "Block ${SDCARD_BLOCK} has been detached from to ${vm}"
-else
-	_success "Block ${SDCARD_BLOCK} can not be detached from ${vm}"
-fi
-
+echo "# this file is located in 'src/hush_detach_command.sh'"
+echo "# code for 'risk hush detach' goes here"
+echo "# you can edit it freely and regenerate (it will not be overwritten)"
+inspect_args

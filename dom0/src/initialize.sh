@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # Connected terminal
 typeset -H _TTY

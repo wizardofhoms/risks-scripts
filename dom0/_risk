@@ -1,4 +1,4 @@
-#compdef risk 
+#compdef _risk risk 
 #autoload
 
 # Entrypoint ================================================================================== 
@@ -15,30 +15,19 @@ _risk ()
         shift words
         # Run the completion for the subcommand
         case "${cmd}" in
-            hush)
-                _hush
-                ;;
-            backup)
-                _backup
-                ;;
-            open)
-                _open
-                ;;
-            close)
-                _close
-                ;;
+            (hush) _hush ;;
+            (backup) _backup ;;
+            (identity) _identity ;;
+            (vpn) _vpn ;;
         esac
     else
         local -a subcmds
         subcmds=(
             'hush:Attach or detach the hush partition to vault'
             'backup:Attach or detach a backup partition to vault'
-            'open:Open identity and/or associated stores in the vault only'
-            'close:Close identity and/or associated stores in the vault only'
+            'identity:Create, manage and use identities and/or use their machines'
+            'vpn:Create, configure, manage and use VPN gateways for an identity'
             'slam:Close identity and/or associated stores in the vault only, and detach hush/backup'
-            'init:Creates associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web)'
-            'spin:Start entire identity infrastructure (or part of it) and move data they need'
-            'fold:Stop an entire identity infrastructure (or part of it) and move back data to vault'
         )
 
         _describe -t commands 'commands' subcmds
@@ -136,27 +125,29 @@ _backup ()
     esac
 }
 
-# Subcommands for open command
-_open_commands ()
+# Subcommands of the identity command
+_identity_commands ()
 {
     local -a subcmds 
     subcmds=(
-        'identity:Open an identity and its associated builtin stores in the vault'
+        'open:Open an identity and its associated builtin stores in the vault'
+        'create:Create associated VMs for an identity (joe-gw, joe-vpn, joe-msg, joe-web, etc)'
+        'delete:Destroys an identity and all its associated machines and data'
+        'close:Simply open the identity store in the vault'
+        'start:Start the identity in the vault and all of its enabled VMs'
+        'stop:Stops all machines belonging to an identity, and close its vault if active.'
     )
-
-    _describe -t commands 'open commands' subcmds && ret=0
+    _describe -t commands 'identity commands' subcmds && ret=0
 }
 
-# Completion dispatcher for open command
-_open ()
+# Completion dispatcher for identity command
+_identity ()
 {
     local ret=1
     local line state
 
-    # Register subcommands and argument patterns
     _arguments -C \
-        "${_flags_base[@]}" \
-        "1: :_open_commands" \
+        "1: :_identity_commands" \
         "*::arg:->args" \
         && ret=0
 
@@ -164,46 +155,125 @@ _open ()
     case $state in
         args)
             case $line[1] in
-            identity)
-                _message "identity name"
-            ;;
+            create)
+                _arguments -C \
+                    "${_flags_base[@]}" \
+                    "${_flags_init_base[@]}" \
+                    "${_flags_init_vpn[@]}" \
+                    "${_flags_init_tor[@]}" \
+                    "${_flags_network_opts[@]}" \
+                    "${_flags_init_web[@]}" \
+                    "${_flags_init_messenger[@]}" \
+                    '1:identity name:' \
+                    && ret=0
+                ;;
+            start|open|delete)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    '1:identity name:' \
+                    && ret=0
+                ;;
+            *)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    && ret=0
+                ;;
             esac
     esac
 }
 
-# Subcommands for close command
-_close_commands ()
+# Subcommands of the vpn command
+_vpn_commands ()
 {
     local -a subcmds 
     subcmds=(
-        'identity:Close the active identity and its associated builtin stores in the vault'
+        'create:Create VPN gateway from a template, or by cloning an existing one'
+        'setup:Manage, import network configurations and run associated setup wizards'
+        'enable:Automatically start a VPN gateway when starting the identity'
+        'start:Start a VPN gateway in the background'
+        'stop:Stop a VPN gateway'
+        'delete:Delete a VPN gateway'
     )
-
-    _describe -t commands 'close commands' subcmds && ret=0
+    _describe -t commands 'vpn commands' subcmds && ret=0
 }
 
-# Completion dispatcher for close command
-_close ()
+# Completion dispatcher for vpn command
+_vpn ()
 {
     local ret=1
     local line state
 
-    # Register subcommands and argument patterns
     _arguments -C \
-        "${_flags_base[@]}" \
-        "1: :_close_commands" \
+        "1: :_vpn_commands" \
+        "*::arg:->args" \
         && ret=0
-}
 
+    # Arguments completion
+    case $state in
+        args)
+            case $line[1] in
+            create)
+                _arguments -C \
+                    "${_flags_base[@]}" \
+                    "${_flags_init_base[@]}" \
+                    "${_flags_init_vpn[@]}" \
+                    "${_flags_network_opts[@]}" \
+                    '1::identity name (optional if active):' \
+                    && ret=0
+                ;;
+            start|stop|delete|enable)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    '1:VPN gateway name:' \
+                    && ret=0
+                ;;
+            setup)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    {-c,--config-in}'[VM in which to browse for VPN configuration(s)]:VM containing configs:_known_vms' \
+                    && ret=0
+                ;;
+            esac
+    esac
+}
 
 # Flags =======================================================================================
 
 # Flags that are present on all commands
 _flags_base=(
-    {-v,--verbose}'[Enable verbose logging]'
-    {-h,--help}'[Print help for the command]'
-    )
+    '(-v --verbose)'{-v,--verbose}'[Enable verbose logging]'
+    '(- : *)'{-h,--help}'[Print help for the command]'
+)
 
+## Init command flags
+_flags_init_base=(
+    '(-N --name)'{-N,--name}'[Use a different name for naming identity VMs]' 
+    '(-L --label)'{-L,--label}'[Specify a label color to be used for ALL subsequently created VMs]' 
+)
+
+_flags_init_vpn=(
+    '(--clone-vpn-from --vpn-over-tor -V --no-vpn)'{-V,--no-vpn}'[Do not create a VPN gateway]' 
+    '(-V --no-vpn --clone-vpn-from)'--clone-vpn-from'[Instead of creating the VPN gateway from a template, clone an existing VPN AppVM]:VM:_known_vms'
+)
+
+_flags_init_tor=(
+    '(--clone-gw-from --vpn-over-tor -G --no-gw)'{-G,--no-gw}'[Do not create a Whonix TOR gateway]' 
+    '(-G --no-gw --clone-gw-from)'--clone-gw-from"[Instead of creating the TOR gateway from a template, clone an existing TOR AppVM]:VM:_known_vms"
+)
+
+_flags_network_opts=(
+    '(-V --no-vpn -G --no-gw)'--vpn-over-tor'[Instead of routing TOR traffic through the VPN, route the VPN traffic through TOR]' 
+)
+
+_flags_init_messenger=(
+    '(--clone-messenger-from -M --no-messenger)'{-M,--no-messenger}'[Do not create a Messenger VM (for Signal and other message services)]'
+    '(-M --no-messenger --clone-messenger-from)'--clone-messenger-from'[Instead of creating the Messenger VM from a template, clone an existing Messenger AppVM]:VM:_known_vms'
+)
+
+_flags_init_web=(
+    '--clone-web-from[Instead of creating the Web browsing VM from a template, clone an existing browser AppVM]:VM:_known_vms'
+    '--clone-split-from[Instead of creating the split-browser VM from a template, clone an existing one]:VM:_known_vms'
+)
 
 # Command arguments ===========================================================================
 
@@ -223,14 +293,17 @@ _block_devices ()
     _describe -t arguments 'block devices' blocks && ret=0
 }
 
-# Completes VMs
-_known_vms () 
+_known_vms ()
 {
-    if [[ -x /usr/bin/qvm-ls ]]; then
-        qvm-ls --raw-list | sort
-    elif [[ -f ~/.qubes/known_vms ]]; then
-        cat ~/.qubes/known_vms | tr ' ' '\n' | sed '/^$/d' | tr '\n' ' '
-    fi
+    local ret=
+    # VMS
+    local VM_COMPLETIONS=()
+
+    while IFS= read -r VM_NAME ; do
+        VM_COMPLETIONS+=("${VM_NAME}")
+    done < <(qvm-ls --raw-list | sort)
+
+    _arguments -C "*:VMs:($VM_COMPLETIONS)" && ret=0
 }
 
 
