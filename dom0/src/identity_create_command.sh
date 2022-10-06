@@ -1,5 +1,12 @@
 
-local identity="${args[identity]}"
+# Base identity parameters, set globally.
+name="${args[name]}"
+expiry="${args[expiry_date]}"
+email="${args[email]}"
+pendrive="${args[backup_device]}"
+
+# Propagate the identity and its settings
+_set_identity "${args[identity]}"
 
 # Identity checks and basic setup ==========================================
 
@@ -8,32 +15,38 @@ local identity="${args[identity]}"
 active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
 if [[ -n $active_identity ]]; then
     # It might be the same
-    if [[ $active_identity != "$identity" ]]; then
-        _failure "Another identity ($identity) is active. Close/slam/fold it and rerun this command"
+    if [[ $active_identity != "$IDENTITY" ]]; then
+        _failure "Another identity ($IDENTITY) is active. Close/slam/fold it and rerun this command"
     fi
 else
     risk_open_identity_command
-    _catch "Failed to open identity $identity"
+    _catch "Failed to open identity $IDENTITY"
 fi
 
-
 # Make a directory for this identity, and store the associated VM name
-local identity_dir="${RISK_IDENTITIES_DIR}/$identity"
-[[ -e ${identity_dir} ]] || mkdir -p "$identity_dir"
+[[ -e ${IDENTITY_DIR} ]] || mkdir -p "$IDENTITY_DIR"
+
 
 # Else we're good to go
-_message "Initializing infrastructure for identity $identity"
+_message "Creating identity $IDENTITY and infrastructure"
 
 # Default settings and values ==============================================
 
-# If the user wants to use a different name for the VMs
-local name="${args[--name]-$identity}"
-echo "$name" > "${identity_dir}/vm_name" 
-_message "Using name '$name' as VM base name"
+# If the user wants to use a different vm_name for the VMs
+local vm_name="${args[--name]-$IDENTITY}"
+echo "$vm_name" > "${IDENTITY_DIR}/vm_name" 
+_message "Using vm_name '$name' as VM base name"
 
 local label="${args[--label]}"
 
 # Prepare the root NetVM for this identity
+
+# Create identity in vault =================================================
+
+# Simply pass the arguments to the vault
+_message "Creating identity in vault"
+_qrun "$VAULT_VM" risks create identity "$name" "$email" "$expiry" "$pendrive"
+_catch "Failed to create identity in vault"
 
 # Network VMs ==============================================================
 _message "Creating network VMs:"
@@ -46,9 +59,9 @@ if [[ ${args[--no-gw]} -eq 0 ]]; then
     # or we create it from a template.
     if [[ -n ${args[--clone-gw-from]} ]]; then
         local clone="${args[--clone-gw-from]}"
-        clone_tor_gateway "$name" "$clone" "$gw_netvm" "$label"
+        clone_tor_gateway "$vm_name" "$clone" "$gw_netvm" "$label"
     else
-        create_tor_gateway "$name" "$gw_netvm" "$label"
+        create_tor_gateway "$vm_name" "$gw_netvm" "$label"
     fi
 else
     _message "Skipping TOR gateway"
@@ -62,9 +75,9 @@ if [[ ${args[--no-vpn]} -eq 0 ]]; then
     # or we create it from a template.
     if [[ -n ${args[--clone-vpn-from]} ]]; then
         local clone="${args[--clone-vpn-from]}"
-        clone_vpn_gateway "$name" "$clone" "$vpn_netvm" "$label"
+        clone_vpn_gateway "$vm_name" "$clone" "$vpn_netvm" "$label"
     else
-        create_vpn_gateway "$name" "$vpn_netvm" "$label"
+        create_vpn_gateway "$vm_name" "$vpn_netvm" "$label"
     fi
 else
     _message "Skipping VPN gateway"
@@ -75,14 +88,14 @@ if [[ ${args[--vpn-over-tor]} -eq 1 ]]; then
     echo
 fi
 
-# At this point we should know the name of the VM to be used as NetVM
+# At this point we should know the vm_name of the VM to be used as NetVM
 # for the subsquent machines, such as web browsing and messaging VMs.
 
 # Message VMs ==============================================================
 _message "Creating messaging VMs:"
 
 if [[ ${args[--no-messenger]} -eq 0 ]]; then
-    local msg="${name}-msg"
+    local msg="${vm_name}-msg"
 else
     _message "Skipping messaging VM"
 fi
@@ -98,20 +111,20 @@ if [[ -n ${args[--clone-web-from]} ]]; then
     local web_netvm
 
     local clone="${args[--clone-web-from]}"
-    clone_browser_vm "$name" "$clone" "$web_netvm" "$label"
+    clone_browser_vm "$vm_name" "$clone" "$web_netvm" "$label"
 else
-    create_browser_vm "$name" "$web_netvm" "$label"
+    create_browser_vm "$vm_name" "$web_netvm" "$label"
 fi
 
 # Split-browser has its own dispVMs and bookmarks
-local split_web="${name}-split-web"
+local split_web="${vm_name}-split-web"
 if [[ -n ${args[--clone-split-from]} ]]; then
     local clone="${args[--clone-split-from]}"
-    clone_split_browser_vm "$name" "$clone" "$label"
+    clone_split_browser_vm "$vm_name" "$clone" "$label"
 else
-    create_split_browser_vm "$name" "$label"
+    create_split_browser_vm "$vm_name" "$label"
 fi
 
 
 ## All done ##
-_success "Successfully initialized infrastructure for identity $identity"
+_success "Successfully initialized infrastructure for identity $IDENTITY"

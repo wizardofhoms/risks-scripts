@@ -97,3 +97,7 @@ commands:
     flags:
       - *verbose
 
+  # Hidden commands
+  - name: current
+    help: Prints the active identity as a raw string, to be used by prompts.
+    private: true

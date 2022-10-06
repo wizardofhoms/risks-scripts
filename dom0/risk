@@ -656,6 +656,35 @@ risk_identity_stop_usage() {
 }
 
 # :command.usage
+risk_identity_current_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risk identity current - Prints the active identity as a raw string, to be used by prompts.\n"
+		echo
+
+	else
+		printf "risk identity current - Prints the active identity as a raw string, to be used by prompts.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risk identity current\n"
+	printf "  risk identity current --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
 risk_vpn_usage() {
 	if [[ -n $long_usage ]]; then
 		printf "risk vpn - Create, configure, manage and use VPN gateways for an identity.\n"
@@ -1034,13 +1063,98 @@ check_is_device_attached ()
 
 # src/lib/identity.sh
 
+# Upon unlocking a given identity, sets the name as an ENV
+
+# variable that we can use in further functions and commands.
+# $1 - The name to use. If empty, just resets the identity.
+_set_active_identity ()
+{
+		# If the identity is empty, wipe the identity file
+		if [[ -z ${1} ]] && [[ -e ${RISK_IDENTITY_FILE} ]]; then
+				identity=$(cat "${RISK_IDENTITY_FILE}")
+				rm "${RISK_IDENTITY_FILE}" || _warning "Failed to wipe identity file !"
+
+				_verbose "Identity '${identity}' is now inactive, (name file deleted)"
+				_message "Identity '${identity}' is now INACTIVE"
+				return
+		fi
+
+		# If we don't have a file containing the
+
+		# identity name, populate it.
+		if [[ ! -e ${RISK_IDENTITY_FILE} ]]; then
+				print "$1" > "${RISK_IDENTITY_FILE}"
+	fi
+
+		_verbose "Identity '${1}' is now active (name file written)"
+		_message "Identity '${1}' is now ACTIVE"
+}
+
+# Returns 0 if an identity is unlocked, 1 if not.
+_identity_active ()
+
+{
+		local identity
+
+		active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+		if [[ -z "${active_identity}" ]]; then
+				return 1
+	fi
+
+		return 0
+}
+
+# Given an argument potentially containing the active identity, checks
+# that either an identity is active, or that the argument is not empty.
+# $1 - An identity name
+# Exits the program if none is specified, or echoes the identity if found.
+# Returns:
+# 0 - Identity is non-nil, provided either from arg or by the active
+# 1 - None have been given
+_identity_active_or_specified ()
+{
+		local active_identity
+
+		if [[ -z "${1}" ]] ; then
+				active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+				if [[ -z "${active_identity}" ]]; then
+						return 1
+				fi
+		fi
+
+		# Print the identity
+		if [[ -n "${1}" ]]; then
+				print "${1}" && return
+		fi
+
+		print "$active_identity"
+}
+
+# _set_identity is used to propagate our various IDENTITY related variables
+# so that all functions that will be subsequently called can access them.
+#
+# This function also takes care of checking if there is already an active
+# identity that should be used, in case the argument is empty or none.
+#
+# $1 - The identity to use.
+_set_identity () {
+		local identity="$1"
+
+		# This will throw an error if we don't have an identity from any source.
+		IDENTITY=$(_identity_active_or_specified "$identity")
+		_catch "Command requires either an identity to be active or given as argument"
+
+		# Set the identity directory
+		IDENTITY_DIR="${RISK_IDENTITIES_DIR}/${IDENTITY}"
+}
+
 # check that no identity is active in the vault, and fail if there is.
 check_no_active_identity ()
 {
 		active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
 		if [[ -n $active_identity ]]; then
 				# It might be the same
-				if [[ $active_identity == $1 ]]; then
+				if [[ $active_identity == "$1" ]]; then
 						_message "Identity $1 is already active"
 						exit 0
 				fi
@@ -1694,7 +1808,14 @@ risk_backup_detach_command() {
 risk_identity_create_command() {
 	# src/identity_create_command.sh
 
-	local identity="${args[identity]}"
+	# Base identity parameters, set globally.
+	name="${args[name]}"
+	expiry="${args[expiry_date]}"
+	email="${args[email]}"
+	pendrive="${args[backup_device]}"
+
+	# Propagate the identity and its settings
+	_set_identity "${args[identity]}"
 
 	# Identity checks and basic setup ==========================================
 
@@ -1703,32 +1824,38 @@ risk_identity_create_command() {
 	active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
 	if [[ -n $active_identity ]]; then
 			# It might be the same
-			if [[ $active_identity != "$identity" ]]; then
-					_failure "Another identity ($identity) is active. Close/slam/fold it and rerun this command"
+			if [[ $active_identity != "$IDENTITY" ]]; then
+					_failure "Another identity ($IDENTITY) is active. Close/slam/fold it and rerun this command"
 			fi
 	else
 			risk_open_identity_command
-			_catch "Failed to open identity $identity"
+			_catch "Failed to open identity $IDENTITY"
 	fi
 
 	# Make a directory for this identity, and store the associated VM name
-	local identity_dir="${RISK_IDENTITIES_DIR}/$identity"
-	[[ -e ${identity_dir} ]] || mkdir -p "$identity_dir"
+	[[ -e ${IDENTITY_DIR} ]] || mkdir -p "$IDENTITY_DIR"
 
 	# Else we're good to go
-	_message "Initializing infrastructure for identity $identity"
+	_message "Creating identity $IDENTITY and infrastructure"
 
 	# Default settings and values ==============================================
 
-	# If the user wants to use a different name for the VMs
-	local name="${args[--name]-$identity}"
-	echo "$name" > "${identity_dir}/vm_name"
+	# If the user wants to use a different vm_name for the VMs
+	local vm_name="${args[--name]-$IDENTITY}"
+	echo "$vm_name" > "${IDENTITY_DIR}/vm_name"
 
-	_message "Using name '$name' as VM base name"
+	_message "Using vm_name '$name' as VM base name"
 
 	local label="${args[--label]}"
 
 	# Prepare the root NetVM for this identity
+
+	# Create identity in vault =================================================
+
+	# Simply pass the arguments to the vault
+	_message "Creating identity in vault"
+	_qrun "$VAULT_VM" risks create identity "$name" "$email" "$expiry" "$pendrive"
+	_catch "Failed to create identity in vault"
 
 	# Network VMs ==============================================================
 	_message "Creating network VMs:"
@@ -1741,9 +1868,9 @@ risk_identity_create_command() {
 			# or we create it from a template.
 			if [[ -n ${args[--clone-gw-from]} ]]; then
 					local clone="${args[--clone-gw-from]}"
-					clone_tor_gateway "$name" "$clone" "$gw_netvm" "$label"
+					clone_tor_gateway "$vm_name" "$clone" "$gw_netvm" "$label"
 			else
-					create_tor_gateway "$name" "$gw_netvm" "$label"
+					create_tor_gateway "$vm_name" "$gw_netvm" "$label"
 			fi
 	else
 			_message "Skipping TOR gateway"
@@ -1757,9 +1884,9 @@ risk_identity_create_command() {
 			# or we create it from a template.
 			if [[ -n ${args[--clone-vpn-from]} ]]; then
 					local clone="${args[--clone-vpn-from]}"
-					clone_vpn_gateway "$name" "$clone" "$vpn_netvm" "$label"
+					clone_vpn_gateway "$vm_name" "$clone" "$vpn_netvm" "$label"
 			else
-					create_vpn_gateway "$name" "$vpn_netvm" "$label"
+					create_vpn_gateway "$vm_name" "$vpn_netvm" "$label"
 			fi
 	else
 			_message "Skipping VPN gateway"
@@ -1770,14 +1897,14 @@ risk_identity_create_command() {
 			echo
 	fi
 
-	# At this point we should know the name of the VM to be used as NetVM
+	# At this point we should know the vm_name of the VM to be used as NetVM
 	# for the subsquent machines, such as web browsing and messaging VMs.
 
 	# Message VMs ==============================================================
 	_message "Creating messaging VMs:"
 
 	if [[ ${args[--no-messenger]} -eq 0 ]]; then
-			local msg="${name}-msg"
+			local msg="${vm_name}-msg"
 	else
 			_message "Skipping messaging VM"
 	fi
@@ -1793,31 +1920,29 @@ risk_identity_create_command() {
 			local web_netvm
 
 			local clone="${args[--clone-web-from]}"
-			clone_browser_vm "$name" "$clone" "$web_netvm" "$label"
+			clone_browser_vm "$vm_name" "$clone" "$web_netvm" "$label"
 	else
-			create_browser_vm "$name" "$web_netvm" "$label"
+			create_browser_vm "$vm_name" "$web_netvm" "$label"
 	fi
 
 	# Split-browser has its own dispVMs and bookmarks
-	local split_web="${name}-split-web"
+	local split_web="${vm_name}-split-web"
 	if [[ -n ${args[--clone-split-from]} ]]; then
 			local clone="${args[--clone-split-from]}"
-			clone_split_browser_vm "$name" "$clone" "$label"
+			clone_split_browser_vm "$vm_name" "$clone" "$label"
 	else
-			create_split_browser_vm "$name" "$label"
+			create_split_browser_vm "$vm_name" "$label"
 	fi
 
-	_success "Successfully initialized infrastructure for identity $identity"
+	_success "Successfully initialized infrastructure for identity $IDENTITY"
 
 }
 
 # :command.function
 risk_identity_delete_command() {
 	# src/identity_delete_command.sh
-	echo "# this file is located in 'src/identity_delete_command.sh'"
-	echo "# code for 'risk identity delete' goes here"
-	echo "# you can edit it freely and regenerate (it will not be overwritten)"
-	inspect_args
+
+	_set_identity "${args[identity]}"
 
 }
 
@@ -1825,7 +1950,7 @@ risk_identity_delete_command() {
 risk_identity_open_command() {
 	# src/identity_open_command.sh
 
-	local identity="${args[identity]}"
+	_set_identity "${args[identity]}"
 
 	# 1 - Check that hush is mounted on vault
 	# TODO: change this, since it only checks for the default vault VM
@@ -1833,15 +1958,15 @@ risk_identity_open_command() {
 
 	# 2 - Check that no identity is currently opened
 	# The second line should be empty, as opposed to being an encrypted coffin name
-	check_no_active_identity "$identity"
+	check_no_active_identity "$IDENTITY"
 
 	# 3 - Send commands to vault
-	_message "Opening identity $identity"
+	_message "Opening identity $IDENTITY"
 
-	_qrun "$VAULT_VM" risks open identity "$identity"
+	_qrun "$VAULT_VM" risks open identity "$IDENTITY"
 	_catch "Failed to open identity"
 
-	_message "Identity $identity is active"
+	_message "Identity $IDENTITY is active"
 
 }
 
@@ -1869,10 +1994,10 @@ risk_identity_close_command() {
 risk_identity_start_command() {
 	# src/identity_start_command.sh
 
-	local identity="${args[identity]}"
+	_set_identity "${args[identity]}"
 
 	# Get the name for VMs
-	local identity_dir="${RISK_IDENTITIES_DIR}/$identity"
+	local identity_dir="${IDENTITY_DIR}"
 	local name="$(cat "${identity_dir}/vm_name")"
 
 }
@@ -1884,6 +2009,13 @@ risk_identity_stop_command() {
 	echo "# code for 'risk identity stop' goes here"
 	echo "# you can edit it freely and regenerate (it will not be overwritten)"
 	inspect_args
+
+}
+
+# :command.function
+risk_identity_current_command() {
+	# src/identity_current_command.sh
+	print "$(_identity_active_or_specified)"
 
 }
 
@@ -2445,6 +2577,13 @@ risk_identity_parse_requirements() {
 		shift $#
 		;;
 
+	current )
+		action="current"
+		shift
+		risk_identity_current_parse_requirements "$@"
+		shift $#
+		;;
+
 	# :command.command_fallback
 	"" )
 		risk_identity_usage
@@ -2952,6 +3091,44 @@ risk_identity_stop_parse_requirements() {
 			args[--verbose]=1
 			shift
 			;;
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risk_identity_current_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risk_identity_current_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="identity current"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
 
 		-?* )
 			printf "invalid option: %s\n" "$key"
@@ -3501,14 +3678,19 @@ initialize() {
 	# Remove verbose errors when * don't yield any match in ZSH
 	setopt +o nomatch
 
+	# Working state variables
+	typeset -r IDENTITY            # The identity to use for this single risk execution
+	typeset -g IDENTITY_DIR        # The directory where to store identity settings
+
 	# Default templates and VMs to use
 
 	typeset -rg WHONIX_GW_TEMPLATE="whonix-gw-16"
 	typeset -rg WHONIX_WS_TEMPLATE="whonix-ws-16"
 
 	# Working state and configurations
-	typeset -rg RISK_DIR="${HOME}/.risk"                       # Directory where risk stores its state
-	typeset -rg RISK_IDENTITIES_DIR="$RISK_DIR/identities"     # Idendities store their settings here
+	typeset -rg RISK_DIR="${HOME}/.risk"                         # Directory where risk stores its state
+	typeset -rg RISK_IDENTITIES_DIR="${RISK_DIR}/identities"     # Idendities store their settings here
+	typeset -rg RISK_IDENTITY_FILE="${RISK_DIR}/.identity"
 
 	#----------------------------#
 
@@ -3638,6 +3820,14 @@ run() {
 			risk_identity_stop_usage
 		else
 			risk_identity_stop_command
+		fi
+
+	elif [[ $action == "identity current" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risk_identity_current_usage
+		else
+			risk_identity_current_command
 		fi
 
 	elif [[ $action == "vpn" ]]; then

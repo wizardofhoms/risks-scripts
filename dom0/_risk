@@ -143,29 +143,18 @@ _identity_commands ()
 # Completion dispatcher for identity command
 _identity ()
 {
-    local ret=1
     local line state
 
     _arguments -C \
         "1: :_identity_commands" \
-        "*::arg:->args" \
-        && ret=0
+        "*::arg:->args"
 
     # Arguments completion
     case $state in
         args)
             case $line[1] in
             create)
-                _arguments -C \
-                    "${_flags_base[@]}" \
-                    "${_flags_init_base[@]}" \
-                    "${_flags_init_vpn[@]}" \
-                    "${_flags_init_tor[@]}" \
-                    "${_flags_network_opts[@]}" \
-                    "${_flags_init_web[@]}" \
-                    "${_flags_init_messenger[@]}" \
-                    '1:identity name:' \
-                    && ret=0
+                _identity_create
                 ;;
             start|open|delete)
                 _arguments \
@@ -179,6 +168,38 @@ _identity ()
                     && ret=0
                 ;;
             esac
+    esac
+}
+
+# Completions for the identity create command
+_identity_create ()
+{
+    local line state
+
+    _arguments -C \
+        '1:identity name:->name' \
+        "2:email recipient:->recipient" \
+        "3:key expiry:->duration" \
+        "${_flags_base[@]}" \
+        "${_flags_init_base[@]}" \
+        "${_flags_init_vpn[@]}" \
+        "${_flags_init_tor[@]}" \
+        "${_flags_network_opts[@]}" \
+        "${_flags_init_web[@]}" \
+        "${_flags_init_messenger[@]}" \
+        && ret=0
+
+    # Indications for the create identity command
+    case "$state" in
+        name)
+            _message "quoted string of the name, if spaces"
+            ;;
+        recipient)
+            _message "mail address recipient to use for GPG" 
+            ;;
+        duration)
+            _message "quoted, human readable expiry duration for GPG keys" 
+            ;;
     esac
 }
 
