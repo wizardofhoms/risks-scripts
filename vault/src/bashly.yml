@@ -52,7 +52,7 @@ commands:
 - import: src/hush_commands.yml
 - import: src/backup_commands.yml
   # Identity/stores management commands
-- import: src/new_commands.yml
+- import: src/create_commands.yml
 - import: src/open_command.yml
 - import: src/close_command.yml
 - import: src/list_command.yml
@@ -62,3 +62,8 @@ commands:
 - import: src/load_command.yml
 - import: src/save_command.yml
 - import: src/kv_commands.yml
+
+# Hidden commands
+- name: identity 
+  help: Prints the active identity as a raw string, to be used by prompts.
+  private: true

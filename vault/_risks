@@ -15,43 +15,23 @@ _risks()
         shift words
         # Run the completion for the subcommand
         case "${cmd}" in
-            hush)
-                _hush
-                ;;
-            backup)
-                _backup
-                ;;
-            list)
-                _store_types
-                ;;
-            gpgpass)
-                _gpgpass
-                ;;
-            new)
-                _new 
-                ;;
-            open)
-                _open
-                ;;
-            close)
-                _close
-                ;;
-            load)
-                _load
-                ;;
-            save)
-                _save
-                ;;
-            kv)
-                _kv
-                ;;
+            (hush)      _hush ;;
+            (backup)    _backup ;;
+            (list)      _store_types ;;
+            (gpgpass)   _gpgpass ;;
+            (create)    _create ;;
+            (open)      _open ;;
+            (close)     _close ;;
+            (load)      _load ;;
+            (save)      _save ;;
+            (kv)        _kv ;;
         esac
     else
         local -a subcmds
         subcmds=(
             'hush:Format or manage the hush partition mount points and read/write permissions'
             'backup:Create, manage, restore or use backup devices and partitions'
-            'new:Create new identities or associated data stores/tombs'
+            'create:Create new identities or associated data stores/tombs'
             'open:Open an identity or some of its associated data stores'
             'close:Close an identity or some of its associated data stores'
             'list:Show currently open data stores'
@@ -164,7 +144,7 @@ _backup ()
 }
 
 # Completion for all arguments needed when creating a new store 
-_new () 
+_create () 
 {
     local line state
     _arguments -C \
@@ -178,10 +158,10 @@ _new ()
         identities)
             case $words[2] in
                 identity)
-                    _new_identity
+                    _create_identity
                     ;;
                 tomb)
-                    _new_tomb
+                    _create_tomb
                     ;;
             esac
             ;;
@@ -189,7 +169,7 @@ _new ()
 }
 
 # Completion for arguments needed when creating a new identity
-_new_identity () 
+_create_identity () 
 {
     local line state
     _arguments -C \
@@ -216,7 +196,7 @@ _new_identity ()
 }
 
 # Completion for arguments needed when creating a new tomb
-_new_tomb () 
+_create_tomb () 
 {
     local line state
     _arguments -C \

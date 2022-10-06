@@ -1,5 +1,5 @@
 # New identity/stores commands #
-name: new
+name: create
 help: 'Create new identities or associated data stores/tombs'
 
 commands:

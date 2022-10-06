@@ -28,7 +28,7 @@ risks_usage() {
 	printf "Commands:\n"
 	echo "  hush      Format or manage the hush partition mount points and read/write permissions"
 	echo "  backup    Create, manage, restore or use backup devices and partitions"
-	echo "  new       Create new identities or associated data stores/tombs"
+	echo "  create    Create new identities or associated data stores/tombs"
 	echo "  open      Open an identity or some of its associated data stores"
 	echo "  close     Close an identity or some of its associated data stores"
 	echo "  list      Show currently open data stores"
@@ -541,20 +541,20 @@ risks_backup_hush_usage() {
 }
 
 # :command.usage
-risks_new_usage() {
+risks_create_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks new - Create new identities or associated data stores/tombs\n"
+		printf "risks create - Create new identities or associated data stores/tombs\n"
 		echo
 
 	else
-		printf "risks new - Create new identities or associated data stores/tombs\n"
+		printf "risks create - Create new identities or associated data stores/tombs\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risks new [command]\n"
-	printf "  risks new [command] --help | -h\n"
+	printf "  risks create [command]\n"
+	printf "  risks create [command] --help | -h\n"
 	echo
 	# :command.usage_commands
 	printf "Commands:\n"
@@ -575,20 +575,20 @@ risks_new_usage() {
 }
 
 # :command.usage
-risks_new_identity_usage() {
+risks_create_identity_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks new identity - Create a new GPG identity, with SSH/password-store/Signal and associated tombs\n"
+		printf "risks create identity - Create a new GPG identity, with SSH/password-store/Signal and associated tombs\n"
 		echo
 
 	else
-		printf "risks new identity - Create a new GPG identity, with SSH/password-store/Signal and associated tombs\n"
+		printf "risks create identity - Create a new GPG identity, with SSH/password-store/Signal and associated tombs\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risks new identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
-	printf "  risks new identity --help | -h\n"
+	printf "  risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+	printf "  risks create identity --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -638,20 +638,20 @@ risks_new_identity_usage() {
 }
 
 # :command.usage
-risks_new_tomb_usage() {
+risks_create_tomb_usage() {
 	if [[ -n $long_usage ]]; then
-		printf "risks new tomb - Create a new tomb\n"
+		printf "risks create tomb - Create a new tomb\n"
 		echo
 
 	else
-		printf "risks new tomb - Create a new tomb\n"
+		printf "risks create tomb - Create a new tomb\n"
 		echo
 
 	fi
 
 	printf "Usage:\n"
-	printf "  risks new tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
-	printf "  risks new tomb --help | -h\n"
+	printf "  risks create tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
+	printf "  risks create tomb --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -1252,6 +1252,35 @@ risks_kv_clean_usage() {
 	printf "Usage:\n"
 	printf "  risks kv clean\n"
 	printf "  risks kv clean --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_identity_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks identity - Prints the active identity as a raw string, to be used by prompts.\n"
+		echo
+
+	else
+		printf "risks identity - Prints the active identity as a raw string, to be used by prompts.\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks identity\n"
+	printf "  risks identity --help | -h\n"
 	echo
 
 	# :command.long_usage
@@ -3348,8 +3377,8 @@ risks_backup_hush_command() {
 }
 
 # :command.function
-risks_new_identity_command() {
-	# src/new_identity_command.sh
+risks_create_identity_command() {
+	# src/create_identity_command.sh
 
 	local name identity expiry pendrive pendrive_error email
 
@@ -3478,8 +3507,8 @@ risks_new_identity_command() {
 }
 
 # :command.function
-risks_new_tomb_command() {
-	# src/new_tomb_command.sh
+risks_create_tomb_command() {
+	# src/create_tomb_command.sh
 
 	LABEL="${args[tomb_name]}"
 	SIZE="${args[size]}"
@@ -3849,6 +3878,14 @@ risks_kv_clean_command() {
 
 }
 
+# :command.function
+risks_identity_command() {
+	# src/identity_command.sh
+	# Simply print the active identity if there is one
+	_identity_active_or_specified
+
+}
+
 # :command.parse_requirements
 parse_requirements() {
 	# :command.fixed_flags_filter
@@ -3929,10 +3966,10 @@ parse_requirements() {
 		shift $#
 		;;
 
-	new )
-		action="new"
+	create )
+		action="create"
 		shift
-		risks_new_parse_requirements "$@"
+		risks_create_parse_requirements "$@"
 		shift $#
 		;;
 
@@ -3989,6 +4026,13 @@ parse_requirements() {
 		action="kv"
 		shift
 		risks_kv_parse_requirements "$@"
+		shift $#
+		;;
+
+	identity )
+		action="identity"
+		shift
+		risks_identity_parse_requirements "$@"
 		shift $#
 		;;
 
@@ -4735,12 +4779,12 @@ risks_backup_hush_parse_requirements() {
 }
 
 # :command.parse_requirements
-risks_new_parse_requirements() {
+risks_create_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risks_new_usage
+		risks_create_usage
 		exit
 		;;
 
@@ -4756,20 +4800,20 @@ risks_new_parse_requirements() {
 	identity )
 		action="identity"
 		shift
-		risks_new_identity_parse_requirements "$@"
+		risks_create_identity_parse_requirements "$@"
 		shift $#
 		;;
 
 	tomb )
 		action="tomb"
 		shift
-		risks_new_tomb_parse_requirements "$@"
+		risks_create_tomb_parse_requirements "$@"
 		shift $#
 		;;
 
 	# :command.command_fallback
 	"" )
-		risks_new_usage
+		risks_create_usage
 		exit 1
 		;;
 
@@ -4804,19 +4848,19 @@ risks_new_parse_requirements() {
 }
 
 # :command.parse_requirements
-risks_new_identity_parse_requirements() {
+risks_create_identity_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risks_new_identity_usage
+		risks_create_identity_usage
 		exit
 		;;
 
 	esac
 
 	# :command.command_filter
-	action="new identity"
+	action="create identity"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
@@ -4871,38 +4915,38 @@ risks_new_identity_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[name]+x} ]]; then
-		printf "missing required argument: NAME\nusage: risks new identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: NAME\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[email]+x} ]]; then
-		printf "missing required argument: EMAIL\nusage: risks new identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: EMAIL\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[expiry_date]+x} ]]; then
-		printf "missing required argument: EXPIRY_DATE\nusage: risks new identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: EXPIRY_DATE\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[backup_device]+x} ]]; then
-		printf "missing required argument: BACKUP_DEVICE\nusage: risks new identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: BACKUP_DEVICE\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
 		exit 1
 	fi
 
 }
 
 # :command.parse_requirements
-risks_new_tomb_parse_requirements() {
+risks_create_tomb_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
 	--help | -h )
 		long_usage=yes
-		risks_new_tomb_usage
+		risks_create_tomb_usage
 		exit
 		;;
 
 	esac
 
 	# :command.command_filter
-	action="new tomb"
+	action="create tomb"
 
 	# :command.parse_requirements_while
 	while [[ $# -gt 0 ]]; do
@@ -4953,11 +4997,11 @@ risks_new_tomb_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[tomb_name]+x} ]]; then
-		printf "missing required argument: TOMB_NAME\nusage: risks new tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
+		printf "missing required argument: TOMB_NAME\nusage: risks create tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[size]+x} ]]; then
-		printf "missing required argument: SIZE\nusage: risks new tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
+		printf "missing required argument: SIZE\nusage: risks create tomb TOMB_NAME SIZE [IDENTITY] [options]\n"
 		exit 1
 	fi
 
@@ -5722,6 +5766,44 @@ risks_kv_clean_parse_requirements() {
 
 }
 
+# :command.parse_requirements
+risks_identity_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_identity_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="identity"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
 # :command.initialize
 initialize() {
 	version="0.1.0"
@@ -5778,15 +5860,6 @@ initialize() {
 
 	# Use colors unless told not to
 	{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
-	# Some options are only available during insecure mode
-	{ ! option_is_set --unsafe } && {
-			for opt in --tomb-pwd --tomb-old-pwd; do
-					{ option_is_set $opt } && {
-							exitv=127 _failure "You specified option ::1 option::, \
-							which is DANGEROUS and should only be used for testing\n \
-							If you really want so, add --unsafe" $opt }
-			done
-	}
 
 }
 
@@ -5894,28 +5967,28 @@ run() {
 			risks_backup_hush_command
 		fi
 
-	elif [[ $action == "new" ]]; then
+	elif [[ $action == "create" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risks_new_usage
+			risks_create_usage
 		else
-			risks_new_command
+			risks_create_command
 		fi
 
-	elif [[ $action == "new identity" ]]; then
+	elif [[ $action == "create identity" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risks_new_identity_usage
+			risks_create_identity_usage
 		else
-			risks_new_identity_command
+			risks_create_identity_command
 		fi
 
-	elif [[ $action == "new tomb" ]]; then
+	elif [[ $action == "create tomb" ]]; then
 		if [[ ${args[--help]:-} ]]; then
 			long_usage=yes
-			risks_new_tomb_usage
+			risks_create_tomb_usage
 		else
-			risks_new_tomb_command
+			risks_create_tomb_command
 		fi
 
 	elif [[ $action == "open" ]]; then
@@ -6020,6 +6093,14 @@ run() {
 			risks_kv_clean_usage
 		else
 			risks_kv_clean_command
+		fi
+
+	elif [[ $action == "identity" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_identity_usage
+		else
+			risks_identity_command
 		fi
 
 	elif [[ $action == "root" ]]; then
