@@ -16,7 +16,7 @@ strict: false
 
 # When true, the generated script will use tab indentation instead of spaces
 # (every 2 leading spaces will be converted to a tab character)
-tab_indent: true 
+tab_indent: false 
 
 # Set to 'production' or 'development':
 # - production    generate a smaller script, without file markers

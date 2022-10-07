@@ -96,3 +96,9 @@ check_no_active_identity ()
         _failure "Identity $active_identity is active. Close/slam/fold it and rerun this command"
     fi
 }
+
+# Get the default VM label/color for an identity
+get_identity_label ()
+{
+    cat "${IDENTITY_DIR}/vm_label" 2>/dev/null
+}

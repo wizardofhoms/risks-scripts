@@ -180,8 +180,9 @@ _identity_create ()
         '1:identity name:->name' \
         "2:email recipient:->recipient" \
         "3:key expiry:->duration" \
+        '(- : *)--only[Only create the identity in the vault: do not create any machines]' \
         "${_flags_base[@]}" \
-        "${_flags_init_base[@]}" \
+        "${_flags_vm_base[@]}" \
         "${_flags_init_vpn[@]}" \
         "${_flags_init_tor[@]}" \
         "${_flags_network_opts[@]}" \
@@ -236,10 +237,11 @@ _vpn ()
             create)
                 _arguments -C \
                     "${_flags_base[@]}" \
-                    "${_flags_init_base[@]}" \
-                    "${_flags_init_vpn[@]}" \
-                    "${_flags_network_opts[@]}" \
-                    '1::identity name (optional if active):' \
+                    "${_flags_vm_base[@]}" \
+                    "${_flags_create_base[@]}" \
+                    "${_flags_network[@]}" \
+                    "${_flags_vpn[@]}" \
+                    '1::VPN gateway name (optional):' \
                     && ret=0
                 ;;
             start|stop|delete|enable)
@@ -251,7 +253,9 @@ _vpn ()
             setup)
                 _arguments \
                     "${_flags_base[@]}" \
-                    {-c,--config-in}'[VM in which to browse for VPN configuration(s)]:VM containing configs:_known_vms' \
+                    "${_flags_vpn[@]}" \
+                    "${_flags_network[@]}" \
+                    '1:VPN gateway name:' \
                     && ret=0
                 ;;
             esac
@@ -266,12 +270,32 @@ _flags_base=(
     '(- : *)'{-h,--help}'[Print help for the command]'
 )
 
-## Init command flags
-_flags_init_base=(
-    '(-N --name)'{-N,--name}'[Use a different name for naming identity VMs]' 
-    '(-L --label)'{-L,--label}'[Specify a label color to be used for ALL subsequently created VMs]' 
+## Base flags needed when creating/cloning a VM
+_flags_vm_base=(
+    '(-N --name)'{-N,--name}'[Use a different name for naming identity VMs]:VM base name:' 
+    '(-L --label)'{-L,--label}'[Specify a label color to be used for ALL subsequently created VMs]:VM label:' 
+    )
+
+_flags_create_base=(
+    {-c,--clone}'[AppVM to clone the new VM from]:AppVM:_known_vms'
+    {-T,--template}'[TemplateVM to use for creating the VM]:TemplateVM:_known_vms'
 )
 
+# flags used for setting a VM connectivity
+_flags_network=(
+    '(-n --netvm)'{-n,--netvm}'[NetVM to use for the gateway]:NetVM:_known_vms'
+    )
+
+# flags used to manipulate VPN settings
+_flags_vpn=(
+    '(--choose)--config-in[VM in which to browse for VPN configuration(s)]:VM containing configs:_known_vms'
+    '(--config-in)--choose[Choose an existing client config by running the setup wizard in the VPN VM]'
+    '--set-default[Set this VM as the default NetVM for all client machines for identity (browser, messaging, etc)]'
+)
+
+# The following flags groups are used only in the 'identity create' command,
+# since the command normally creates a bunch of different vms: most of these
+# flags are made to slightly change these default VMs' settings.
 _flags_init_vpn=(
     '(--clone-vpn-from --vpn-over-tor -V --no-vpn)'{-V,--no-vpn}'[Do not create a VPN gateway]' 
     '(-V --no-vpn --clone-vpn-from)'--clone-vpn-from'[Instead of creating the VPN gateway from a template, clone an existing VPN AppVM]:VM:_known_vms'

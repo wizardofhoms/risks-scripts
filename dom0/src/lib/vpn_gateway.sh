@@ -4,36 +4,79 @@
 create_vpn_gateway ()
 {
     local gw="${1}-gw"
-    local netvm="${2-$RISK_DEFAULT_NETVM}"
+    local netvm="${2-$DEFAULT_NETVM}"
     local gw_label="${3-blue}"
+    local template="${4-$VPN_TEMPLATE}"
 
-    local -a create_command
-    create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$RISK_VPN_TEMPLATE")
+    _verbose "VPN gateway properties (name: $gw / netvm: $netvm / template: $template)"
+    qvm-create --property netvm="$netvm" --label "$gw_label" --template "$template"
 
-    _message "Creating VPN gateway VM (name: $gw / netvm: $netvm / template: $RISK_VPN_TEMPLATE)"
+    _message "Getting network from $netvm"
 }
 
 # Creates a new VPN gateway from an existing VPN AppVM 
 clone_vpn_gateway ()
 {
     local gw="${1}-vpn"
-    local gw_clone="$2"
-    local netvm="${3-$RISK_DEFAULT_NETVM}"
-    local gw_label="${4-blue}"
+    local netvm="${2-$DEFAULT_NETVM}"
+    local gw_label="${3-blue}"
+    local gw_clone="$4"
 
     # Create the VPN
-    local -a create_command
-    create_command+=(qvm-clone "${gw_clone}" "${gw}")
+    _verbose "VPN gateway properties (name: $gw / netvm: $netvm / clone: $gw_clone)"
+    qvm-clone "${gw_clone}" "${gw}"
 
-    local label_command=(qvm-prefs "$gw" label "$gw_label")
-    local netvm_command=(qvm-prefs "$gw" netvm "$netvm")
-
-    _message "Cloning VPN gateway VM (name: $gw / netvm: $netvm / template: $gw_clone)"
-
-    # For now disposable are not allowed, since it would create too many VMs, 
+    # For now disposables are not allowed, since it would create too many VMs, 
     # and complicate a bit the setup steps for VPNs. If the clone is a template
     # for disposables, unset it
     local disp_template
-    # disp_template=$(qvm-prefs "${gw}" template_for_dispvms)
-    # [[ "$disp_template" = "True" ]] && qvm-prefs "${gw}" template_for_dispvms False
+    disp_template=$(qvm-prefs "${gw}" template_for_dispvms)
+    [[ "$disp_template" = "True" ]] && qvm-prefs "${gw}" template_for_dispvms False
+
+    _message "Getting network from $netvm"
+    qvm-prefs "$gw" netvm "$netvm"
+
+    _verbose "Setting label to $gw_label"
+    qvm-prefs "$gw" label "$gw_label"
+
+}
+
+# function to browse for one or more (as zip) VPN client configurations
+# in another VM, import them in our VPN VM, and run the setup wizard if
+# there is more than one configuration to choose from.
+# $1 - Name of VPN VM
+# $2 - Name of VM in which to browse for configuration
+# $ $3 - Path to the VPN client config to which one (only) should be copied, if not a zip file
+import_vpn_configs ()
+{
+    local name="$1"
+    local config_vm="$2"
+    local client_conf_path="$3"
+
+    config_path=$(_qvrun "$config_vm" "zenity --file-selection --title='VPN configuration selection' 2>/dev/null")
+    if [[ -z "$config_path" ]]; then
+        _message "Canceling setup: no file selected in VM $config_vm"
+    else
+        _verbose "Copying file $config_path to VPN VM"
+        _qvrun "$config_vm" qvm-copy-to-vm "$name" "$config_path"
+
+        # Now our configuration is the QubesIncoming directory of our VPN,
+        # so we move it where the VPN will look for when starting.
+        local new_path="/home/user/QubesIncoming/${config_vm}/$(basename "$config_path")"
+
+        # If the file is a zip file, unzip it in the configs directory
+        # and immediately run the setup prompt to choose one.
+        if [[ $new_path:t:e == "zip" ]]; then
+            local configs_dir="/rw/config/vpn/configs" 
+            _verbose "Unzipping files into $configs_dir"
+            _qvrun "$name" mkdir -p "$configs_dir" 
+            _qvrun "$name" unzip -j -d "$configs_dir" 
+            _qvrun "$name" /usr/local/bin/setup_VPN 
+        else
+            _verbose "Copying file directly to the VPN client config path"
+            _qvrun "$name" mv "$new_path" "$client_conf_path"
+        fi
+
+        _message "Done transfering VPN client configuration to VM"
+    fi
 }

@@ -67,6 +67,17 @@ _qrun () {
     return $ret
 }
 
+_qvrun () {
+    local vm="$1"
+    shift
+    local full_command="$*"
+
+    _verbose "Running command: ${full_command[*]}"
+
+    # Run the command raw, so that we get the output as it is.
+    qvm-run --pass-io "$vm" "${full_command[*]}"
+}
+
 # Checks the return code of a command, and if not successful,
 # fails with the associated error message. Usage:
 # catch $ret "hush" "Failed to execute this command"

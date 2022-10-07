@@ -38,5 +38,9 @@ fi
 #----------------------------#
 ## Configuration directories ##
 
+# Create the risk directory if needed
 [[ -e $RISK_DIR ]] || { mkdir -p $RISK_DIR && _message "Creating RISK directory in $RISK_DIR" }
 [[ -e $RISK_IDENTITIES_DIR ]] || mkdir -p $RISK_IDENTITIES_DIR
+
+# Write the default configuration if it does not exist.
+config_init

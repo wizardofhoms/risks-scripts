@@ -4,6 +4,10 @@ help: Create, configure, manage and use VPN gateways for an identity.
 commands:
   - name: create
     help: Create VPN gateway from a template, or by cloning an existing one. 
+    args:
+      - name: name 
+        help: "(optional) name to use for this VM (=> name-vpn)"
+        required: false 
     flags:
       - &verbose      
         long: --verbose
@@ -18,26 +22,29 @@ commands:
         help: "Specify a label color to be used for all VMs belonging to this identity"
         arg: color 
         # VPN gateway options
-      - long: --no-vpn
-        short: -V
-        help: "Don't create a VPN gateway"
-        conflicts: [ --clone-vpn-from --vpn-over-tor ]
-      - long: --clone-vpn-from
+      - long: --template
+        short: -T
+        help: "TemplateVM to use instead of the default VPN TemplateVM"
+        arg: template
+      - long: --clone
+        short: -c
         help: "Instead of creating the VPN gateway from a template, clone an existing VPN AppVM"
         arg: vpn_gw 
         # Other network options
-      - long: --vpn-over-tor
-        help: "Instead of routing TOR traffic through the VPN, route the VPN traffic through TOR"
-        conflicts: [ --no-vpn --no-gw ]
+      - &vpn_config
+        long: --config-in
+        help: "VM in which to browse for VPN configuration(s)"
+        arg: config_vm
+        conflicts: [ --choose ]
 
   - name: setup
     help: Manage, import network configurations and run associated setup wizards
     flags:
       - *verbose
-      - long: --config-in
-        short: -c
-        help: "VM in which to browse for VPN configuration(s)"
-        arg: config_vm
+      - *vpn_config
+      - long: --choose
+        help: Choose an existing client config by running the setup wizard in the VPN VM
+        conflicts: [ --config-in ]
     args:
       - name: vm 
         help: "gateway VM to operate setup on"

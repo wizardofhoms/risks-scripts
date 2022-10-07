@@ -1,9 +1,9 @@
 
 # Base identity parameters, set globally.
-name="${args[name]}"
-expiry="${args[expiry_date]}"
-email="${args[email]}"
-pendrive="${args[backup_device]}"
+local name="${args[name]}"
+local expiry="${args[expiry_date]}"
+local email="${args[email]}"
+local pendrive="${args[backup_device]}"
 
 # Propagate the identity and its settings
 _set_identity "${args[identity]}"
@@ -16,7 +16,7 @@ active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
 if [[ -n $active_identity ]]; then
     # It might be the same
     if [[ $active_identity != "$IDENTITY" ]]; then
-        _failure "Another identity ($IDENTITY) is active. Close/slam/fold it and rerun this command"
+        _failure "Another identity ($IDENTITY) is active. Close/slam/stop it and rerun this command"
     fi
 else
     risk_open_identity_command
@@ -26,11 +26,10 @@ fi
 # Make a directory for this identity, and store the associated VM name
 [[ -e ${IDENTITY_DIR} ]] || mkdir -p "$IDENTITY_DIR"
 
-
 # Else we're good to go
 _message "Creating identity $IDENTITY and infrastructure"
 
-# Default settings and values ==============================================
+# Default settings and values 
 
 # If the user wants to use a different vm_name for the VMs
 local vm_name="${args[--name]-$IDENTITY}"
@@ -38,6 +37,8 @@ echo "$vm_name" > "${IDENTITY_DIR}/vm_name"
 _message "Using vm_name '$name' as VM base name"
 
 local label="${args[--label]}"
+echo "$vm_name" > "${IDENTITY_DIR}/vm_label" 
+_message "Using label '$label' as VM default label"
 
 # Prepare the root NetVM for this identity
 
