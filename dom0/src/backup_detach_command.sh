@@ -1,4 +1,4 @@
-local block="${BACKUP_BLOCK}"
+local block="${args[device]:-$BACKUP_BLOCK}"
 local vm="${VAULT_VM}"
 
 qvm-block detach "${vm}" "${block}"

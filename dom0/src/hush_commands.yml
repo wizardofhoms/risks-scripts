@@ -18,6 +18,9 @@ commands:
       - long: --verbose
         short: -v
         help: "Show verbose logging"
+      - long: --mount
+        short: -m
+        help: "Mount the hush device in the vault (prompts for password)"
 
   - name: detach
     help: "Detach the hush device from its current qube, making sure it's not in a read-write state"

@@ -31,6 +31,11 @@ qvm-block attach "${vm}" "${block}"
 if [[ $? -eq 0 ]]; then
 	_success "Block ${block} has been attached to ${vm}"
 else
-	_success "Block ${block} can not be attached to ${vm}"
+	_failure "Block ${block} can not be attached to ${vm}"
 fi
 
+# If user wants to mount it now, do it
+if [[ ${args[--mount]} -eq 1 ]]; then
+    _message "Mounting hush device"
+    _qrun "$vm" risks hush mount
+fi
