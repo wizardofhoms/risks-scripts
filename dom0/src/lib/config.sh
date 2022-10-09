@@ -25,16 +25,16 @@ config_init() {
 ; Default Templates =============================================== #
 
 ; Default Whonix Workstation TemplateVM for TOR clients
-WHONIX_WS_TEMPLATE='whonix-ws-16'
+WHONIX_WS_TEMPLATE=whonix-ws-16
 
 ; Default Whonix Gateway TemplateVM for TOR gateways
-WHONIX_GW_TEMPLATE='whonix-gw-16'
+WHONIX_GW_TEMPLATE=whonix-gw-16
 
 ; Default TemplateVM to use for VPN VMs
-VPN_TEMPLATE='sys-vpn'
+VPN_TEMPLATE=sys-vpn
 
 ; Default TemplateVM to use for split-browser backend
-SPLIT_BROWSER_TEMPLATE=''
+SPLIT_BROWSER_TEMPLATE=
 
 ; Default AppVMs ================================================== #
 ;
@@ -42,29 +42,29 @@ SPLIT_BROWSER_TEMPLATE=''
 ; existing ones, instead of creating blank AppVMs from templates.
 
 ; Default Whonix Workstation AppVM to use for identity client machine
-WHONIX_WS=''
+WHONIX_WS=
 
 ; Default AppVM to use for cloning new VPN qubes
-VPN_VM=''
+VPN_VM=
 
 ; Default AppVM to clone for split-browser backend
-SPLIT_BROWSER=''
+SPLIT_BROWSER=
 
 ; Vault settings ================================================== #
 
 ; Default vault VM
-VAULT_VM='vault'
+VAULT_VM=vault
 
 ; Qubes path to hush device, such as 'dom0:mmcblk01', or 'sys-usb:sda2', etc
-SDCARD_BLOCK=''
+SDCARD_BLOCK=
 
 ; Qubes path to backup device, such as 'sys-usb:sdb1'
-BACKUP_BLOCK=''
+BACKUP_BLOCK=
 
 ; Other network settings ========================================= #
 
 ; Default VM to use as a firewall VM, to which either Tor or VPN gateways are bound
-DEFAULT_NETVM='sys-firewall'
+DEFAULT_NETVM=sys-firewall
 
 ; Default path to VPN client config in VPN VM, to be loaded when the service
 ; starts. This path is the default one used by qubes-vpn-support installs.
@@ -88,7 +88,7 @@ config_get() {
   
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ $line =~ $regex ]]; then
-      value="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}" # Changed to 2 because ZSH indexes start at 1
       break
     fi
   done < "$RISK_CONFIG_FILE"
@@ -116,7 +116,7 @@ config_set() {
   while IFS= read -r line || [ -n "$line" ]; do
     newline=$line
     if [[ $line =~ $regex ]]; then
-      found_key="${BASH_REMATCH[1]}"
+      found_key="${BASH_REMATCH[2]}"
       newline="$key = $value"
       output="$output$newline\n"
     elif [[ $line ]]; then

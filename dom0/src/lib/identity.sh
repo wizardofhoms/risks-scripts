@@ -71,7 +71,8 @@ _identity_active_or_specified ()
 # identity that should be used, in case the argument is empty or none.
 #
 # $1 - The identity to use.
-_set_identity () {
+_set_identity () 
+{
     local identity="$1"
 
     # This will throw an error if we don't have an identity from any source.
@@ -101,4 +102,33 @@ check_no_active_identity ()
 get_identity_label ()
 {
     cat "${IDENTITY_DIR}/vm_label" 2>/dev/null
+}
+
+# _identity_proxies returns an array of proxy VMs 
+# (VPNs and TOR gateways for the current identity)
+_identity_proxies ()
+{
+    [[ -f "${IDENTITY_DIR}/proxy_vms" ]] || return
+    read -d '' -r -A proxies <"${IDENTITY_DIR}/proxy_vms"
+    echo "${proxies[@]}"
+}
+
+# returns all identity VMs that are not gateways/proxies,
+# but are potentially (most of the time) accessing network
+# from one or more of these gateways.
+_identity_client_vms ()
+{
+    [[ -f "${IDENTITY_DIR}/client_vms" ]] || return
+    read -d '' -r -A clients <"${IDENTITY_DIR}/client_vms"
+    echo "${clients[@]}"
+}
+
+# returns all identity VMs that are not gateways/proxies,
+# but are potentially (most of the time) accessing network
+# from one or more of these gateways.
+_identity_autostart_vms ()
+{
+    [[ -f "${IDENTITY_DIR}/autostart_vms" ]] || return
+    read -d '' -r -A clients <"${IDENTITY_DIR}/autostart_vms"
+    echo "${clients[@]}"
 }

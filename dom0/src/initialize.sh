@@ -22,6 +22,7 @@ typeset -rg RISK_DIR="${HOME}/.risk"                         # Directory where r
 typeset -rg RISK_IDENTITIES_DIR="${RISK_DIR}/identities"     # Idendities store their settings here
 typeset -rg RISK_IDENTITY_FILE="${RISK_DIR}/.identity"
 
+
 #----------------------------#
 ## Checks ##
 

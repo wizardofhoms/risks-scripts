@@ -19,6 +19,7 @@ _risk ()
             (backup) _backup ;;
             (identity) _identity ;;
             (vpn) _vpn ;;
+            (config) _config ;;
         esac
     else
         local -a subcmds
@@ -28,6 +29,7 @@ _risk ()
             'identity:Create, manage and use identities and/or use their machines'
             'vpn:Create, configure, manage and use VPN gateways for an identity'
             'slam:Close identity and/or associated stores in the vault only, and detach hush/backup'
+            'config:Manage the global risk configuration settings from the CLI'
         )
 
         _describe -t commands 'commands' subcmds
@@ -35,6 +37,44 @@ _risk ()
 }
 
 # Subcomands ==================================================================================
+
+# Completes the commands for config
+_config_commands ()
+{
+    local -a subcmds 
+    subcmds=(
+        'set:Set a key in the configuration file'
+        'unset:Unset a key in the configuration file (becomes empty)'
+        'get:Show the value of a key in the configuration'
+        'list:Show all keys in the configuration'
+    )
+
+    _describe -t commands 'config commands' subcmds && ret=0
+}
+
+# Completion dispatcher for config subcommand
+_config ()
+{
+    local ret=1
+    local line state
+    _arguments -C \
+        "1: :_config_commands" \
+        "*::arg:->args" \
+        && ret=0
+
+    # And depending on the kv subcommand entered, complete accordingly
+    case $state in
+        args)
+            case $line[1] in
+            set)
+                _arguments -C "1:key:" "2:variable:" && ret=0 # TODO complete existing keys ?"
+            ;;
+            get|unset)
+                _arguments -C "1:key:" && ret=0 # TODO complete existing keys ?"
+            ;;
+            esac
+    esac
+}
 
 # Completes the commands for hush, without parameters
 _hush_commands () 
@@ -68,13 +108,15 @@ _hush ()
             attach)
                 _arguments \
                     "${_flags_base[@]}" \
+                    '(--mount -m)'{-m,--mount}'[Mount the hush device in the vault (prompts for password)]' \
                     '1:hush block device:_block_devices' \
                     '2:vault VM:($(_known_vms))' \
                     && ret=0
                 ;;
-            *)
+            detach)
                 _arguments \
                     "${_flags_base[@]}" \
+                    '1:hush block device:_block_devices' \
                     && ret=0
                 ;;
             esac
@@ -116,9 +158,10 @@ _backup ()
                     '2:vault VM:($(_known_vms))' \
                     && ret=0
                 ;;
-            *)
+            detach)
                 _arguments \
                     "${_flags_base[@]}" \
+                    '1:backup block device:_block_devices' \
                     && ret=0
                 ;;
             esac
@@ -212,6 +255,7 @@ _vpn_commands ()
         'create:Create VPN gateway from a template, or by cloning an existing one'
         'setup:Manage, import network configurations and run associated setup wizards'
         'enable:Automatically start a VPN gateway when starting the identity'
+        'disable:Do not autostart this VM when the identity is started'
         'start:Start a VPN gateway in the background'
         'stop:Stop a VPN gateway'
         'delete:Delete a VPN gateway'
@@ -277,8 +321,10 @@ _flags_vm_base=(
     )
 
 _flags_create_base=(
-    {-c,--clone}'[AppVM to clone the new VM from]:AppVM:_known_vms'
-    {-T,--template}'[TemplateVM to use for creating the VM]:TemplateVM:_known_vms'
+    '(-c --clone)'{-c,--clone}'[Instead of creating the VPN gateway from a template, clone an existing VPN AppVM]'
+    '(-f --from)'{-f,--from}'[VM to clone instead of the default VPN_VM configuration setting]:AppVM:_known_vms'
+    '(-T --template)'{-T,--template}'[TemplateVM to use for creating the VM]:TemplateVM:_known_vms'
+    '(-E --enable)'{-E,--enable}'[Autostart this VM when the identity is started]'
 )
 
 # flags used for setting a VM connectivity
@@ -338,6 +384,7 @@ _block_devices ()
     _describe -t arguments 'block devices' blocks && ret=0
 }
 
+# returns all VMs detected on the Qubes system.
 _known_vms ()
 {
     local ret=
@@ -349,6 +396,37 @@ _known_vms ()
     done < <(qvm-ls --raw-list | sort)
 
     _arguments -C "*:VMs:($VM_COMPLETIONS)" && ret=0
+}
+
+# Returns the list of running VPN gateways for the active identity.
+# or of all identities if none is active.
+_running_vpns ()
+{
+    # Get the list of gateways, either for active identity or all
+    
+    # Diff it with the list of running VMs
+    
+    # Return it
+}
+
+# Returns all proxy VMs for the active identity, running or not.
+_identity_vpns ()
+{
+}
+
+# returns all running VMs for the active identity only
+_running_identity_vms ()
+{
+}
+
+# Returns all VPNs for the active identity that are powered off.
+_stopped_identity_vpns ()
+{
+}
+
+# Returns all VMs that are marked autostart for the identity.
+_enabled_vms ()
+{
 }
 
 

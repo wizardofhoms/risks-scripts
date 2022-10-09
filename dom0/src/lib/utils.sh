@@ -22,7 +22,22 @@ config_or_flag ()
     local value config_value
 
     config_value=$(config_get $2)   # From config
-    value="${1-$config_value}"      # overriden by flag if set
+    value="${1:=$config_value}"      # overriden by flag if set
 
     print $value
+}
+
+# contains(string, substring)
+#
+# Returns 0 if the specified string contains the specified substring,
+# otherwise returns 1.
+contains() {
+    string="$1"
+    substring="$2"
+    if test "${string#*$substring}" != "$string"
+    then
+        return 0    # $substring is in $string
+    else
+        return 1    # $substring is not in $string
+    fi
 }

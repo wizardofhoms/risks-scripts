@@ -5,7 +5,7 @@ commands:
   - name: create
     help: Create VPN gateway from a template, or by cloning an existing one. 
     args:
-      - name: name 
+      - name: vm 
         help: "(optional) name to use for this VM (=> name-vpn)"
         required: false 
     flags:
@@ -21,6 +21,9 @@ commands:
         short: -L
         help: "Specify a label color to be used for all VMs belonging to this identity"
         arg: color 
+      - long: --enable
+        short: -E
+        help: "Autostart this VM when the identity is started"
         # VPN gateway options
       - long: --template
         short: -T
@@ -29,19 +32,32 @@ commands:
       - long: --clone
         short: -c
         help: "Instead of creating the VPN gateway from a template, clone an existing VPN AppVM"
+      - long: --from
+        short: -f
+        help: "VM to clone instead of the default VPN_VM configuration setting"
         arg: vpn_gw 
+      - &set_default
+        long: --set-default
+        help: "Set this VM as the default NetVM for all identity client VMs (browsers, messaging, etc)"
         # Other network options
       - &vpn_config
         long: --config-in
         help: "VM in which to browse for VPN configuration(s)"
         arg: config_vm
         conflicts: [ --choose ]
+      - &netvm
+        long: --netvm
+        short: -n
+        help: "NetVM to use for the gateway"
+        arg: vm
 
   - name: setup
     help: Manage, import network configurations and run associated setup wizards
     flags:
       - *verbose
       - *vpn_config
+      - *set_default
+      - *netvm
       - long: --choose
         help: Choose an existing client config by running the setup wizard in the VPN VM
         conflicts: [ --config-in ]
@@ -73,6 +89,15 @@ commands:
     args:
       - name: vm 
         help: "gateway VM to enable autostart for"
+        required: true
+    flags:
+      - *verbose
+
+  - name: disable 
+    help: "Do not autostart this VM when the identity is started"
+    args:
+      - name: vm 
+        help: "gateway VM to disable autostart for"
         required: true
     flags:
       - *verbose

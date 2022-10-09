@@ -164,6 +164,11 @@ risk_hush_attach_usage() {
     printf "    Show verbose logging\n"
     echo
 
+    # :flag.usage
+    echo "  --mount, -m"
+    printf "    Mount the hush device in the vault (prompts for password)\n"
+    echo
+
     # :command.usage_args
     printf "Arguments:\n"
 
@@ -702,12 +707,13 @@ risk_vpn_usage() {
   echo
   # :command.usage_commands
   printf "Commands:\n"
-  echo "  create   Create VPN gateway from a template, or by cloning an existing one."
-  echo "  setup    Manage, import network configurations and run associated setup wizards"
-  echo "  start    Start a VPN gateway in the background"
-  echo "  stop     Stop a VPN gateway"
-  echo "  enable   Automatically start a VPN gateway when starting the identity."
-  echo "  delete   Delete a VPN gateway"
+  echo "  create    Create VPN gateway from a template, or by cloning an existing one."
+  echo "  setup     Manage, import network configurations and run associated setup wizards"
+  echo "  start     Start a VPN gateway in the background"
+  echo "  stop      Stop a VPN gateway"
+  echo "  enable    Automatically start a VPN gateway when starting the identity."
+  echo "  disable   Do not autostart this VM when the identity is started"
+  echo "  delete    Delete a VPN gateway"
   echo
 
   # :command.long_usage
@@ -735,7 +741,7 @@ risk_vpn_create_usage() {
   fi
 
   printf "Usage:\n"
-  printf "  risk vpn create [NAME] [options]\n"
+  printf "  risk vpn create [VM] [options]\n"
   printf "  risk vpn create --help | -h\n"
   echo
 
@@ -765,13 +771,28 @@ risk_vpn_create_usage() {
     echo
 
     # :flag.usage
+    echo "  --enable, -E"
+    printf "    Autostart this VM when the identity is started\n"
+    echo
+
+    # :flag.usage
     echo "  --template, -T TEMPLATE"
     printf "    TemplateVM to use instead of the default VPN TemplateVM\n"
     echo
 
     # :flag.usage
-    echo "  --clone, -c VPN_GW"
+    echo "  --clone, -c"
     printf "    Instead of creating the VPN gateway from a template, clone an existing VPN\n    AppVM\n"
+    echo
+
+    # :flag.usage
+    echo "  --from, -f VPN_GW"
+    printf "    VM to clone instead of the default VPN_VM configuration setting\n"
+    echo
+
+    # :flag.usage
+    echo "  --set-default"
+    printf "    Set this VM as the default NetVM for all identity client VMs (browsers,\n    messaging, etc)\n"
     echo
 
     # :flag.usage
@@ -779,11 +800,16 @@ risk_vpn_create_usage() {
     printf "    VM in which to browse for VPN configuration(s)\n"
     echo
 
+    # :flag.usage
+    echo "  --netvm, -n VM"
+    printf "    NetVM to use for the gateway\n"
+    echo
+
     # :command.usage_args
     printf "Arguments:\n"
 
     # :argument.usage
-    echo "  NAME"
+    echo "  VM"
     printf "    (optional) name to use for this VM (=> name-vpn)\n"
     echo
 
@@ -825,6 +851,16 @@ risk_vpn_setup_usage() {
     # :flag.usage
     echo "  --config-in CONFIG_VM"
     printf "    VM in which to browse for VPN configuration(s)\n"
+    echo
+
+    # :flag.usage
+    echo "  --set-default"
+    printf "    Set this VM as the default NetVM for all identity client VMs (browsers,\n    messaging, etc)\n"
+    echo
+
+    # :flag.usage
+    echo "  --netvm, -n VM"
+    printf "    NetVM to use for the gateway\n"
     echo
 
     # :flag.usage
@@ -973,6 +1009,49 @@ risk_vpn_enable_usage() {
 }
 
 # :command.usage
+risk_vpn_disable_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk vpn disable - Do not autostart this VM when the identity is started\n"
+    echo
+
+  else
+    printf "risk vpn disable - Do not autostart this VM when the identity is started\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk vpn disable VM [options]\n"
+  printf "  risk vpn disable --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_flags
+    # :flag.usage
+    echo "  --verbose, -v"
+    printf "    Show verbose logging\n"
+    echo
+
+    # :command.usage_args
+    printf "Arguments:\n"
+
+    # :argument.usage
+    echo "  VM"
+    printf "    gateway VM to disable autostart for\n"
+    echo
+
+  fi
+}
+
+# :command.usage
 risk_vpn_delete_usage() {
   if [[ -n $long_usage ]]; then
     printf "risk vpn delete - Delete a VPN gateway\n"
@@ -1077,16 +1156,16 @@ config_init() {
 ; Default Templates =============================================== #
 
 ; Default Whonix Workstation TemplateVM for TOR clients
-WHONIX_WS_TEMPLATE='whonix-ws-16'
+WHONIX_WS_TEMPLATE=whonix-ws-16
 
 ; Default Whonix Gateway TemplateVM for TOR gateways
-WHONIX_GW_TEMPLATE='whonix-gw-16'
+WHONIX_GW_TEMPLATE=whonix-gw-16
 
 ; Default TemplateVM to use for VPN VMs
-VPN_TEMPLATE='sys-vpn'
+VPN_TEMPLATE=sys-vpn
 
 ; Default TemplateVM to use for split-browser backend
-SPLIT_BROWSER_TEMPLATE=''
+SPLIT_BROWSER_TEMPLATE=
 
 ; Default AppVMs ================================================== #
 ;
@@ -1094,29 +1173,29 @@ SPLIT_BROWSER_TEMPLATE=''
 ; existing ones, instead of creating blank AppVMs from templates.
 
 ; Default Whonix Workstation AppVM to use for identity client machine
-WHONIX_WS=''
+WHONIX_WS=
 
 ; Default AppVM to use for cloning new VPN qubes
-VPN_VM=''
+VPN_VM=
 
 ; Default AppVM to clone for split-browser backend
-SPLIT_BROWSER=''
+SPLIT_BROWSER=
 
 ; Vault settings ================================================== #
 
 ; Default vault VM
-VAULT_VM='vault'
+VAULT_VM=vault
 
 ; Qubes path to hush device, such as 'dom0:mmcblk01', or 'sys-usb:sda2', etc
-SDCARD_BLOCK=''
+SDCARD_BLOCK=
 
 ; Qubes path to backup device, such as 'sys-usb:sdb1'
-BACKUP_BLOCK=''
+BACKUP_BLOCK=
 
 ; Other network settings ========================================= #
 
 ; Default VM to use as a firewall VM, to which either Tor or VPN gateways are bound
-DEFAULT_NETVM='sys-firewall'
+DEFAULT_NETVM=sys-firewall
 
 ; Default path to VPN client config in VPN VM, to be loaded when the service
 ; starts. This path is the default one used by qubes-vpn-support installs.
@@ -1138,7 +1217,7 @@ config_get() {
 
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ $line =~ $regex ]]; then
-      value="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}" # Changed to 2 because ZSH indexes start at 1
       break
     fi
   done < "$RISK_CONFIG_FILE"
@@ -1164,7 +1243,7 @@ config_set() {
   while IFS= read -r line || [ -n "$line" ]; do
     newline=$line
     if [[ $line =~ $regex ]]; then
-      found_key="${BASH_REMATCH[1]}"
+      found_key="${BASH_REMATCH[2]}"
       newline="$key = $value"
       output="$output$newline\n"
     elif [[ $line ]]; then
@@ -1315,7 +1394,9 @@ _identity_active_or_specified ()
 # identity that should be used, in case the argument is empty or none.
 #
 # $1 - The identity to use.
-_set_identity () {
+_set_identity ()
+
+{
     local identity="$1"
 
     # This will throw an error if we don't have an identity from any source.
@@ -1345,6 +1426,36 @@ check_no_active_identity ()
 get_identity_label ()
 {
     cat "${IDENTITY_DIR}/vm_label" 2>/dev/null
+}
+
+# _identity_proxies returns an array of proxy VMs
+
+# (VPNs and TOR gateways for the current identity)
+_identity_proxies ()
+{
+    [[ -f "${IDENTITY_DIR}/proxy_vms" ]] || return
+    read -d '' -r -A proxies <"${IDENTITY_DIR}/proxy_vms"
+    echo "${proxies[@]}"
+}
+
+# returns all identity VMs that are not gateways/proxies,
+# but are potentially (most of the time) accessing network
+# from one or more of these gateways.
+_identity_client_vms ()
+{
+    [[ -f "${IDENTITY_DIR}/client_vms" ]] || return
+    read -d '' -r -A clients <"${IDENTITY_DIR}/client_vms"
+    echo "${clients[@]}"
+}
+
+# returns all identity VMs that are not gateways/proxies,
+# but are potentially (most of the time) accessing network
+# from one or more of these gateways.
+_identity_autostart_vms ()
+{
+    [[ -f "${IDENTITY_DIR}/autostart_vms" ]] || return
+    read -d '' -r -A clients <"${IDENTITY_DIR}/autostart_vms"
+    echo "${clients[@]}"
 }
 
 # src/lib/log.sh
@@ -1705,9 +1816,24 @@ config_or_flag ()
     local value config_value
 
     config_value=$(config_get $2)   # From config
-    value="${1-$config_value}"      # overriden by flag if set
+    value="${1:=$config_value}"      # overriden by flag if set
 
     print $value
+}
+
+# contains(string, substring)
+#
+# Returns 0 if the specified string contains the specified substring,
+# otherwise returns 1.
+contains() {
+    string="$1"
+    substring="$2"
+    if test "${string#*$substring}" != "$string"
+    then
+        return 0    # $substring is in $string
+    else
+        return 1    # $substring is not in $string
+    fi
 }
 
 # src/lib/validations/validate_devices.sh
@@ -1803,34 +1929,37 @@ validate_valid_vaultvm () {
 }
 
 # src/lib/vpn_gateway.sh
-#!/usr/bin/env bash
 
 # Creates a new VPN gateway from a TemplateVM
 create_vpn_gateway ()
 {
-    local gw="${1}-gw"
-    local netvm="${2-$DEFAULT_NETVM}"
-    local gw_label="${3-blue}"
-    local template="${4-$VPN_TEMPLATE}"
+    local gw="${1}"
+    local netvm="${2:=$DEFAULT_NETVM}"
+    local gw_label="${3:=blue}"
+    local template="${4:=$VPN_TEMPLATE}"
 
     _verbose "VPN gateway properties (name: $gw / netvm: $netvm / template: $template)"
     qvm-create --property netvm="$netvm" --label "$gw_label" --template "$template"
 
     _message "Getting network from $netvm"
+
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" >> "${IDENTITY_DIR}/proxy_vms"
 }
 
 # Creates a new VPN gateway from an existing VPN AppVM
 
 clone_vpn_gateway ()
 {
-    local gw="${1}-vpn"
-    local netvm="${2-$DEFAULT_NETVM}"
-    local gw_label="${3-blue}"
+    local gw="${1}"
+    local netvm="${2:=$DEFAULT_NETVM}"
+    local gw_label="${3:=blue}"
     local gw_clone="$4"
 
     # Create the VPN
     _verbose "VPN gateway properties (name: $gw / netvm: $netvm / clone: $gw_clone)"
-    qvm-clone "${gw_clone}" "${gw}"
+    _run qvm-clone "${gw_clone}" "${gw}"
+    _catch "Failed to clone VM ${gw_clone}"
 
     # For now disposables are not allowed, since it would create too many VMs,
 
@@ -1840,12 +1969,82 @@ clone_vpn_gateway ()
     disp_template=$(qvm-prefs "${gw}" template_for_dispvms)
     [[ "$disp_template" = "True" ]] && qvm-prefs "${gw}" template_for_dispvms False
 
-    _message "Getting network from $netvm"
+    # _message "Getting network from $netvm"
     qvm-prefs "$gw" netvm "$netvm"
 
     _verbose "Setting label to $gw_label"
     qvm-prefs "$gw" label "$gw_label"
 
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" >> "${IDENTITY_DIR}/proxy_vms"
+}
+
+# function to browse for one or more (as zip) VPN client configurations
+# in another VM, import them in our VPN VM, and run the setup wizard if
+# there is more than one configuration to choose from.
+# $1 - Name of VPN VM
+# $2 - Name of VM in which to browse for configuration
+# $ $3 - Path to the VPN client config to which one (only) should be copied, if not a zip file
+import_vpn_configs ()
+{
+    local name="$1"
+    local config_vm="$2"
+    local client_conf_path="$3"
+
+    config_path=$(_qvrun "$config_vm" "zenity --file-selection --title='VPN configuration selection' 2>/dev/null")
+    if [[ -z "$config_path" ]]; then
+        _message "Canceling setup: no file selected in VM $config_vm"
+    else
+        _verbose "Copying file $config_path to VPN VM"
+        _qvrun "$config_vm" qvm-copy-to-vm "$name" "$config_path"
+
+        # Now our configuration is the QubesIncoming directory of our VPN,
+        # so we move it where the VPN will look for when starting.
+        local new_path="/home/user/QubesIncoming/${config_vm}/$(basename "$config_path")"
+
+        # If the file is a zip file, unzip it in the configs directory
+        # and immediately run the setup prompt to choose one.
+        if [[ $new_path:t:e == "zip" ]]; then
+            local configs_dir="/rw/config/vpn/configs"
+
+            _verbose "Unzipping files into $configs_dir"
+            _qvrun "$name" mkdir -p "$configs_dir"
+
+            _qvrun "$name" unzip -j -d "$configs_dir"
+
+            _qvrun "$name" /usr/local/bin/setup_VPN
+
+        else
+            _verbose "Copying file directly to the VPN client config path"
+            _qvrun "$name" mv "$new_path" "$client_conf_path"
+        fi
+
+        _message "Done transfering VPN client configuration to VM"
+    fi
+
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" > "${IDENTITY_DIR}/proxy_vms"
+}
+
+# get_next_vpn_name returns a name for a new VPN VM, such as vpn-1,
+# where the number is the next value after the ones found in existing
+# VPN vms.
+get_next_vpn_name ()
+{
+    local base_name="$1"
+
+    # First get the array of ProxyVMs names
+    local proxies=($(_identity_proxies))
+
+    local next_number=1
+
+    for proxy in "${proxies[@]}"; do
+        if contains "$proxy" "vpn-"; then
+            next_number=$((next_number + 1))
+        fi
+    done
+
+    print "$1-vpn-$next_number"
 }
 
 # src/lib/web.sh
@@ -1945,7 +2144,13 @@ risk_hush_attach_command() {
   if [[ $? -eq 0 ]]; then
   	_success "Block ${block} has been attached to ${vm}"
   else
-  	_success "Block ${block} can not be attached to ${vm}"
+  	_failure "Block ${block} can not be attached to ${vm}"
+  fi
+
+  # If user wants to mount it now, do it
+  if [[ ${args[--mount]} -eq 1 ]]; then
+      _message "Mounting hush device"
+      _qrun "$vm" risks hush mount
   fi
 
 }
@@ -1953,10 +2158,23 @@ risk_hush_attach_command() {
 # :command.function
 risk_hush_detach_command() {
   # src/hush_detach_command.sh
-  echo "# this file is located in 'src/hush_detach_command.sh'"
-  echo "# code for 'risk hush detach' goes here"
-  echo "# you can edit it freely and regenerate (it will not be overwritten)"
-  inspect_args
+
+  local block vm
+
+  block="${args[device]-$SDCARD_BLOCK}"
+  vm="${args[vault_vm]-$VAULT_VM}"
+
+  # First unmount the hush device in vault
+  _qrun "$vm" risks hush umount
+  _catch "Failed to unmount hush device ($block)"
+
+  # finally attach the sdcard encrypted partition to the qube
+  qvm-block detach "${vm}" "${block}"
+  if [[ $? -eq 0 ]]; then
+  	_success "Block ${block} has been detached from ${vm}"
+  else
+  	_failure "Block ${block} can not be detached from ${vm}"
+  fi
 
 }
 
@@ -2005,7 +2223,7 @@ risk_backup_attach_command() {
 # :command.function
 risk_backup_detach_command() {
   # src/backup_detach_command.sh
-  local block="${BACKUP_BLOCK}"
+  local block="${args[device]:-$BACKUP_BLOCK}"
   local vm="${VAULT_VM}"
 
   qvm-block detach "${vm}" "${block}"
@@ -2243,76 +2461,107 @@ risk_vpn_create_command() {
   _set_identity
 
   # Prepare some settings for this new VM
-  local name netvm clone template label config config_path
+  local name netvm clone template label config
 
-  name="${args[name]-$(cat "${IDENTITY_DIR}/vm_name" 2>/dev/null)}"
-  label="${args[--label]-$(get_identity_label)}"
+  name="${args[vm]:-$(cat "${IDENTITY_DIR}/vm_name" 2>/dev/null)}"
+  label="${args[--label]:=$(get_identity_label)}"
   netvm="$(config_or_flag "${args[--netvm]}" DEFAULT_NETVM)"
-  clone="$(config_or_flag "${args[--clone]}" VPN_VM)"
+  clone="$(config_or_flag "${args[--from]}" VPN_VM)"
   template="$(config_or_flag "${args[--template]}" VPN_TEMPLATE)"
   config_vm="${args[--config-in]}"
   client_conf_path="$(config_or_flag "" DEFAULT_VPN_CLIENT_CONF)"
+
+  # 0 - Last-time setup
+
+  # If the --name flag is empty, this means we are using a default one,
+  # either the configured default one, or the name of the identity.
+
+  # In this case, we add 'vpn-1' to it (number varying).
+  if [[ -z "${args[vm]}" ]]; then
+      name="$(get_next_vpn_name "$name")"
+  fi
 
   # 1 - Creation
   #
   # We either clone the gateway from an existing one,
   # or we create it from a template.
-  if [[ -n "${args[--clone]}" ]]; then
+  if [[ "${args[--clone]}" -eq 1 ]]; then
       _message "Cloning VPN gateway (from VM $clone)"
-      #clone_vpn_gateway "$name" "$netvm" "$label" "$clone"
+      clone_vpn_gateway "$name" "$netvm" "$label" "$clone"
 
   else
       _message "Creating VPN gateway (from template $template)"
-      #create_vpn_gateway "$name" "$netvm" "$label" "$template"
+      create_vpn_gateway "$name" "$netvm" "$label" "$template"
   fi
 
   # 2 - Setup
   #
-  # If the user asked to run the setup now, because he has a config somewhere, run it.
-  if [[ -n "${config_vm}" ]]; then
+  # Simply run the setup command, which has access to all the flags
+  # it needs to do its job. Tweak the args array for this to work.
+  args[vm]="$name"
+  risk_vpn_setup_command
 
-      # First prompt to get the path to the config, and copy it to our new VM, or cancel the setup if empty
-      config_path=$(_qvrun "$config_vm" "zenity --file-selection --title='VPN configuration selection' 2>/dev/null")
-      if [[ -z "$config_path" ]]; then
-          _message "Canceling setup: no file selected in VM $config_vm"
-      else
-          _verbose "Copying file $config_path to VPN VM"
-          _qvrun "$config_vm" qvm-copy-to-vm "$name" "$config_path"
+  # If the VM is marked autostart
+  if [[ -n ${args[--enable]} ]]; then
 
-          # Now our configuration is the QubesIncoming directory of our VPN,
-          # so we move it where the VPN will look for when starting.
-          local new_path="/home/user/QubesIncoming/${config_vm}/$(basename "$config_path")"
-
-          # If the file is a zip file, unzip it in the configs directory
-          # and immediately run the setup prompt to choose one.
-          if [[ $new_path:t:e == "zip" ]]; then
-              local configs_dir="/rw/config/vpn/configs"
-
-              _verbose "Unzipping files into $configs_dir"
-              _qvrun "$name" mkdir -p "$configs_dir"
-
-              _qvrun "$name" unzip -j -d "$configs_dir"
-
-              _qvrun "$name" /usr/local/bin/setup_VPN
-
-          else
-              _verbose "Copying file directly to the VPN client config path"
-              _qvrun "$name" mv "$new_path" "$client_conf_path"
-          fi
-
-          _message "Done transfering VPN client configuration to VM"
-      fi
+      _verbose "Enabling VM to autostart"
+      risk_vpn_enable_command
   fi
+
+  _message "Done creating VPN gateway $name"
 
 }
 
 # :command.function
 risk_vpn_setup_command() {
   # src/vpn_setup_command.sh
-  echo "# this file is located in 'src/vpn_setup_command.sh'"
-  echo "# code for 'risk vpn setup' goes here"
-  echo "# you can edit it freely and regenerate (it will not be overwritten)"
-  inspect_args
+
+  _set_identity
+
+  local name config_vm client_conf_path netvm
+
+  name="${args[vm]}"
+  config_vm="${args[--config-in]}"
+  client_conf_path="$(config_or_flag "" DEFAULT_VPN_CLIENT_CONF)"
+  netvm="$(config_or_flag "${args[--netvm]}" DEFAULT_NETVM)"
+
+  # There are different ways to setup a VPN VM, often mutually exclusive.
+
+  # We might be asked to change the netVM, but this can be combined
+  # with other settings to be handled below.
+  if [[ -n "${netvm}" ]]; then
+      _message "Getting network from $netvm"
+      qvm-prefs "$name" netvm "$netvm"
+  fi
+
+  # If the user wants this VM to be the default NetVM for all clients
+  # like browsers, messaging VMs, etc.
+  if [[ ${args[--set-default]} -eq 1 ]]; then
+      echo "$name" > "${IDENTITY_DIR}/net_vm"
+
+      _message "Setting '$name' as default NetVM for all client machines"
+
+      # Here, find all existing client VMs (not gateways)
+
+      # and change their netVMs to this one.
+      local clients=($(_identity_client_vms))
+      for client in "${clients[@]}"; do
+          if [[ -n "$client" ]]; then
+              _verbose "Changing $client netVM"
+              qvm-prefs "$client" netvm "$name"
+          fi
+      done
+  fi
+
+  # Client VPN Configurations
+  if [[ "${args[--choose]}" -eq 1 ]]; then
+      # If we are asked to choose an existing configuration in the VM
+      _qvrun "$name" /usr/local/bin/setup_VPN
+
+  elif [[ -n "${config_vm}" ]]; then
+      # Or if we are asked to browse one or more configuration files in another VM.
+      import_vpn_configs "$name" "$config_vm" "$client_conf_path"
+  fi
 
 }
 
@@ -2339,10 +2588,40 @@ risk_vpn_stop_command() {
 # :command.function
 risk_vpn_enable_command() {
   # src/vpn_enable_command.sh
-  echo "# this file is located in 'src/vpn_enable_command.sh'"
-  echo "# code for 'risk vpn enable' goes here"
-  echo "# you can edit it freely and regenerate (it will not be overwritten)"
-  inspect_args
+
+  _set_identity
+
+  local name autostart_vms already_enabled
+
+  name="${args[vm]}"
+  autostart_vms=($(_identity_autostart_vms))
+
+  # Check if the VM is already marked autostart
+  for proxy in "${autostart_vms[@]}" ; do
+      if [[ $proxy == "$name" ]]; then
+          already_enabled=true
+      fi
+  done
+
+  if [[ ! $already_enabled ]]; then
+      _message "Enabling VM ${name} to autostart"
+      echo "$name" >> "${IDENTITY_DIR}/autostart_vms"
+  else
+      _message "VM ${name} is already enabled"
+  fi
+
+}
+
+# :command.function
+risk_vpn_disable_command() {
+  # src/vpn_disable_command.sh
+
+  _set_identity
+
+  local name="${args[vm]}"
+
+  _message "Disabling VM $name"
+  sed -i /"$name"/d "${IDENTITY_DIR}/autostart_vms"
 
 }
 
@@ -2542,6 +2821,14 @@ risk_hush_attach_parse_requirements() {
 
       # :flag.case_no_arg
       args[--verbose]=1
+      shift
+      ;;
+
+    # :flag.case
+    --mount | -m )
+
+      # :flag.case_no_arg
+      args[--mount]=1
       shift
       ;;
 
@@ -3479,6 +3766,13 @@ risk_vpn_parse_requirements() {
     shift $#
     ;;
 
+  disable )
+    action="disable"
+    shift
+    risk_vpn_disable_parse_requirements "$@"
+    shift $#
+    ;;
+
   delete )
     action="delete"
     shift
@@ -3580,6 +3874,14 @@ risk_vpn_create_parse_requirements() {
       ;;
 
     # :flag.case
+    --enable | -E )
+
+      # :flag.case_no_arg
+      args[--enable]=1
+      shift
+      ;;
+
+    # :flag.case
     --template | -T )
 
       # :flag.case_arg
@@ -3597,16 +3899,32 @@ risk_vpn_create_parse_requirements() {
     # :flag.case
     --clone | -c )
 
+      # :flag.case_no_arg
+      args[--clone]=1
+      shift
+      ;;
+
+    # :flag.case
+    --from | -f )
+
       # :flag.case_arg
       if [[ -n ${2+x} ]]; then
 
-        args[--clone]="$2"
+        args[--from]="$2"
         shift
         shift
       else
-        printf "%s\n" "--clone requires an argument: --clone, -c VPN_GW"
+        printf "%s\n" "--from requires an argument: --from, -f VPN_GW"
         exit 1
       fi
+      ;;
+
+    # :flag.case
+    --set-default )
+
+      # :flag.case_no_arg
+      args[--set-default]=1
+      shift
       ;;
 
     # :flag.case
@@ -3629,6 +3947,21 @@ risk_vpn_create_parse_requirements() {
       fi
       ;;
 
+    # :flag.case
+    --netvm | -n )
+
+      # :flag.case_arg
+      if [[ -n ${2+x} ]]; then
+
+        args[--netvm]="$2"
+        shift
+        shift
+      else
+        printf "%s\n" "--netvm requires an argument: --netvm, -n VM"
+        exit 1
+      fi
+      ;;
+
     -?* )
       printf "invalid option: %s\n" "$key"
       exit 1
@@ -3637,9 +3970,9 @@ risk_vpn_create_parse_requirements() {
     * )
       # :command.parse_requirements_case
       # :command.parse_requirements_case_simple
-      if [[ -z ${args[name]+x} ]]; then
+      if [[ -z ${args[vm]+x} ]]; then
 
-        args[name]=$1
+        args[vm]=$1
         shift
       else
         printf "invalid argument: %s\n" "$key"
@@ -3696,6 +4029,29 @@ risk_vpn_setup_parse_requirements() {
         shift
       else
         printf "%s\n" "--config-in requires an argument: --config-in CONFIG_VM"
+        exit 1
+      fi
+      ;;
+
+    # :flag.case
+    --set-default )
+
+      # :flag.case_no_arg
+      args[--set-default]=1
+      shift
+      ;;
+
+    # :flag.case
+    --netvm | -n )
+
+      # :flag.case_arg
+      if [[ -n ${2+x} ]]; then
+
+        args[--netvm]="$2"
+        shift
+        shift
+      else
+        printf "%s\n" "--netvm requires an argument: --netvm, -n VM"
         exit 1
       fi
       ;;
@@ -3909,6 +4265,63 @@ risk_vpn_enable_parse_requirements() {
   # :command.required_args_filter
   if [[ -z ${args[vm]+x} ]]; then
     printf "missing required argument: VM\nusage: risk vpn enable VM [options]\n"
+    exit 1
+  fi
+
+}
+
+# :command.parse_requirements
+risk_vpn_disable_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_vpn_disable_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="vpn disable"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+    # :flag.case
+    --verbose | -v )
+
+      # :flag.case_no_arg
+      args[--verbose]=1
+      shift
+      ;;
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      if [[ -z ${args[vm]+x} ]]; then
+
+        args[vm]=$1
+        shift
+      else
+        printf "invalid argument: %s\n" "$key"
+        exit 1
+      fi
+
+      ;;
+
+    esac
+  done
+
+  # :command.required_args_filter
+  if [[ -z ${args[vm]+x} ]]; then
+    printf "missing required argument: VM\nusage: risk vpn disable VM [options]\n"
     exit 1
   fi
 
@@ -4190,6 +4603,14 @@ run() {
       risk_vpn_enable_usage
     else
       risk_vpn_enable_command
+    fi
+
+  elif [[ $action == "vpn disable" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_vpn_disable_usage
+    else
+      risk_vpn_disable_command
     fi
 
   elif [[ $action == "vpn delete" ]]; then

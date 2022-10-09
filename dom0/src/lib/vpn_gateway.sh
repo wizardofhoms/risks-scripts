@@ -1,30 +1,33 @@
-#!/usr/bin/env bash 
 
 # Creates a new VPN gateway from a TemplateVM
 create_vpn_gateway ()
 {
-    local gw="${1}-gw"
-    local netvm="${2-$DEFAULT_NETVM}"
-    local gw_label="${3-blue}"
-    local template="${4-$VPN_TEMPLATE}"
+    local gw="${1}"
+    local netvm="${2:=$DEFAULT_NETVM}"
+    local gw_label="${3:=blue}"
+    local template="${4:=$VPN_TEMPLATE}"
 
     _verbose "VPN gateway properties (name: $gw / netvm: $netvm / template: $template)"
     qvm-create --property netvm="$netvm" --label "$gw_label" --template "$template"
 
     _message "Getting network from $netvm"
+
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" >> "${IDENTITY_DIR}/proxy_vms"
 }
 
 # Creates a new VPN gateway from an existing VPN AppVM 
 clone_vpn_gateway ()
 {
-    local gw="${1}-vpn"
-    local netvm="${2-$DEFAULT_NETVM}"
-    local gw_label="${3-blue}"
+    local gw="${1}"
+    local netvm="${2:=$DEFAULT_NETVM}"
+    local gw_label="${3:=blue}"
     local gw_clone="$4"
 
     # Create the VPN
     _verbose "VPN gateway properties (name: $gw / netvm: $netvm / clone: $gw_clone)"
-    qvm-clone "${gw_clone}" "${gw}"
+    _run qvm-clone "${gw_clone}" "${gw}"
+    _catch "Failed to clone VM ${gw_clone}"
 
     # For now disposables are not allowed, since it would create too many VMs, 
     # and complicate a bit the setup steps for VPNs. If the clone is a template
@@ -33,12 +36,14 @@ clone_vpn_gateway ()
     disp_template=$(qvm-prefs "${gw}" template_for_dispvms)
     [[ "$disp_template" = "True" ]] && qvm-prefs "${gw}" template_for_dispvms False
 
-    _message "Getting network from $netvm"
+    # _message "Getting network from $netvm"
     qvm-prefs "$gw" netvm "$netvm"
 
     _verbose "Setting label to $gw_label"
     qvm-prefs "$gw" label "$gw_label"
 
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" >> "${IDENTITY_DIR}/proxy_vms"
 }
 
 # function to browse for one or more (as zip) VPN client configurations
@@ -79,4 +84,28 @@ import_vpn_configs ()
 
         _message "Done transfering VPN client configuration to VM"
     fi
+
+    # Add the gateway to the list of existing proxies for this identity
+    echo "$gw" > "${IDENTITY_DIR}/proxy_vms"
+}
+
+# get_next_vpn_name returns a name for a new VPN VM, such as vpn-1,
+# where the number is the next value after the ones found in existing
+# VPN vms.
+get_next_vpn_name ()
+{
+    local base_name="$1"
+
+    # First get the array of ProxyVMs names
+    local proxies=($(_identity_proxies))
+
+    local next_number=1
+
+    for proxy in "${proxies[@]}"; do
+        if contains "$proxy" "vpn-"; then
+            next_number=$((next_number + 1))
+        fi
+    done
+
+    print "$1-vpn-$next_number"
 }
