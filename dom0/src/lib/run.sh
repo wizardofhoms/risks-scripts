@@ -131,7 +131,7 @@ function start_vm {
 
     local failed=""
     local ret=
-    for vm in "${!pids[@]}" ; do
+    for vm in "${(@k)pids}" ; do
         wait "${pids["$vm"]}"
         ret=$?
         [ $ret -ne 0 ] && failed="$failed"$'\n'"$vm ($ret)"

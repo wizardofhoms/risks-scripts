@@ -30,6 +30,7 @@ risk_usage() {
   echo "  backup     Manage backup devices attach/detach from qubes"
   echo "  identity   Create, manage and use identities and/or use their machines"
   echo "  vpn        Create, configure, manage and use VPN gateways for an identity."
+  echo "  config     Manage the risk global configuration"
   echo
 
   # :command.long_usage
@@ -1094,6 +1095,216 @@ risk_vpn_delete_usage() {
   fi
 }
 
+# :command.usage
+risk_config_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config - Manage the risk global configuration\n"
+    echo
+
+  else
+    printf "risk config - Manage the risk global configuration\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config [command]\n"
+  printf "  risk config [command] --help | -h\n"
+  echo
+  # :command.usage_commands
+  printf "Commands:\n"
+  echo "  set     Set a configuration variable to a value"
+  echo "  get     Print the value of a configuration variable"
+  echo "  unset   Delete the value of a configuration variable"
+  echo "  list    List all configuration variables"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+risk_config_set_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config set - Set a configuration variable to a value\n"
+    echo
+
+  else
+    printf "risk config set - Set a configuration variable to a value\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config set KEY VALUE\n"
+  printf "  risk config set --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_args
+    printf "Arguments:\n"
+
+    # :argument.usage
+    echo "  KEY"
+    printf "    Name of of key to set\n"
+    echo
+
+    # :argument.usage
+    echo "  VALUE"
+    printf "    Value to assign to the key\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+risk_config_get_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config get - Print the value of a configuration variable\n"
+    echo
+
+  else
+    printf "risk config get - Print the value of a configuration variable\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config get KEY\n"
+  printf "  risk config get --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_args
+    printf "Arguments:\n"
+
+    # :argument.usage
+    echo "  KEY"
+    printf "    Name of of key to show\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+risk_config_unset_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config unset - Delete the value of a configuration variable\n"
+    echo
+
+  else
+    printf "risk config unset - Delete the value of a configuration variable\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config unset KEY\n"
+  printf "  risk config unset --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_args
+    printf "Arguments:\n"
+
+    # :argument.usage
+    echo "  KEY"
+    printf "    Name of of key to delete/unset\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+risk_config_list_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config list - List all configuration variables\n"
+    echo
+
+  else
+    printf "risk config list - List all configuration variables\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config list\n"
+  printf "  risk config list --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+risk_config_keys_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "risk config keys - List all configuration variables as an array (for completions)\n"
+    echo
+
+  else
+    printf "risk config keys - List all configuration variables as an array (for completions)\n"
+    echo
+
+  fi
+
+  printf "Usage:\n"
+  printf "  risk config keys\n"
+  printf "  risk config keys --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "Options:\n"
+
+    # :command.usage_fixed_flags
+    echo "  --help, -h"
+    printf "    Show this help\n"
+    echo
+
+  fi
+}
+
 # :command.normalize_input
 normalize_input() {
   local arg flags
@@ -1294,7 +1505,8 @@ config_keys() {
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ $line =~ $regex ]]; then
       key="${BASH_REMATCH[1]}"
-      keys+=("$key")
+      key="${key//\=/}"
+      [[ -n "$key" ]] && keys+=("$key")
     fi
   done < "$RISK_CONFIG_FILE"
   echo "${keys[@]}"
@@ -1795,7 +2007,7 @@ function start_vm {
 
     local failed=""
     local ret=
-    for vm in "${!pids[@]}" ; do
+    for vm in "${(@k)pids}" ; do
         wait "${pids["$vm"]}"
         ret=$?
         [ $ret -ne 0 ] && failed="$failed"$'\n'"$vm ($ret)"
@@ -2744,6 +2956,57 @@ risk_vpn_delete_command() {
 
 }
 
+# :command.function
+risk_config_set_command() {
+  # src/config_set_command.sh
+
+  local key value
+
+  key="${args[key]}"
+  value="${args[value]}"
+
+  config_set "$key" "$value"
+
+}
+
+# :command.function
+risk_config_get_command() {
+  # src/config_get_command.sh
+
+  local key
+
+  key="${args[key]}"
+
+  config_get "$key"
+
+}
+
+# :command.function
+risk_config_unset_command() {
+  # src/config_unset_command.sh
+
+  local key
+
+  key="${args[key]}"
+
+  config_set "$key" ""
+
+}
+
+# :command.function
+risk_config_list_command() {
+  # src/config_list_command.sh
+  config_show
+
+}
+
+# :command.function
+risk_config_keys_command() {
+  # src/config_keys_command.sh
+  config_keys
+
+}
+
 # :command.parse_requirements
 parse_requirements() {
   # :command.fixed_flags_filter
@@ -2798,6 +3061,13 @@ parse_requirements() {
     action="vpn"
     shift
     risk_vpn_parse_requirements "$@"
+    shift $#
+    ;;
+
+  config )
+    action="config"
+    shift
+    risk_config_parse_requirements "$@"
     shift $#
     ;;
 
@@ -4523,6 +4793,330 @@ risk_vpn_delete_parse_requirements() {
 
 }
 
+# :command.parse_requirements
+risk_config_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action=${1:-}
+
+  case $action in
+  -* )
+    ;;
+
+  set )
+    action="set"
+    shift
+    risk_config_set_parse_requirements "$@"
+    shift $#
+    ;;
+
+  get )
+    action="get"
+    shift
+    risk_config_get_parse_requirements "$@"
+    shift $#
+    ;;
+
+  unset )
+    action="unset"
+    shift
+    risk_config_unset_parse_requirements "$@"
+    shift $#
+    ;;
+
+  list )
+    action="list"
+    shift
+    risk_config_list_parse_requirements "$@"
+    shift $#
+    ;;
+
+  keys )
+    action="keys"
+    shift
+    risk_config_keys_parse_requirements "$@"
+    shift $#
+    ;;
+
+  # :command.command_fallback
+  "" )
+    risk_config_usage
+    exit 1
+    ;;
+
+  * )
+    printf "invalid command: %s\n" "$action"
+    exit 1
+    ;;
+
+  esac
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      printf "invalid argument: %s\n" "$key"
+      exit 1
+
+      ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+risk_config_set_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_set_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="config set"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      if [[ -z ${args[key]+x} ]]; then
+
+        args[key]=$1
+        shift
+      elif [[ -z ${args[value]+x} ]]; then
+
+        args[value]=$1
+        shift
+      else
+        printf "invalid argument: %s\n" "$key"
+        exit 1
+      fi
+
+      ;;
+
+    esac
+  done
+
+  # :command.required_args_filter
+  if [[ -z ${args[key]+x} ]]; then
+    printf "missing required argument: KEY\nusage: risk config set KEY VALUE\n"
+    exit 1
+  fi
+  if [[ -z ${args[value]+x} ]]; then
+    printf "missing required argument: VALUE\nusage: risk config set KEY VALUE\n"
+    exit 1
+  fi
+
+}
+
+# :command.parse_requirements
+risk_config_get_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_get_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="config get"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      if [[ -z ${args[key]+x} ]]; then
+
+        args[key]=$1
+        shift
+      else
+        printf "invalid argument: %s\n" "$key"
+        exit 1
+      fi
+
+      ;;
+
+    esac
+  done
+
+  # :command.required_args_filter
+  if [[ -z ${args[key]+x} ]]; then
+    printf "missing required argument: KEY\nusage: risk config get KEY\n"
+    exit 1
+  fi
+
+}
+
+# :command.parse_requirements
+risk_config_unset_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_unset_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="config unset"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      if [[ -z ${args[key]+x} ]]; then
+
+        args[key]=$1
+        shift
+      else
+        printf "invalid argument: %s\n" "$key"
+        exit 1
+      fi
+
+      ;;
+
+    esac
+  done
+
+  # :command.required_args_filter
+  if [[ -z ${args[key]+x} ]]; then
+    printf "missing required argument: KEY\nusage: risk config unset KEY\n"
+    exit 1
+  fi
+
+}
+
+# :command.parse_requirements
+risk_config_list_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_list_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="config list"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      printf "invalid argument: %s\n" "$key"
+      exit 1
+
+      ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+risk_config_keys_parse_requirements() {
+  # :command.fixed_flags_filter
+  case "${1:-}" in
+  --help | -h )
+    long_usage=yes
+    risk_config_keys_usage
+    exit
+    ;;
+
+  esac
+
+  # :command.command_filter
+  action="config keys"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+    -?* )
+      printf "invalid option: %s\n" "$key"
+      exit 1
+      ;;
+
+    * )
+      # :command.parse_requirements_case
+      # :command.parse_requirements_case_simple
+      printf "invalid argument: %s\n" "$key"
+      exit 1
+
+      ;;
+
+    esac
+  done
+
+}
+
 # :command.initialize
 initialize() {
   version="0.1.0"
@@ -4758,6 +5352,54 @@ run() {
       risk_vpn_delete_usage
     else
       risk_vpn_delete_command
+    fi
+
+  elif [[ $action == "config" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_usage
+    else
+      risk_config_command
+    fi
+
+  elif [[ $action == "config set" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_set_usage
+    else
+      risk_config_set_command
+    fi
+
+  elif [[ $action == "config get" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_get_usage
+    else
+      risk_config_get_command
+    fi
+
+  elif [[ $action == "config unset" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_unset_usage
+    else
+      risk_config_unset_command
+    fi
+
+  elif [[ $action == "config list" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_list_usage
+    else
+      risk_config_list_command
+    fi
+
+  elif [[ $action == "config keys" ]]; then
+    if [[ ${args[--help]:-} ]]; then
+      long_usage=yes
+      risk_config_keys_usage
+    else
+      risk_config_keys_command
     fi
 
   elif [[ $action == "root" ]]; then

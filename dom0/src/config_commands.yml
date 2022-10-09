@@ -1,0 +1,35 @@
+
+name: config
+help: "Manage the risk global configuration"
+
+commands:
+  - name: set
+    help: "Set a configuration variable to a value"
+    args:
+      - name: key
+        required: true
+        help: 'Name of of key to set'
+      - name: value 
+        required: true
+        help: 'Value to assign to the key'
+
+  - name: get
+    help: "Print the value of a configuration variable"
+    args:
+      - name: key
+        required: true
+        help: 'Name of of key to show'
+
+  - name: unset
+    help: "Delete the value of a configuration variable"
+    args:
+      - name: key
+        required: true
+        help: 'Name of of key to delete/unset'
+
+  - name: list 
+    help: "List all configuration variables"
+
+  - name: keys 
+    help: "List all configuration variables as an array (for completions)"
+    private: true

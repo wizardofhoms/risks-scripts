@@ -39,5 +39,5 @@ commands:
 - import: src/identity_commands.yml
   # Infrastructure
 - import: src/vpn_commands.yml
-
+- import: src/config_commands.yml
 

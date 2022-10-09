@@ -67,10 +67,12 @@ _config ()
         args)
             case $line[1] in
             set)
-                _arguments -C "1:key:" "2:variable:" && ret=0 # TODO complete existing keys ?"
+                _arguments -C "1:key:_config_keys" \
+                "2:variable:" \
+                && ret=0 
             ;;
             get|unset)
-                _arguments -C "1:key:" && ret=0 # TODO complete existing keys ?"
+                _arguments -C "1:key:_config_keys" && ret=0 # TODO complete existing keys ?"
             ;;
             esac
     esac
@@ -288,10 +290,10 @@ _vpn ()
                     '1::VPN gateway name (optional):' \
                     && ret=0
                 ;;
-            start|stop|delete|enable)
+            delete)
                 _arguments \
                     "${_flags_base[@]}" \
-                    '1:VPN gateway name:' \
+                    '1:VPN gateway name:_identity_vpns' \
                     && ret=0
                 ;;
             setup)
@@ -299,7 +301,29 @@ _vpn ()
                     "${_flags_base[@]}" \
                     "${_flags_vpn[@]}" \
                     "${_flags_network[@]}" \
-                    '1:VPN gateway name:' \
+                    '1:VPN gateway name:_identity_vpns' \
+                    && ret=0
+                ;;
+            enable)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    '1:VPN gateway name:_disabled_vms' \
+                    && ret=0
+                ;;
+            disable)
+                _arguments \
+                    "${_flags_base[@]}" \
+                    '1:VPN gateway name:_enabled_vms' \
+                    && ret=0
+                ;;
+            start) _arguments \
+                    "${_flags_base[@]}" \
+                    '1:VPN gateway name:_halted_identity_vpns' \
+                    && ret=0
+                ;;
+            stop) _arguments \
+                    "${_flags_base[@]}" \
+                    '1:VPN gateway name:_running_identity_vpns' \
                     && ret=0
                 ;;
             esac
@@ -399,34 +423,120 @@ _known_vms ()
 }
 
 # Returns the list of running VPN gateways for the active identity.
-# or of all identities if none is active.
-_running_vpns ()
+_running_identity_vpns ()
 {
+    local identity_dir proxies running_proxies
+
     # Get the list of gateways, either for active identity or all
+    identity_dir="$(_identity_dir)"
+    read -d '' -r -A proxies <"${identity_dir}/proxy_vms"
     
     # Diff it with the list of running VMs
+    read -d '' -r -A running_all < <(qvm-ls --raw-list --running)
+    running_proxies=($(echo "${proxies[@]}" "${running_all[@]}" | tr ' ' '\n' | sort | uniq -D | uniq))
     
     # Return it
+    if [[ "${#running_proxies[@]}" -eq 0 ]]; then
+        _message "no running VPN gateways for identity"
+    else
+        _arguments -C "1:running proxy VMs:($running_proxies)"
+    fi
+}
+
+# Returns all VPNs for the active identity that are powered off.
+_halted_identity_vpns ()
+{
+    local identity_dir proxies halted_proxies
+
+    # Get the list of gateways, either for active identity or all
+    identity_dir="$(_identity_dir)"
+    read -d '' -r -A proxies <"${identity_dir}/proxy_vms"
+    
+    # Diff it with the list of running VMs
+    read -d '' -r -A halted_all < <(qvm-ls --raw-list --halted)
+    halted_proxies=($(echo "${proxies[@]}" "${halted_all[@]}" | tr ' ' '\n' | sort | uniq -D | uniq))
+    
+    # Return it
+    if [[ "${#halted_proxies[@]}" -eq 0 ]]; then
+        _message "no halted VPN gateways for identity"
+    else
+        _arguments -C "1:halted proxy VMs:($halted_proxies)"
+    fi
 }
 
 # Returns all proxy VMs for the active identity, running or not.
 _identity_vpns ()
 {
-}
-
-# returns all running VMs for the active identity only
-_running_identity_vms ()
-{
-}
-
-# Returns all VPNs for the active identity that are powered off.
-_stopped_identity_vpns ()
-{
+    local identity_dir="$(_identity_dir)"
+    read -d '' -r -A proxies <"${identity_dir}/proxy_vms"
+    if [[ "${#proxies[@]}" -eq 0 ]]; then
+        _message "no VPN gateways for identity"
+    else
+        _arguments -C "1:proxy VMs:($proxies)"
+    fi
 }
 
 # Returns all VMs that are marked autostart for the identity.
 _enabled_vms ()
 {
+    local identity_dir="$(_identity_dir)"
+    read -d '' -r -A vms <"${identity_dir}/autostart_vms"
+
+    if [[ "${#vms[@]}" -eq 0 ]]; then
+        _message "no VPN gateways for identity"
+    else
+        _arguments -C "1:autostart enabled VMs:($vms)"
+    fi
+}
+
+# Returns all VMs that are marked autostart for the identity.
+_disabled_vms ()
+{
+    # Enabled VMs
+    local identity_dir="$(_identity_dir)"
+    read -d '' -r -A vms <"${identity_dir}/autostart_vms"
+
+    # All proxy VMs
+    read -d '' -r -A proxies <"${identity_dir}/proxy_vms"
+    
+    # Diff both
+    disabled_vms=($(echo "${proxies[@]}" "${vms[@]}" | tr ' ' '\n' | sort | uniq -u))
+    
+    # Return
+    if [[ "${#disabled_vms[@]}" -eq 0 ]]; then
+        _message "no disabled VPN gateways"
+    else
+        _arguments -C "1:disabled VMs:($disabled_vms)"
+    fi
+}
+
+# returns all running VMs for the active identity only
+_running_identity_vms ()
+{
+    local identity_dir="$(_identity_dir)"
+    # VPNs
+    # Clients
+}
+
+# Returns the keys found in the risk global configuration
+_config_keys ()
+{
+    local keys
+    keys=( $(risk config keys) )
+    _arguments -C "1:configuration keys:($keys)"
+}
+
+# Utils =======================================================================================
+
+# Returns the directory of the current active identity
+_identity_dir ()
+{
+    # Get the vault vm, and then the identity  directory
+    local vault_vm active_identity identity_dir
+    vault_vm=$(risk config get VAULT_VM)
+    active_identity=$(qvm-run --pass-io "$vault_vm" 'cat .identity' 2>/dev/null)
+    identity_dir="${HOME}/.risk/identities/${active_identity}"
+    print ${identity_dir}
 }
 
 

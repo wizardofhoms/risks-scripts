@@ -177,7 +177,8 @@ config_keys() {
   while IFS= read -r line || [ -n "$line" ]; do
     if [[ $line =~ $regex ]]; then
       key="${BASH_REMATCH[1]}"
-      keys+=("$key")
+      key="${key//\=/}"
+      [[ -n "$key" ]] && keys+=("$key")
     fi
   done < "$RISK_CONFIG_FILE"
   echo "${keys[@]}"
