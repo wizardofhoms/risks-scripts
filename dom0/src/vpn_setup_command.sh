@@ -38,7 +38,7 @@ fi
 if [[ "${args[--choose]}" -eq 1 ]]; then
     # If we are asked to choose an existing configuration in the VM
     _qvrun "$name" /usr/local/bin/setup_VPN 
-elif [[ -n "${config_vm}" ]]; then
+elif [[ -n "${args[--config-in]}" ]]; then
     # Or if we are asked to browse one or more configuration files in another VM.
     import_vpn_configs "$name" "$config_vm" "$client_conf_path"
 fi

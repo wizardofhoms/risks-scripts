@@ -53,6 +53,11 @@ commands:
 
   - name: setup
     help: Manage, import network configurations and run associated setup wizards
+    args:
+      - name: vm 
+        help: "gateway VM to operate setup on"
+        required: true
+        validate: vm_exists
     flags:
       - *verbose
       - *vpn_config
@@ -61,10 +66,6 @@ commands:
       - long: --choose
         help: Choose an existing client config by running the setup wizard in the VPN VM
         conflicts: [ --config-in ]
-    args:
-      - name: vm 
-        help: "gateway VM to operate setup on"
-        required: true
 
   - name: start 
     help: Start a VPN gateway in the background
@@ -72,6 +73,7 @@ commands:
       - name: vm 
         help: "gateway VM to start"
         required: true
+        validate: vm_exists
     flags:
       - *verbose
 
@@ -81,6 +83,7 @@ commands:
       - name: vm 
         help: "gateway VM to stop"
         required: true
+        validate: vm_exists
     flags:
       - *verbose
 
@@ -90,6 +93,7 @@ commands:
       - name: vm 
         help: "gateway VM to enable autostart for"
         required: true
+        validate: vm_exists
     flags:
       - *verbose
 
@@ -99,6 +103,7 @@ commands:
       - name: vm 
         help: "gateway VM to disable autostart for"
         required: true
+        validate: vm_exists
     flags:
       - *verbose
 
@@ -108,5 +113,6 @@ commands:
       - name: vm 
         help: "gateway VM to delete"
         required: true
+        validate: vm_exists
     flags:
       - *verbose

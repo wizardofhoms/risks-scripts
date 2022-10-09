@@ -90,3 +90,76 @@ function _catch ()
     fi
 }
 
+
+#assertRunning [vm] [start]
+#Assert that the given VM is running. Will unpause paused VMs and may start shut down VMs.
+#[vm]: VM for which to make sure it's running.
+#[start]: If it's not running and not paused, start it (default: 0/true). If set to 1, this function will return a non-zero exit code.
+#returns: A non-zero exit code, if it's not running and/or we failed to start the VM.
+function assertRunning {
+    local vm="$1"
+    local start="${2:-0}"
+
+    #make sure the VM is unpaused
+    if qvm-check --paused "$vm" &> /dev/null ; then
+        qvm-unpause "$vm" &> /dev/null || return 1
+    else
+        if [ $start -eq 0 ] ; then
+            qvm-start --skip-if-running "$vm" &> /dev/null || return 1
+        else
+            #we don't attempt to start
+            return 2
+        fi
+    fi
+
+    return 0
+}
+
+# start_vm [vm 1] ... [vm n]
+#Start the given VMs without executing any command.
+function start_vm {
+    local ret=0
+
+    local vm=
+    declare -A pids=() #VM --> pid
+    for vm in "$@" ; do
+        [[ "$vm" == "dom0" ]] && continue
+        _verbose "Starting: $vm"
+        assertRunning "$vm" &
+        pids["$vm"]=$!
+    done
+
+    local failed=""
+    local ret=
+    for vm in "${!pids[@]}" ; do
+        wait "${pids["$vm"]}"
+        ret=$?
+        [ $ret -ne 0 ] && failed="$failed"$'\n'"$vm ($ret)"
+    done
+
+    [ -z "$failed" ] || _verbose "Starting the following VMs failed: $failed"
+
+    #set exit code
+    [ -z "$failed" ]
+}
+
+# shutdown_vm [vm 1] ... [vm n]
+#Shut the given VMs down.
+function shutdown_vm {
+    local ret=0
+
+    if [ $# -gt 0 ] ; then
+        #make sure the VMs are unpaused
+        #cf. https://github.com/QubesOS/qubes-issues/issues/5967
+        local vm=
+        for vm in "$@" ; do
+            qvm-unpause "$vm" &> /dev/null
+        done
+
+        _verbose "Shutting down: $*"
+        qvm-shutdown --wait "$@"
+        ret=$?
+    fi
+
+    return $ret
+}

@@ -1,6 +1,6 @@
 
 # does the vm exist?
-validate_vm_exits () {
+validate_vm_exists () {
     vm=""
     for item in $(qvm-ls | grep -v dom0 | awk '{print $1}' | grep "${1}")
     do
