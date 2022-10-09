@@ -25,7 +25,7 @@ commands:
       - long: --no-gw
         short: -G
         help: "Don't create a Whonix TOR gateway"
-        conflicts: [ --clone-gw-from --vpn-over-tor ]
+        conflicts: [ --clone-gw-from ]
       - long: --clone-gw-from
         help: "Instead of creating the TOR gateway from a template, clone an existing TOR AppVM"
         arg: tor_gw 
@@ -34,15 +34,11 @@ commands:
       - long: --no-vpn
         short: -V
         help: "Don't create a VPN gateway"
-        conflicts: [ --clone-vpn-from --vpn-over-tor ]
+        conflicts: [ --clone-vpn-from ]
       - long: --clone-vpn-from
         help: "Instead of creating the VPN gateway from a template, clone an existing VPN AppVM"
         arg: vpn_gw 
         conflicts: [ --no-vpn ]
-        # Other network options
-      - long: --vpn-over-tor
-        help: "Instead of routing TOR traffic through the VPN, route the VPN traffic through TOR"
-        conflicts: [ --no-vpn --no-gw ]
         # Messengers
       - long: --no-messenger
         short: -M

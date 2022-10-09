@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 
 # Connected terminal
 typeset -H _TTY
@@ -7,6 +6,9 @@ export GPG_TTY
 
 # Remove verbose errors when * don't yield any match in ZSH
 setopt +o nomatch
+
+# The generated script makes use of BASH_REMATCH, set compat for ZSH
+setopt BASH_REMATCH
 
 # Working state variables
 typeset -r IDENTITY            # The identity to use for this single risk execution

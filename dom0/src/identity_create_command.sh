@@ -41,6 +41,7 @@ echo "$vm_name" > "${IDENTITY_DIR}/vm_label"
 _message "Using label '$label' as VM default label"
 
 # Prepare the root NetVM for this identity
+local netvm="${DEFAULT_NETVM}"
 
 # Create identity in vault =================================================
 
@@ -49,12 +50,16 @@ _message "Creating identity in vault"
 _qrun "$VAULT_VM" risks create identity "$name" "$email" "$expiry" "$pendrive"
 _catch "Failed to create identity in vault"
 
+# Then, open it
+_qrun "$VAULT_VM" risks open identity "$name"
+_catch "Failed to open identity in vault"
+
 # Network VMs ==============================================================
 _message "Creating network VMs:"
 
 # 1 - Tor gateway, if not explicitly disabled
 if [[ ${args[--no-gw]} -eq 0 ]]; then
-    local gw_netvm
+    local gw_netvm="$netvm"
 
     # We either clone the gateway from an existing one,
     # or we create it from a template.
@@ -64,13 +69,17 @@ if [[ ${args[--no-gw]} -eq 0 ]]; then
     else
         create_tor_gateway "$vm_name" "$gw_netvm" "$label"
     fi
+
+    # Set it as the netvm for this identity, and for the rest of the VMs
+    echo "$vm_name" > "${IDENTITY_DIR}/net_vm" 
 else
     _message "Skipping TOR gateway"
 fi
 
+
 # 2 - VPNs, if not explicitly disabled
 if [[ ${args[--no-vpn]} -eq 0 ]]; then
-    local vpn_netvm
+    local vpn_netvm="$(cat "${IDENTITY_DIR}/net_vm" )"
 
     # We either clone the gateway from an existing one,
     # or we create it from a template.
@@ -80,13 +89,11 @@ if [[ ${args[--no-vpn]} -eq 0 ]]; then
     else
         create_vpn_gateway "$vm_name" "$vpn_netvm" "$label"
     fi
+
+    # Set it as the netvm for this identity
+    echo "$vm_name" > "${IDENTITY_DIR}/net_vm" 
 else
     _message "Skipping VPN gateway"
-fi
-
-# 3 - Setting up the network routes
-if [[ ${args[--vpn-over-tor]} -eq 1 ]]; then
-    echo
 fi
 
 # At this point we should know the vm_name of the VM to be used as NetVM
@@ -95,11 +102,11 @@ fi
 # Message VMs ==============================================================
 _message "Creating messaging VMs:"
 
-if [[ ${args[--no-messenger]} -eq 0 ]]; then
-    local msg="${vm_name}-msg"
-else
-    _message "Skipping messaging VM"
-fi
+# if [[ ${args[--no-messenger]} -eq 0 ]]; then
+#     local msg="${vm_name}-msg"
+# else
+#     _message "Skipping messaging VM"
+# fi
 
 
 # Browser VMs ==============================================================
@@ -109,7 +116,7 @@ _message "Creating web VMs:"
 # since we might  either modify stuff in there, and we need them at least 
 # to have a different network route.
 if [[ -n ${args[--clone-web-from]} ]]; then
-    local web_netvm
+    local web_netvm="$(cat "${IDENTITY_DIR}/net_vm")"
 
     local clone="${args[--clone-web-from]}"
     clone_browser_vm "$vm_name" "$clone" "$web_netvm" "$label"

@@ -230,7 +230,6 @@ _identity_create ()
         "${_flags_vm_base[@]}" \
         "${_flags_init_vpn[@]}" \
         "${_flags_init_tor[@]}" \
-        "${_flags_network_opts[@]}" \
         "${_flags_init_web[@]}" \
         "${_flags_init_messenger[@]}" \
         && ret=0
@@ -367,17 +366,13 @@ _flags_vpn=(
 # since the command normally creates a bunch of different vms: most of these
 # flags are made to slightly change these default VMs' settings.
 _flags_init_vpn=(
-    '(--clone-vpn-from --vpn-over-tor -V --no-vpn)'{-V,--no-vpn}'[Do not create a VPN gateway]' 
+    '(--clone-vpn-from -V --no-vpn)'{-V,--no-vpn}'[Do not create a VPN gateway]' 
     '(-V --no-vpn --clone-vpn-from)'--clone-vpn-from'[Instead of creating the VPN gateway from a template, clone an existing VPN AppVM]:VM:_known_vms'
 )
 
 _flags_init_tor=(
-    '(--clone-gw-from --vpn-over-tor -G --no-gw)'{-G,--no-gw}'[Do not create a Whonix TOR gateway]' 
+    '(--clone-gw-from -G --no-gw)'{-G,--no-gw}'[Do not create a Whonix TOR gateway]' 
     '(-G --no-gw --clone-gw-from)'--clone-gw-from"[Instead of creating the TOR gateway from a template, clone an existing TOR AppVM]:VM:_known_vms"
-)
-
-_flags_network_opts=(
-    '(-V --no-vpn -G --no-gw)'--vpn-over-tor'[Instead of routing TOR traffic through the VPN, route the VPN traffic through TOR]' 
 )
 
 _flags_init_messenger=(

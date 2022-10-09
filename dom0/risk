@@ -427,11 +427,6 @@ risk_identity_create_usage() {
     echo
 
     # :flag.usage
-    echo "  --vpn-over-tor"
-    printf "    Instead of routing TOR traffic through the VPN, route the VPN traffic\n    through TOR\n"
-    echo
-
-    # :flag.usage
     echo "  --no-messenger, -M"
     printf "    Don't create a Messenger VM (for Signal and other message services)\n"
     echo
@@ -2341,10 +2336,13 @@ create_browser_vm ()
     local netvm="${2-$RISK_DEFAULT_NETVM}"
     local web_label="${3-orange}"
 
-    local -a create_command
-    create_command+=(qvm-create --property netvm="$netvm" --label "$web_label" --template "$WHONIX_WS_TEMPLATE")
-
     _message "Creating web VM (name: $web / netvm: $netvm / template: $WHONIX_WS_TEMPLATE)"
+    qvm-create --property netvm="$netvm" --label "$web_label" --template "$WHONIX_WS_TEMPLATE"
+    [[ ! $? -eq 0 ]] && _warning "Failed to create browser VM $web"
+
+    # Mark this VM as a disposable template, and tag it with our identity
+    qvm-prefs "${web}" template_for_dispvms True
+    qvm-tags "$web" set "$IDENTITY"
 }
 
 # Clone a web browsing VM from an existing one
@@ -2355,12 +2353,16 @@ clone_browser_vm ()
     local netvm="${3-$RISK_DEFAULT_NETVM}"
     local web_label="${4-orange}"
 
-    create_command+=(qvm-clone "${web_clone}" "${web}")
-
-    local label_command=(qvm-prefs "$web" label "$web_label")
-    local netvm_command=(qvm-prefs "$web" netvm "$netvm")
-
     _message "Cloning web VM (name: $web / netvm: $netvm / template: $web_clone)"
+    qvm-clone "${web_clone}" "${web}"
+    [[ ! $? -eq 0 ]] && _warning "Failed to clone browser VM $web" && return
+
+    qvm-prefs "$web" label "$web_label"
+    qvm-prefs "$web" netvm "$netvm"
+
+    # Mark this VM as a disposable template, and tag it with our identity
+    qvm-prefs "${web}" template_for_dispvms True
+    qvm-tags "$web" set "$IDENTITY"
 }
 
 # Create a split-browser VM from a template
@@ -2369,10 +2371,8 @@ create_split_browser_vm ()
     local web="${1}-split-web"
     local web_label="${2-gray}"
 
-    local -a create_command
-    create_command+=(qvm-create --property netvm=None --label "$web_label" --template "$RISK_SPLIT_BROWSER_TEMPLATE")
-
     _message "Creating split-browser (name: $web / netvm: $netvm / template: $RISK_SPLIT_BROWSER_TEMPLATE)"
+    qvm-create --property netvm=None --label "$web_label" --template "$RISK_SPLIT_BROWSER_TEMPLATE"
 }
 
 # Clone an existing split-browser VM, and change its dispvms
@@ -2382,12 +2382,11 @@ clone_split_browser_vm ()
     local web_clone="$2"
     local web_label="${3-gray}"
 
-    create_command+=(qvm-clone "${web_clone}" "${web}")
-
-    local label_command=(qvm-prefs "$web" label "$web_label")
-    local netvm_command=(qvm-prefs "$web" netvm None)
-
     _message "Cloning split-browser VM (name: $web / netvm: $netvm / template: $web_clone)"
+    qvm-clone "${web_clone}" "${web}"
+
+    qvm-prefs "$web" label "$web_label"
+    qvm-prefs "$web" netvm None
 }
 
 # :command.command_functions
@@ -2568,6 +2567,7 @@ risk_identity_create_command() {
   _message "Using label '$label' as VM default label"
 
   # Prepare the root NetVM for this identity
+  local netvm="${DEFAULT_NETVM}"
 
   # Create identity in vault =================================================
 
@@ -2576,12 +2576,16 @@ risk_identity_create_command() {
   _qrun "$VAULT_VM" risks create identity "$name" "$email" "$expiry" "$pendrive"
   _catch "Failed to create identity in vault"
 
+  # Then, open it
+  _qrun "$VAULT_VM" risks open identity "$name"
+  _catch "Failed to open identity in vault"
+
   # Network VMs ==============================================================
   _message "Creating network VMs:"
 
   # 1 - Tor gateway, if not explicitly disabled
   if [[ ${args[--no-gw]} -eq 0 ]]; then
-      local gw_netvm
+      local gw_netvm="$netvm"
 
       # We either clone the gateway from an existing one,
       # or we create it from a template.
@@ -2591,13 +2595,17 @@ risk_identity_create_command() {
       else
           create_tor_gateway "$vm_name" "$gw_netvm" "$label"
       fi
+
+      # Set it as the netvm for this identity, and for the rest of the VMs
+      echo "$vm_name" > "${IDENTITY_DIR}/net_vm"
+
   else
       _message "Skipping TOR gateway"
   fi
 
   # 2 - VPNs, if not explicitly disabled
   if [[ ${args[--no-vpn]} -eq 0 ]]; then
-      local vpn_netvm
+      local vpn_netvm="$(cat "${IDENTITY_DIR}/net_vm" )"
 
       # We either clone the gateway from an existing one,
       # or we create it from a template.
@@ -2607,13 +2615,12 @@ risk_identity_create_command() {
       else
           create_vpn_gateway "$vm_name" "$vpn_netvm" "$label"
       fi
+
+      # Set it as the netvm for this identity
+      echo "$vm_name" > "${IDENTITY_DIR}/net_vm"
+
   else
       _message "Skipping VPN gateway"
-  fi
-
-  # 3 - Setting up the network routes
-  if [[ ${args[--vpn-over-tor]} -eq 1 ]]; then
-      echo
   fi
 
   # At this point we should know the vm_name of the VM to be used as NetVM
@@ -2622,11 +2629,11 @@ risk_identity_create_command() {
   # Message VMs ==============================================================
   _message "Creating messaging VMs:"
 
-  if [[ ${args[--no-messenger]} -eq 0 ]]; then
-      local msg="${vm_name}-msg"
-  else
-      _message "Skipping messaging VM"
-  fi
+  # if [[ ${args[--no-messenger]} -eq 0 ]]; then
+  #     local msg="${vm_name}-msg"
+  # else
+  #     _message "Skipping messaging VM"
+  # fi
 
   # Browser VMs ==============================================================
   _message "Creating web VMs:"
@@ -2636,7 +2643,7 @@ risk_identity_create_command() {
 
   # to have a different network route.
   if [[ -n ${args[--clone-web-from]} ]]; then
-      local web_netvm
+      local web_netvm="$(cat "${IDENTITY_DIR}/net_vm")"
 
       local clone="${args[--clone-web-from]}"
       clone_browser_vm "$vm_name" "$clone" "$web_netvm" "$label"
@@ -2941,6 +2948,27 @@ risk_vpn_delete_command() {
   fi
 
   _message "Deleting gateway VM $name"
+
+  # If the VPN was the default NetVM for the identity,
+  # update the NetVM to Whonix.
+  netvm="$(cat "${IDENTITY_DIR}/net_vm")"
+  if [[ $netvm == "$name" ]]; then
+      _warning "Gateway $name is the default NetVM for identity clients !"
+
+      # Check if we have a TOR gateway
+      local tor_gw
+
+      if [[ -n $tor_gw ]]; then
+          _message -n "Updating the default identity NetVM to $tor_gw"
+      else
+          _message -n "The identity has no default NetVM anymore, please set it."
+      fi
+  fi
+
+  # Check if there are some existing VMs that use this gateway as NetVM,
+  # and change their netVM to None: this is unpractical, especially for
+  # those that might be up, but it's better than assigning a new netVM
+  # despite this presenting a security risk.
 
   # Delete without asking to confirm
   echo "y" | _run qvm-remove "$name"
@@ -3623,8 +3651,8 @@ risk_identity_create_parse_requirements() {
     # :flag.case
     --no-gw | -G )
       # :flag.conflicts
-      if [[ -n "${args[--clone-gw-from --vpn-over-tor]:-}" ]]; then
-        printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-gw-from --vpn-over-tor"
+      if [[ -n "${args[--clone-gw-from]:-}" ]]; then
+        printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-gw-from"
         exit 1
       fi
 
@@ -3656,8 +3684,8 @@ risk_identity_create_parse_requirements() {
     # :flag.case
     --no-vpn | -V )
       # :flag.conflicts
-      if [[ -n "${args[--clone-vpn-from --vpn-over-tor]:-}" ]]; then
-        printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-vpn-from --vpn-over-tor"
+      if [[ -n "${args[--clone-vpn-from]:-}" ]]; then
+        printf "conflicting options: %s cannot be used with %s\n" "$key" "--clone-vpn-from"
         exit 1
       fi
 
@@ -3684,19 +3712,6 @@ risk_identity_create_parse_requirements() {
         printf "%s\n" "--clone-vpn-from requires an argument: --clone-vpn-from VPN_GW"
         exit 1
       fi
-      ;;
-
-    # :flag.case
-    --vpn-over-tor )
-      # :flag.conflicts
-      if [[ -n "${args[--no-vpn --no-gw]:-}" ]]; then
-        printf "conflicting options: %s cannot be used with %s\n" "$key" "--no-vpn --no-gw"
-        exit 1
-      fi
-
-      # :flag.case_no_arg
-      args[--vpn-over-tor]=1
-      shift
       ;;
 
     # :flag.case
@@ -5124,7 +5139,6 @@ initialize() {
   
 
   # src/initialize.sh
-  #!/usr/bin/env bash
 
   # Connected terminal
   typeset -H _TTY
