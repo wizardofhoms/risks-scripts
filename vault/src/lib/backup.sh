@@ -2,23 +2,26 @@
 # The identity needs its own backup directory.
 setup_identity_backup () 
 {
-    local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
+    local backup_graveyard          # Where the graveyard root directory is in the backup drive
+    local identity_graveyard        # The full path to the identity system graveyard.
+    local identity_dir              # The encrypted graveyard directory for the identity
+    local identity_graveyard_backup # Full path to identity graveyard backup
 
-    local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+    backup_graveyard="${BACKUP_MOUNT_DIR}/graveyard"
 
     _verbose "Creating identity graveyard directory on backup"
 
     # The directory name in cleartext is simply the identity name
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-    IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
+    identity_dir=$(_encrypt_filename "$IDENTITY")
+    identity_graveyard_backup="${backup_graveyard}/${identity_dir}"
 
-    _verbose "Creating directory $IDENTITY_GRAVEYARD_PATH"
-    mkdir -p "$IDENTITY_BACKUP_GRAVEYARD_PATH"
+    _verbose "Creating directory $identity_graveyard"
+    mkdir -p "$identity_graveyard_backup"
 
     # And setup fscrypt protectors on it.
     _verbose "Setting up fscrypt protectors on directory"
-    echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_BACKUP_GRAVEYARD_PATH" \
-       --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
+    echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$identity_graveyard_backup" \
+       --quiet --source=custom_passphrase --name="$identity_dir"
     _catch "Failed to encrypt identity graveyard in backup"
 }
 
@@ -27,21 +30,25 @@ setup_identity_backup ()
 # the first place.
 backup_identity_gpg () 
 {
-    local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
+    local backup_graveyard          # Where the graveyard root directory is in the backup drive
+    local identity_dir              # The encrypted graveyard directory for the identity
+    local coffin_file               # Encrypted name of the coffin file
+    local coffin_path               # Full path to the identity coffin in the system graveyard
+    local coffin_backup_path        # Full path to the same coffin, in the backup graveyard
 
-    local GRAVEYARD_COFFIN_FILE IDENTITY_COFFIN_PATH COFFIN_BACKUP_PATH 
+    backup_graveyard="${BACKUP_MOUNT_DIR}/graveyard"
 
     # The directory name in cleartext is simply the identity name
-    GRAVEYARD_COFFIN_FILE=$(_encrypt_filename "coffin-$IDENTITY-gpg")
-    IDENTITY_COFFIN_PATH="${GRAVEYARD}/${GRAVEYARD_COFFIN_FILE}"
+    coffin_file=$(_encrypt_filename "coffin-$IDENTITY-gpg")
+    coffin_path="${GRAVEYARD}/${coffin_file}"
 
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-    COFFIN_BACKUP_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}/${GRAVEYARD_COFFIN_FILE}"
+    identity_dir=$(_encrypt_filename "$IDENTITY")
+    coffin_backup_path="${backup_graveyard}/${identity_dir}/${coffin_file}"
 
-    if [[ -e ${IDENTITY_COFFIN_PATH} ]]; then
-        sudo chattr -i "${IDENTITY_COFFIN_PATH}" 
+    if [[ -e ${coffin_path} ]]; then
+        sudo chattr -i "${coffin_path}" 
     fi
 
-    cp -r "$IDENTITY_COFFIN_PATH" "$COFFIN_BACKUP_PATH"
-    sudo chattr +i "${IDENTITY_COFFIN_PATH}" 
+    cp -r "$coffin_path" "$coffin_backup_path"
+    sudo chattr +i "${coffin_path}" 
 }

@@ -1,3 +1,3 @@
-KEY="${args[key]}"
+key="${args[key]}"
 
-kvdel "${KEY}"
+kvdel "${key}"

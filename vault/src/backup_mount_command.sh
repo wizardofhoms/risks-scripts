@@ -1,5 +1,5 @@
 
-PENDRIVE="${args[backup_device]}"
+pendrive="${args[backup_device]}"
 
 # If we already have a device mounted as backup, fail.
 if ls -1 /dev/mapper/"${BACKUP_MAPPER}" &> /dev/null; then
@@ -17,7 +17,7 @@ if [[ ! -d $BACKUP_MOUNT_DIR ]]; then
 fi
 
 _verbose "Opening LUKS pendrive"
-sudo cryptsetup open --type luks "$PENDRIVE" "$BACKUP_MAPPER"
+sudo cryptsetup open --type luks "$pendrive" "$BACKUP_MAPPER"
 _catch "Failed to open LUKS pendrive. Aborting"
 sudo mount /dev/mapper/"${BACKUP_MAPPER}" "$BACKUP_MOUNT_DIR"
 

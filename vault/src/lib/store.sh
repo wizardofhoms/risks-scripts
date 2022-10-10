@@ -17,10 +17,10 @@ kvget() {
 		return 1
 	}
 	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
-	VALUE="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
-	echo "$VALUE"
+	value="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
+	echo "$value"
 	
-	[ "$VALUE" != "" ]
+	[ "$value" != "" ]
 }
 
 # Usage: kvset <key> [value] 

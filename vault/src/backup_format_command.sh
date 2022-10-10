@@ -1,23 +1,23 @@
 # Easily cleanup, format, luks-encrypt and filesystem setup for a USB drive
 # to be used as a backup medium for risks data.
 
-PENDRIVE="${args[device]}"
+pendrive="${args[device]}"
 
 _message "Formatting and encrypting backup drive"
 
 # Data cleanup
 _verbose "Overwriting drive data"
-sudo dd if=/dev/urandom of="${PENDRIVE}" bs=1M status=progress && sync
+sudo dd if=/dev/urandom of="${pendrive}" bs=1M status=progress && sync
 
 # Encryption setup
 _message "Setting up LUKS on drive"
 sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 \
-    --hash sha512 --iter-time 5000 --use-random luksFormat "${PENDRIVE}"
+    --hash sha512 --iter-time 5000 --use-random luksFormat "${pendrive}"
 _catch "Failed to setup LUKS filesystem on backup drive"
 
 # Filesystem setup
 mkdir "${BACKUP_MOUNT_DIR}" &> /dev/null
-sudo cryptsetup open --type luks "${PENDRIVE}" "${BACKUP_MAPPER}" 
+sudo cryptsetup open --type luks "${pendrive}" "${BACKUP_MAPPER}" 
 _catch "Failed to open backup LUKS filesystem"
 
 _message "Making ext4 filesystem on LUKS mapper"

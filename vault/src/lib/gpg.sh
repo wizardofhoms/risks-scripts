@@ -127,30 +127,30 @@ cleanup_gpg_init()
 {
     local email="$1"
 
-    local TMP_FILENAME TMP coffin_name
+    local tmp_filename tmp_dir coffin_name
 
     # Filenames
-    TMP_FILENAME=$(_encrypt_filename "${IDENTITY}-gpg")
-    TMP="/tmp/${TMP_FILENAME}"
+    tmp_filename=$(_encrypt_filename "${IDENTITY}-gpg")
+    tmp_dir="/tmp/${tmp_filename}"
     coffin_name=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 
     # Making tmp directory
     _verbose "Creating temp directory and mounting coffin"
-    mkdir "$TMP"
-    sudo mount /dev/mapper/"${coffin_name}" "$TMP" 
-    _catch "Failed to mount coffin partition on $TMP"       
-    sudo chown "$USER" "$TMP"
+    mkdir "$tmp_dir"
+    sudo mount /dev/mapper/"${coffin_name}" "$tmp_dir" 
+    _catch "Failed to mount coffin partition on $tmp_dir"       
+    sudo chown "$USER" "$tmp_dir"
     _verbose "Testing coffin filesystem"
-    _verbose "$(mount | grep "$TMP_FILENAME")"
+    _verbose "$(mount | grep "$tmp_filename")"
 
     ## Moving GPG data into the coffin, and closing again
     _verbose "Copying GPG files in coffin"
-    cp -fR "$RAMDISK"/* "$TMP" || _warning "Failed to copy one or more files into coffin"
+    cp -fR "$RAMDISK"/* "$tmp_dir" || _warning "Failed to copy one or more files into coffin"
     _verbose "Setting GPG files immutable"
-    sudo chattr +i "$TMP"/private-keys-v1.d/*
+    sudo chattr +i "$tmp_dir"/private-keys-v1.d/*
     _verbose "Closing coffin"
-    sudo chattr +i "$TMP"/openpgp-revocs.d/*
-    sudo umount "$TMP" || _warning "Failed to unmount tmp directory $TMP"
+    sudo chattr +i "$tmp_dir"/openpgp-revocs.d/*
+    sudo umount "$tmp_dir" || _warning "Failed to unmount tmp directory $TMP"
     sudo cryptsetup close /dev/mapper/"$coffin_name" 
     _catch "Failed to close LUKS filesystem for identity"
 
@@ -176,30 +176,30 @@ cleanup_gpg_init()
     ## 6 - Removing GPG private keys 
     _verbose "Removing GPG private keys"
 
-    local TOMB_SIZE KEYGRIP fingerprint
+    local tomb_size keygrip fingerprint
 
-    TOMB_SIZE=15
+    tomb_size=15
     fingerprint=$(gpg -K "${email}" | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
     # Creating tomb file for private keys and moving them
     _verbose "Creating tomb file for identity ${IDENTITY}"
-    _run new_tomb "$GPG_TOMB_LABEL" $TOMB_SIZE "$IDENTITY"
+    _run new_tomb "$GPG_TOMB_LABEL" $tomb_size "$IDENTITY"
     _verbose "Opening tomb file"
     _run open_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 
-    KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
-    _verbose "Keygrip: $KEYGRIP"
+    keygrip="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
+    _verbose "Keygrip: $keygrip"
 
     _verbose "Copying private data to tomb"
     _verbose "Private keys"
-    cp "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
+    cp "${RAMDISK}"/private-keys-v1.d/"${keygrip}" "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
     _verbose "Revocation certificates"
     cp "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
 
     # Deleting keys from keyring
     _verbose "Wiping corresponding files in GPG keyring"
-    sudo chattr -i "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" 
-    _run wipe -rf "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" \
+    sudo chattr -i "${RAMDISK}"/private-keys-v1.d/"${keygrip}" 
+    _run wipe -rf "${RAMDISK}"/private-keys-v1.d/"${keygrip}" \
         || _warning "Failed to delete master private key from keyring !"
     sudo chattr -i "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev
     _run wipe -rf "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev \
@@ -212,5 +212,5 @@ cleanup_gpg_init()
     _run close_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 
     # Cleanup files
-    rm -rf "$TMP"
+    rm -rf "$tmp_dir"
 }

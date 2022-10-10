@@ -1,4 +1,4 @@
-KEY="${args[key]}"
-VALUE="${args[value]}"
+key="${args[key]}"
+value="${args[value]}"
 
-kvset "${KEY}" "${VALUE}"
+kvset "${key}" "${value}"

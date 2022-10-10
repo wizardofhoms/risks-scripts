@@ -5,7 +5,7 @@
 # this is used when some commands need both the passphrase as an input
 # to decrypt something (like files) and the user needs them for GPG prompts
 
-declare TIMEOUT
+declare timeout
 
 # Identity is optionality specified as an argument
 _set_identity "${args[identity]}"
@@ -19,11 +19,11 @@ _set_identity "${args[identity]}"
 # work when pasted in further GPG passphrase prompts.
 GPG_PASS=$(get_passphrase "$GPG_TOMB_LABEL")
 
-TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
+timeout="${args[--timeout]-$GPGPASS_TIMEOUT}"
 
 echo -n "$GPG_PASS" | xclip -selection clipboard
-( sleep "$TIMEOUT"; echo -n "" | xclip -selection clipboard;) &
+( sleep "$timeout"; echo -n "" | xclip -selection clipboard;) &
 
 _message "The passphrase has been saved in clipboard"
 _message "Press CTRL+SHIFT+C to share the clipboard with another qube."
-_message "Local clipboard will be erased is $TIMEOUT seconds"       
+_message "Local clipboard will be erased is $timeout seconds"       

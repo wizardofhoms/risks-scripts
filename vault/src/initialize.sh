@@ -25,14 +25,14 @@ typeset -gr MGMT_TOMB_LABEL="mgmt"        # Holds the key-value store, and anyth
 typeset -gr PASS_TOMB_LABEL="pass"        # Holds the password store data
 typeset -gr SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
 
+typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
+
 # Other default security-related default directories/names .........................................
 typeset -gr RAMDISK="${HOME}/.gnupg"      # Actually not a tomb mount point: used by coffin
+typeset -gr BACKUP_MOUNT_DIR="/tmp/pendrive"
 
 typeset -gr DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb 
 typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
-typeset -gr BACKUP_MOUNT_DIR="/tmp/pendrive"
-
-typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
 
 typeset -rg RISKS_DIR="${HOME}/.risks"                         # Directory where risk stores its state
 typeset -rg RISKS_IDENTITY_FILE="${RISK_DIR}/.identity"        # Currently unlocked identity stored in file

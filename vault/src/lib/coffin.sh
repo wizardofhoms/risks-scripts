@@ -56,7 +56,12 @@ gen_coffin()
 # open_coffin requires both an identity name and its corresponding passphrase
 open_coffin()
 {
-    local key_filename key_file coffin_filename coffin_file mapper mount_dir
+    local key_filename          # Encrypted name for the key file
+    local key_file              # Absolute path to this key
+    local coffin_filename       # Encrypted name of the coffin
+    local coffin_file           # Absolute path to the coffin
+    local mapper                # LUKS Mapper name
+    local mount_dir             # Mount point to use for the coffin mapper
 
     key_filename=$(_encrypt_filename "${IDENTITY}-gpg.key")
     key_file="${HUSH_DIR}/${key_filename}"
@@ -95,16 +100,18 @@ open_coffin()
     # Set the identity as active, and unlock access to its GRAVEYARD directory
     _set_active_identity "$IDENTITY"
 
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-    IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/$GRAVEYARD_DIRECTORY_ENC"
+    local identity_dir identity_graveyard
+
+    identity_dir=$(_encrypt_filename "$IDENTITY")
+    identity_graveyard="${GRAVEYARD}/$identity_dir"
 
     # Ask fscrypt to let us access it. While this will actually decrypt the files'
     # names and content, this does not prevent our own obfuscated names; the end
     # result is that all NAMES are obfuscated twice (once us, once fscrypt) and
     # the contents are encrypted once (fscrypt).
-    echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$IDENTITY_GRAVEYARD_PATH" --quiet
+    echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$identity_graveyard" --quiet
 
-    _verbose "Identity directory ($IDENTITY_GRAVEYARD_PATH) is unlocked"
+    _verbose "Identity directory ($identity_graveyard) is unlocked"
 }
 
 close_coffin()
@@ -136,10 +143,12 @@ close_coffin()
 		return 0
 	fi
 
+    local identity_dir identity_graveyard
+
     # Lock the identity's graveyard directory
-    GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-    IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
-    _run sudo fscrypt lock "${IDENTITY_GRAVEYARD_PATH}"
+    identity_dir=$(_encrypt_filename "$IDENTITY")
+    identity_graveyard="${GRAVEYARD}/${identity_dir}"
+    _run sudo fscrypt lock "${identity_graveyard}"
 
     _set_active_identity # An empty  identity will trigger a wiping of the file 
 	_verbose "Coffin file $coffin_file has been closed"

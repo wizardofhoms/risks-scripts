@@ -37,6 +37,7 @@ risks_usage() {
 	echo "  load      Copy some resource to a VM where to use it (completed)"
 	echo "  save      Move some data coming from another VM to a (tomb) directory"
 	echo "  kv        Manage the small key=value store used by other commands/functions"
+	echo "  config    Manage the risk global configuration"
 	echo
 
 	# :command.long_usage
@@ -49,45 +50,6 @@ risks_usage() {
 		echo
 		echo "  --version, -v"
 		printf "    Show version number\n"
-		echo
-
-		# :command.usage_environment_variables
-		printf "Environment Variables:\n"
-
-		# :environment_variable.usage
-		echo "  SDCARD_ENC_PART"
-		printf "    Device file path to the hush partition\n"
-		printf "    Default: /dev/hush\n"
-		echo
-
-		# :environment_variable.usage
-		echo "  SDCARD_ENC_PART_MAPPER"
-		printf "    Name of LUKS mapper to hush partition\n"
-		printf "    Default: hush\n"
-		echo
-
-		# :environment_variable.usage
-		echo "  SDCARD_QUIET"
-		printf "    Enable sound when hush device is mounted (0: enabled, 1: disabled)\n"
-		printf "    Default: 0\n"
-		echo
-
-		# :environment_variable.usage
-		echo "  HUSH_DIR"
-		printf "    Directory mount point for the hush device\n"
-		printf "    Default: /home/user/.hush\n"
-		echo
-
-		# :environment_variable.usage
-		echo "  GRAVEYARD"
-		printf "    Directory where to store tomb files\n"
-		printf "    Default: /home/user/.graveyard\n"
-		echo
-
-		# :environment_variable.usage
-		echo "  BACKUP_MAPPER"
-		printf "    Name of LUKS mapper to backup partition\n"
-		printf "    Default: pendev\n"
 		echo
 
 	fi
@@ -587,7 +549,7 @@ risks_create_identity_usage() {
 	fi
 
 	printf "Usage:\n"
-	printf "  risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+	printf "  risks create identity NAME EMAIL EXPIRY_DATE [options]\n"
 	printf "  risks create identity --help | -h\n"
 	echo
 
@@ -606,6 +568,11 @@ risks_create_identity_usage() {
 		printf "    Show verbose logging\n"
 		echo
 
+		# :flag.usage
+		echo "  --backup, -b"
+		printf "    Device file of the backup drive (must be a whole drive without a partition\n    number, eg. /dev/sdb)\n"
+		echo
+
 		# :command.usage_args
 		printf "Arguments:\n"
 
@@ -622,11 +589,6 @@ risks_create_identity_usage() {
 		# :argument.usage
 		echo "  EXPIRY_DATE"
 		printf "    Human readable, or GPG-compliant expiry duration to use for the GPG subkeys\n    (eg. '1 year', '1 week', etc)\n"
-		echo
-
-		# :argument.usage
-		echo "  BACKUP_DEVICE"
-		printf "    Device file of the backup drive (must be a whole drive without a partition\n    number, eg. /dev/sdb)\n"
 		echo
 
 		# :command.usage_examples
@@ -1267,6 +1229,216 @@ risks_kv_clean_usage() {
 }
 
 # :command.usage
+risks_config_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config - Manage the risk global configuration\n"
+		echo
+
+	else
+		printf "risks config - Manage the risk global configuration\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config [command]\n"
+	printf "  risks config [command] --help | -h\n"
+	echo
+	# :command.usage_commands
+	printf "Commands:\n"
+	echo "  set     Set a configuration variable to a value"
+	echo "  get     Print the value of a configuration variable"
+	echo "  unset   Delete the value of a configuration variable"
+	echo "  list    List all configuration variables"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_config_set_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config set - Set a configuration variable to a value\n"
+		echo
+
+	else
+		printf "risks config set - Set a configuration variable to a value\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config set KEY VALUE\n"
+	printf "  risks config set --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  KEY"
+		printf "    Name of of key to set\n"
+		echo
+
+		# :argument.usage
+		echo "  VALUE"
+		printf "    Value to assign to the key\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_config_get_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config get - Print the value of a configuration variable\n"
+		echo
+
+	else
+		printf "risks config get - Print the value of a configuration variable\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config get KEY\n"
+	printf "  risks config get --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  KEY"
+		printf "    Name of of key to show\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_config_unset_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config unset - Delete the value of a configuration variable\n"
+		echo
+
+	else
+		printf "risks config unset - Delete the value of a configuration variable\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config unset KEY\n"
+	printf "  risks config unset --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+		# :command.usage_args
+		printf "Arguments:\n"
+
+		# :argument.usage
+		echo "  KEY"
+		printf "    Name of of key to delete/unset\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_config_list_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config list - List all configuration variables\n"
+		echo
+
+	else
+		printf "risks config list - List all configuration variables\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config list\n"
+	printf "  risks config list --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
+risks_config_keys_usage() {
+	if [[ -n $long_usage ]]; then
+		printf "risks config keys - List all configuration variables as an array (for completions)\n"
+		echo
+
+	else
+		printf "risks config keys - List all configuration variables as an array (for completions)\n"
+		echo
+
+	fi
+
+	printf "Usage:\n"
+	printf "  risks config keys\n"
+	printf "  risks config keys --help | -h\n"
+	echo
+
+	# :command.long_usage
+	if [[ -n $long_usage ]]; then
+		printf "Options:\n"
+
+		# :command.usage_fixed_flags
+		echo "  --help, -h"
+		printf "    Show this help\n"
+		echo
+
+	fi
+}
+
+# :command.usage
 risks_identity_usage() {
 	if [[ -n $long_usage ]]; then
 		printf "risks identity - Prints the active identity as a raw string, to be used by prompts.\n"
@@ -1346,80 +1518,65 @@ inspect_args() {
 setup_identity_backup ()
 
 {
-		local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
+		local backup_graveyard          # Where the graveyard root directory is in the backup drive
+		local identity_graveyard        # The full path to the identity system graveyard.
+		local identity_dir              # The encrypted graveyard directory for the identity
+		local identity_graveyard_backup # Full path to identity graveyard backup
 
-		local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+		backup_graveyard="${BACKUP_MOUNT_DIR}/graveyard"
 
 		_verbose "Creating identity graveyard directory on backup"
 
 		# The directory name in cleartext is simply the identity name
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-		IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
+		identity_dir=$(_encrypt_filename "$IDENTITY")
+		identity_graveyard_backup="${backup_graveyard}/${identity_dir}"
 
-		_verbose "Creating directory $IDENTITY_GRAVEYARD_PATH"
-		mkdir -p "$IDENTITY_BACKUP_GRAVEYARD_PATH"
+		_verbose "Creating directory $identity_graveyard"
+		mkdir -p "$identity_graveyard_backup"
 
 		# And setup fscrypt protectors on it.
 		_verbose "Setting up fscrypt protectors on directory"
-		echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_BACKUP_GRAVEYARD_PATH" \
-			 --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
+		echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$identity_graveyard_backup" \
+			 --quiet --source=custom_passphrase --name="$identity_dir"
 		_catch "Failed to encrypt identity graveyard in backup"
 }
 
 # backup_identity_gpg simply copies the raw coffin file in the graveyard backup directory root,
-# since like on the OS graveyard, one must access it without having access to the graveyard in
+# since like on the system graveyard, one must access it without having access to the graveyard in
 # the first place.
 backup_identity_gpg ()
 
 {
-		local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
+		local backup_graveyard          # Where the graveyard root directory is in the backup drive
+		local identity_dir              # The encrypted graveyard directory for the identity
+		local coffin_file               # Encrypted name of the coffin file
+		local coffin_path               # Full path to the identity coffin in the system graveyard
+		local coffin_backup_path        # Full path to the same coffin, in the backup graveyard
 
-		local GRAVEYARD_COFFIN_FILE IDENTITY_COFFIN_PATH COFFIN_BACKUP_PATH
+		backup_graveyard="${BACKUP_MOUNT_DIR}/graveyard"
 
 		# The directory name in cleartext is simply the identity name
-		GRAVEYARD_COFFIN_FILE=$(_encrypt_filename "coffin-$IDENTITY-gpg")
-		IDENTITY_COFFIN_PATH="${GRAVEYARD}/${GRAVEYARD_COFFIN_FILE}"
+		coffin_file=$(_encrypt_filename "coffin-$IDENTITY-gpg")
+		coffin_path="${GRAVEYARD}/${coffin_file}"
 
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-		COFFIN_BACKUP_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}/${GRAVEYARD_COFFIN_FILE}"
+		identity_dir=$(_encrypt_filename "$IDENTITY")
+		coffin_backup_path="${backup_graveyard}/${identity_dir}/${coffin_file}"
 
-		if [[ -e ${IDENTITY_COFFIN_PATH} ]]; then
-				sudo chattr -i "${IDENTITY_COFFIN_PATH}"
+		if [[ -e ${coffin_path} ]]; then
+				sudo chattr -i "${coffin_path}"
 
 		fi
 
-		cp -r "$IDENTITY_COFFIN_PATH" "$COFFIN_BACKUP_PATH"
-		sudo chattr +i "${IDENTITY_COFFIN_PATH}"
+		cp -r "$coffin_path" "$coffin_backup_path"
+		sudo chattr +i "${coffin_path}"
 
 }
 
 # src/lib/cleanup.sh
 
-# This file contains:
-# - Functions needed to register variables to be cleaned.
-
-# - Code to be triggered on exit/returns to perform security cleanup
-# - Any variable in which code will store some stuff to be treated.
-
-declare -a CLEANUP_VARS
-
-# _defer_cleanup takes an arbitrary amount of variables
-
-# that will be cleaned up further down the workflow
-_defer_cleanup ()
-{
-		_verbose "Variables registered for cleanup: ( ${*} )"
-		CLEANUP_VARS+=("$@")
-}
-
 # Cleanup anything sensitive before exiting.
 # Originally copied from tomb code.
 _endgame() {
-
-	# option_value_contains -o ro || {
-	# 	# Restore access time of sensitive files
-	# 	[[ -z $TOMBFILESSTAT ]] || _restore_stat
-	# }
 
 	# Prepare some random material to overwrite vars
 	local rr="$RANDOM"
@@ -1434,6 +1591,7 @@ _endgame() {
 
 	GPG_PASS="$rr";		        unset GPG_PASS
 
+		echo "test" > ~/endgame
 }
 
 # Trap functions for the _endgame event
@@ -1506,7 +1664,12 @@ gen_coffin()
 # open_coffin requires both an identity name and its corresponding passphrase
 open_coffin()
 {
-		local key_filename key_file coffin_filename coffin_file mapper mount_dir
+		local key_filename          # Encrypted name for the key file
+		local key_file              # Absolute path to this key
+		local coffin_filename       # Encrypted name of the coffin
+		local coffin_file           # Absolute path to the coffin
+		local mapper                # LUKS Mapper name
+		local mount_dir             # Mount point to use for the coffin mapper
 
 		key_filename=$(_encrypt_filename "${IDENTITY}-gpg.key")
 		key_file="${HUSH_DIR}/${key_filename}"
@@ -1545,16 +1708,18 @@ open_coffin()
 		# Set the identity as active, and unlock access to its GRAVEYARD directory
 		_set_active_identity "$IDENTITY"
 
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-		IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/$GRAVEYARD_DIRECTORY_ENC"
+		local identity_dir identity_graveyard
+
+		identity_dir=$(_encrypt_filename "$IDENTITY")
+		identity_graveyard="${GRAVEYARD}/$identity_dir"
 
 		# Ask fscrypt to let us access it. While this will actually decrypt the files'
 		# names and content, this does not prevent our own obfuscated names; the end
 		# result is that all NAMES are obfuscated twice (once us, once fscrypt) and
 		# the contents are encrypted once (fscrypt).
-		echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$IDENTITY_GRAVEYARD_PATH" --quiet
+		echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$identity_graveyard" --quiet
 
-		_verbose "Identity directory ($IDENTITY_GRAVEYARD_PATH) is unlocked"
+		_verbose "Identity directory ($identity_graveyard) is unlocked"
 }
 
 close_coffin()
@@ -1586,10 +1751,12 @@ close_coffin()
 		return 0
 	fi
 
+		local identity_dir identity_graveyard
+
 		# Lock the identity's graveyard directory
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-		IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
-		_run sudo fscrypt lock "${IDENTITY_GRAVEYARD_PATH}"
+		identity_dir=$(_encrypt_filename "$IDENTITY")
+		identity_graveyard="${GRAVEYARD}/${identity_dir}"
+		_run sudo fscrypt lock "${identity_graveyard}"
 
 		_set_active_identity # An empty  identity will trigger a wiping of the file
 
@@ -1614,6 +1781,137 @@ list_coffins()
 		else
 				_message "No opened coffins"
 	fi
+}
+
+# src/lib/config.sh
+config_init() {
+	RISKS_CONFIG_FILE=${RISKS_CONFIG_FILE-${RISKS_DIR}/config.ini}
+	[[ -f "$RISKS_CONFIG_FILE" ]] || {
+
+			_message "Writing default configuration file to ${RISKS_CONFIG_FILE}"
+			cat << EOF > "$RISKS_CONFIG_FILE"
+
+; RISKS Vault (domU) Configuration file
+
+; You can either edit this file in place, set values
+; through the 'risks config' commands.
+
+; Device file path to the hush partition
+SDCARD_ENC_PART=/dev/hush
+
+; Name of LUKS mapper to hush partition
+SDCARD_ENC_PART_MAPPER=hush
+
+; Enable sound when hush device is mounted (0: enabled, 1: disabled)
+SDCARD_QUIET=0
+
+; Directory mount point for the hush device
+HUSH_DIR=/home/user/.hush
+
+; Directory where to store tomb files
+GRAVEYARD=/home/user/.graveyard
+
+; Name of LUKS mapper to backup partition
+BACKUP_MAPPER=pendev
+
+EOF
+	}
+}
+
+config_get() {
+
+	local key=$1
+	local regex="^$key *= *(.+)$"
+	local value=""
+
+	config_init
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		if [[ $line =~ $regex ]]; then
+			value="${BASH_REMATCH[2]}" # Changed to 2 because ZSH indexes start at 1
+			break
+		fi
+	done < "$RISKS_CONFIG_FILE"
+
+	echo "$value"
+}
+
+config_set() {
+
+	local key=$1
+	shift
+	local value="$*"
+
+	config_init
+
+	local regex="^($key) *= *.+$"
+	local output=""
+	local found_key=""
+	local newline
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		newline=$line
+		if [[ $line =~ $regex ]]; then
+			found_key="${BASH_REMATCH[2]}"
+			newline="$key = $value"
+			output="$output$newline\n"
+		elif [[ $line ]]; then
+			output="$output$line\n"
+		fi
+	done < "$RISKS_CONFIG_FILE"
+
+	if [[ -z $found_key ]]; then
+		output="$output$key = $value\n"
+	fi
+
+	printf "%b\n" "$output" > "$RISKS_CONFIG_FILE"
+}
+
+config_del() {
+	local key=$1
+
+	local regex="^($key) *="
+	local output=""
+
+	config_init
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		if [[ $line ]] && [[ ! $line =~ $regex ]]; then
+			output="$output$line\n"
+		fi
+	done < "$RISKS_CONFIG_FILE"
+
+	printf "%b\n" "$output" > "$RISKS_CONFIG_FILE"
+}
+
+config_show() {
+	config_init
+	cat "$RISKS_CONFIG_FILE"
+}
+
+config_keys() {
+	# zsh compat
+	setopt local_options BASH_REMATCH
+
+	local regex="^([a-zA-Z0-9_\-\/\.]+) *="
+
+	config_init
+
+	local keys=()
+	local key
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		if [[ $line =~ $regex ]]; then
+			key="${BASH_REMATCH[1]}"
+			key="${key//\=/}"
+			[[ -n "$key" ]] && keys+=("$key")
+		fi
+	done < "$RISKS_CONFIG_FILE"
+	echo "${keys[@]}"
+}
+
+config_has_key() {
+	[[ $(config_get "$1") ]]
 }
 
 # src/lib/gpg.sh
@@ -1755,31 +2053,31 @@ cleanup_gpg_init()
 {
 		local email="$1"
 
-		local TMP_FILENAME TMP coffin_name
+		local tmp_filename tmp_dir coffin_name
 
 		# Filenames
-		TMP_FILENAME=$(_encrypt_filename "${IDENTITY}-gpg")
-		TMP="/tmp/${TMP_FILENAME}"
+		tmp_filename=$(_encrypt_filename "${IDENTITY}-gpg")
+		tmp_dir="/tmp/${tmp_filename}"
 		coffin_name=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
 
 		# Making tmp directory
 		_verbose "Creating temp directory and mounting coffin"
-		mkdir "$TMP"
-		sudo mount /dev/mapper/"${coffin_name}" "$TMP"
+		mkdir "$tmp_dir"
+		sudo mount /dev/mapper/"${coffin_name}" "$tmp_dir"
 
-		_catch "Failed to mount coffin partition on $TMP"
+		_catch "Failed to mount coffin partition on $tmp_dir"
 
-		sudo chown "$USER" "$TMP"
+		sudo chown "$USER" "$tmp_dir"
 		_verbose "Testing coffin filesystem"
-		_verbose "$(mount | grep "$TMP_FILENAME")"
+		_verbose "$(mount | grep "$tmp_filename")"
 
 		_verbose "Copying GPG files in coffin"
-		cp -fR "$RAMDISK"/* "$TMP" || _warning "Failed to copy one or more files into coffin"
+		cp -fR "$RAMDISK"/* "$tmp_dir" || _warning "Failed to copy one or more files into coffin"
 		_verbose "Setting GPG files immutable"
-		sudo chattr +i "$TMP"/private-keys-v1.d/*
+		sudo chattr +i "$tmp_dir"/private-keys-v1.d/*
 		_verbose "Closing coffin"
-		sudo chattr +i "$TMP"/openpgp-revocs.d/*
-		sudo umount "$TMP" || _warning "Failed to unmount tmp directory $TMP"
+		sudo chattr +i "$tmp_dir"/openpgp-revocs.d/*
+		sudo umount "$tmp_dir" || _warning "Failed to unmount tmp directory $TMP"
 		sudo cryptsetup close /dev/mapper/"$coffin_name"
 
 		_catch "Failed to close LUKS filesystem for identity"
@@ -1806,31 +2104,31 @@ cleanup_gpg_init()
 
 		_verbose "Removing GPG private keys"
 
-		local TOMB_SIZE KEYGRIP fingerprint
+		local tomb_size keygrip fingerprint
 
-		TOMB_SIZE=15
+		tomb_size=15
 		fingerprint=$(gpg -K "${email}" | grep fingerprint | head -n 1 | cut -d= -f2 | sed 's/ //g')
 
 		# Creating tomb file for private keys and moving them
 		_verbose "Creating tomb file for identity ${IDENTITY}"
-		_run new_tomb "$GPG_TOMB_LABEL" $TOMB_SIZE "$IDENTITY"
+		_run new_tomb "$GPG_TOMB_LABEL" $tomb_size "$IDENTITY"
 		_verbose "Opening tomb file"
 		_run open_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 
-		KEYGRIP="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
-		_verbose "Keygrip: $KEYGRIP"
+		keygrip="$(gpg -K | grep Keygrip | head -n 1 | cut -d= -f 2 | sed 's/ //g').key"
+		_verbose "Keygrip: $keygrip"
 
 		_verbose "Copying private data to tomb"
 		_verbose "Private keys"
-		cp "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
+		cp "${RAMDISK}"/private-keys-v1.d/"${keygrip}" "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
 		_verbose "Revocation certificates"
 		cp "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev "${HOME}"/.tomb/"${GPG_TOMB_LABEL}"/
 
 		# Deleting keys from keyring
 		_verbose "Wiping corresponding files in GPG keyring"
-		sudo chattr -i "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}"
+		sudo chattr -i "${RAMDISK}"/private-keys-v1.d/"${keygrip}"
 
-		_run wipe -rf "${RAMDISK}"/private-keys-v1.d/"${KEYGRIP}" \
+		_run wipe -rf "${RAMDISK}"/private-keys-v1.d/"${keygrip}" \
 				|| _warning "Failed to delete master private key from keyring !"
 		sudo chattr -i "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev
 		_run wipe -rf "${RAMDISK}"/openpgp-revocs.d/"${fingerprint}".rev \
@@ -1843,7 +2141,7 @@ cleanup_gpg_init()
 		_run close_tomb "$GPG_TOMB_LABEL" "$IDENTITY"
 
 		# Cleanup files
-		rm -rf "$TMP"
+		rm -rf "$tmp_dir"
 }
 
 # src/lib/identity.sh
@@ -2531,10 +2829,10 @@ kvget() {
 		return 1
 	}
 	kv_user_dir=${KV_USER_DIR:-$DEFAULT_KV_USER_DIR}
-	VALUE="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
-	echo "$VALUE"
+	value="$([ -f "$kv_user_dir/$key" ] && cat "$kv_user_dir/$key")"
+	echo "$value"
 
-	[ "$VALUE" != "" ]
+	[ "$value" != "" ]
 }
 
 # Usage: kvset <key> [value]
@@ -2598,7 +2896,7 @@ get_tomb_mapper()
 # graveyard for a given identity, with fscrypt support.
 new_graveyard ()
 {
-		local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+		local identity_dir identity_graveyard
 
 		# Always make sure the root graveyard directory exists
 		if [[ ! -d ${GRAVEYARD} ]]; then
@@ -2607,17 +2905,17 @@ new_graveyard ()
 		fi
 
 		# The directory name in cleartext is simply the identity name
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-		IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+		identity_dir=$(_encrypt_filename "$IDENTITY")
+		identity_graveyard="${GRAVEYARD}/${identity_dir}"
 
 		# Make the directory
 		_verbose "Creating identity graveyard directory"
-		mkdir -p "$IDENTITY_GRAVEYARD_PATH"
+		mkdir -p "$identity_graveyard"
 
 		# And setup fscrypt protectors on it.
 		_verbose "Setting up fscrypt protectors on directory"
-		echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$IDENTITY_GRAVEYARD_PATH" \
-			 --quiet --source=custom_passphrase --name="$GRAVEYARD_DIRECTORY_ENC"
+		echo "$FILE_ENCRYPTION_KEY" | sudo fscrypt encrypt "$identity_graveyard" \
+			 --quiet --source=custom_passphrase --name="$identity_dir"
 }
 
 # get_identity_graveyard returns the path to an identity's graveyard directory,
@@ -2625,37 +2923,39 @@ new_graveyard ()
 # because we need some resource stored within.
 get_identity_graveyard ()
 {
-		local IDENTITY="$1"
+		local identity="$1"
 
-		local GRAVEYARD_DIRECTORY_ENC IDENTITY_GRAVEYARD_PATH
+		local identity_dir identity_graveyard
 
 		# Compute the directory names and absolute paths
-		GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "${IDENTITY}")
-		IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
+		identity_dir=$(_encrypt_filename "${identity}")
+		identity_graveyard="${GRAVEYARD}/${identity_dir}"
 
-		print "${IDENTITY_GRAVEYARD_PATH}"
+		print "${identity_graveyard}"
 }
 
 # Generates a new tomb for a given identity
 new_tomb()
 {
-		local LABEL="$1"
-		local SIZE="$2"
+		local name="$1"
+		local size="$2"
 
-		local TOMBID TOMBID_ENC TOMB_FILE
-
-		local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
-		local uid RECIPIENT
+		local tomb_label        # Cleartext identifier name of the tomb
+		local tomb_file         # Encrypted name of the tomb, for the tomb file itself
+		local tomb_file_path    # Absolute path to the tomb file
+		local tomb_key          # Encrypted name of the tomb key file
+		local tomb_key_path     # Absolute path to the tomb key file
+		local uid recipient     # Used to get the email address of the identity with GPG.
 
 		# Filenames
-		TOMBID="${IDENTITY}-${LABEL}"
-		TOMBID_ENC=$(_encrypt_filename "$TOMBID")
+		tomb_label="${IDENTITY}-${name}"
+		tomb_file=$(_encrypt_filename "$tomb_label")
 
-		TOMB_KEY_FILE_ENC=$(_encrypt_filename "${TOMBID}.key")
-		TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
+		tomb_key=$(_encrypt_filename "${tomb_label}.key")
+		tomb_key_path="${HUSH_DIR}/${tomb_key}"
 
-		IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
-		TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
+		identity_graveyard=$(get_identity_graveyard "$IDENTITY")
+		tomb_file_path="${identity_graveyard}/${tomb_file}.tomb"
 
 		# First make sure GPG keyring is accessible
 		_verbose "Opening identity $IDENTITY"
@@ -2663,23 +2963,23 @@ new_tomb()
 
 		# And get the email recipient
 		uid=$(gpg -K | grep uid | head -n 1)
-		RECIPIENT=$(echo "$uid" | grep -E -o "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}\b")
+		recipient=$(echo "$uid" | grep -E -o "\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}\b")
 
 		# Then dig
-		_verbose "Digging tomb in $TOMB_FILE"
-		tomb dig -s "$SIZE" "$TOMB_FILE"
+		_verbose "Digging tomb in $tomb_file_path"
+		tomb dig -s "$size" "$tomb_file_path"
 
 		_catch "Failed to dig tomb. Aborting"
 		_run risks_hush_rw_command
 
 		_verbose "Forging tomb key and making it immutable"
-		tomb forge -g -r "$RECIPIENT" "$TOMB_KEY_FILE"
+		tomb forge -g -r "$recipient" "$tomb_key_path"
 
 		_catch "Failed to forge keys. Aborting"
-		sudo chattr +i "$TOMB_KEY_FILE"
+		sudo chattr +i "$tomb_key_path"
 
 		_verbose "Locking tomb with key"
-		tomb lock -g -k "$TOMB_KEY_FILE" "$TOMB_FILE"
+		tomb lock -g -k "$tomb_key_path" "$tomb_file_path"
 
 		_catch "Failed to lock tomb. Aborting"
 		_run risks_hush_ro_command
@@ -2692,26 +2992,28 @@ new_tomb()
 # $2 - Identity
 open_tomb()
 {
-	local RESOURCE="${1}"
+	local resource="${1}"
 
-		local TOMBID TOMBID_ENC TOMB_FILE
-
-		local TOMB_KEY_FILE_ENC TOMB_KEY_FILE
-		local mapper
+		local tomb_label        # Cleartext identifier name of the tomb
+		local tomb_file         # Encrypted name of the tomb, for the tomb file itself
+		local tomb_file_path    # Absolute path to the tomb file
+		local tomb_key          # Encrypted name of the tomb key file
+		local tomb_key_path     # Absolute path to the tomb key file
+		local mapper            # Mapper name for tomb LUKS filesystem
 
 		# Filenames
-		TOMBID="${IDENTITY}-${RESOURCE}"
-		TOMBID_ENC=$(_encrypt_filename "$TOMBID")
+		tomb_label="${IDENTITY}-${resource}"
+		tomb_file=$(_encrypt_filename "$tomb_label")
 
-		TOMB_KEY_FILE_ENC=$(_encrypt_filename "$TOMBID.key")
-		TOMB_KEY_FILE="${HUSH_DIR}/${TOMB_KEY_FILE_ENC}"
+		tomb_key=$(_encrypt_filename "$tomb_label.key")
+		tomb_key_path="${HUSH_DIR}/${tomb_key}"
 
-		IDENTITY_GRAVEYARD_PATH=$(get_identity_graveyard "$IDENTITY")
-		TOMB_FILE="${IDENTITY_GRAVEYARD_PATH}/${TOMBID_ENC}.tomb"
+		identity_graveyard=$(get_identity_graveyard "$IDENTITY")
+		tomb_file_path="${identity_graveyard}/${tomb_file}.tomb"
 
-		mapper=$(get_tomb_mapper "$TOMBID_ENC")
+		mapper=$(get_tomb_mapper "$tomb_file")
 
-	case ${RESOURCE} in
+	case ${resource} in
 		gpg)
 			local mount_dir="${HOME}/.gnupg"
 		;;
@@ -2725,32 +3027,32 @@ open_tomb()
 			local mount_dir="${HOME}/.tomb/mgmt"
 		;;
 		*)
-			local mount_dir="${HOME}/.tomb/${RESOURCE}"
+			local mount_dir="${HOME}/.tomb/${resource}"
 		;;
 	esac
 
 	# checks if the gpg coffin is mounted, and open it first:
 		# this also have for effect to unlock the identity's graveyard.
-		local COFFIN_NAME
-		COFFIN_NAME=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
-	if ! is_luks_mounted "/dev/mapper/${COFFIN_NAME}" ; then
+		local coffin_name
+		coffin_name=$(_encrypt_filename "coffin-${IDENTITY}-gpg")
+	if ! is_luks_mounted "/dev/mapper/${coffin_name}" ; then
 				open_coffin
 	fi
 
 	if [[ "${mapper}" != "none" ]]; then
-				if is_luks_mounted "/dev/mapper/tomb.${TOMBID_ENC}" ; then
-						_verbose "Tomb ${TOMBID} is already open and mounted"
+				if is_luks_mounted "/dev/mapper/tomb.${tomb_file}" ; then
+						_verbose "Tomb ${tomb_label} is already open and mounted"
 			return 0
 		fi
 	fi
 
-	if [[ ! -f "$TOMB_FILE" ]]; then
-		_warning "No tomb file $TOMB_FILE found"
+	if [[ ! -f "$tomb_file_path" ]]; then
+		_warning "No tomb file $tomb_file_path found"
 		return 2
 	fi
 
-		if [[ ! -f "$TOMB_KEY_FILE" ]]; then
-				_warning "No key file $TOMB_KEY_FILE found"
+		if [[ ! -f "$tomb_key_path" ]]; then
+				_warning "No key file $tomb_key_path found"
 		return 2
 	fi
 
@@ -2760,11 +3062,11 @@ open_tomb()
 	fi
 
 		# And finally open the tomb
-	tomb open -g -k "$TOMB_KEY_FILE" "$TOMB_FILE" "$mount_dir"
+	tomb open -g -k "$tomb_key_path" "$tomb_file_path" "$mount_dir"
 		_catch "Failed to open tomb"
 
 		# Either add the only SSH key, or all of them if we have a script
-	if [[ "$RESOURCE" == "ssh" ]]; then
+	if [[ "$resource" == "ssh" ]]; then
 				local ssh_add_script="${HOME}/.ssh/ssh-add"
 				if [[ -e ${ssh_add_script} ]]; then
 						${ssh_add_script}
@@ -2776,37 +3078,40 @@ open_tomb()
 
 close_tomb()
 {
-	local RESOURCE="${1}"
+	local resource="${1}"
+
+		local tomb_label        # Cleartext identifier name of the tomb
+		local tomb_file         # Encrypted name of the tomb, for the tomb file itself
 
 		# Filenames
-		TOMBID="${IDENTITY}-${RESOURCE}"
-		TOMBID_ENC=$(_encrypt_filename "${TOMBID}")
+		tomb_label="${IDENTITY}-${resource}"
+		tomb_file=$(_encrypt_filename "${tomb_label}")
 
-		if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
-		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
+		if ! get_tomb_mapper "${tomb_file}" &> /dev/null ; then
+		_verbose "Tomb ${IDENTITY}-${resource} is already closed"
 		return 0
 	fi
 
 		# If the concatenated string is too long, cut it to 16 chars
-		if [[ ${#TOMBID_ENC} -ge 16 ]]; then
-				TOMBID_ENC=${TOMBID_ENC:0:16}
+		if [[ ${#tomb_file} -ge 16 ]]; then
+				tomb_file=${tomb_file:0:16}
 		fi
 
 		# SSH tombs must all delete all SSH identities from the agent
-	if [[ "${RESOURCE}" == "ssh" ]]; then
+	if [[ "${resource}" == "ssh" ]]; then
 		_run ssh-add -D
 	fi
 
 		# Then close it
-		tomb close "${TOMBID_ENC}"
+		tomb close "${tomb_file}"
 
 		# And delete the directory if it's not a builtin
-	case ${RESOURCE} in
+	case ${resource} in
 		gpg|pass|ssh|signal|mgmt)
 						# Ignore those
 		;;
 		*)
-						rm -rf "${HOME}/.tomb/${RESOURCE}"
+						rm -rf "${HOME}/.tomb/${resource}"
 		;;
 	esac
 }
@@ -2814,39 +3119,39 @@ close_tomb()
 # Identical to close_tomb, but slamming it, so all processes making use of it are killed
 slam_tomb()
 {
-	local RESOURCE="${1}"
+	local resource="${1}"
 
 		# Filenames
-		# local FULL_LABEL="${IDENTITY}-${RESOURCE}"
-		TOMBID="${IDENTITY}-${RESOURCE}"
-		TOMBID_ENC=$(_encrypt_filename "${TOMBID}")
+		# local FULL_name="${IDENTITY}-${resource}"
+		tomb_label="${IDENTITY}-${resource}"
+		tomb_file=$(_encrypt_filename "${tomb_label}")
 
-		if ! get_tomb_mapper "${TOMBID_ENC}" &> /dev/null ; then
-		_verbose "Tomb ${IDENTITY}-${RESOURCE} is already closed"
+		if ! get_tomb_mapper "${tomb_file}" &> /dev/null ; then
+		_verbose "Tomb ${IDENTITY}-${resource} is already closed"
 		return 0
 	fi
 
 		# If the concatenated string is too long, cut it to 16 chars
-		if [[ ${#TOMBID_ENC} -ge 16 ]]; then
-				TOMBID_ENC=${TOMBID_ENC:0:16}
+		if [[ ${#tomb_file} -ge 16 ]]; then
+				tomb_file=${tomb_file:0:16}
 		fi
 
 		# SSH tombs must all delete all SSH identities from the agent
 		# before tombs kills the process.
-	if [[ "${RESOURCE}" == "ssh" ]]; then
+	if [[ "${resource}" == "ssh" ]]; then
 		_run ssh-add -D
 	fi
 
 		# Then close it
-		tomb slam "${TOMBID_ENC}"
+		tomb slam "${tomb_file}"
 
 		# And delete the directory if it's not a builtin
-	case ${RESOURCE} in
+	case ${resource} in
 		gpg|pass|ssh|signal|mgmt)
 						# Ignore those
 		;;
 		*)
-						rm -rf "${HOME}/.tomb/${RESOURCE}"
+						rm -rf "${HOME}/.tomb/${resource}"
 		;;
 	esac
 
@@ -2895,6 +3200,21 @@ play_sound()
 			return 1
 		;;
 	esac
+}
+
+# Retrieves the value of a variable first by looking in the risk
+# config file, and optionally overrides it if the flag is set.
+# $1 - Flag argument
+# $2 - Key name in config
+config_or_flag ()
+
+{
+		local value config_value
+
+		config_value=$(config_get $2)   # From config
+		value="${1:=$config_value}"      # overriden by flag if set
+
+		print $value
 }
 
 # src/lib/validations/format.sh
@@ -3192,7 +3512,7 @@ risks_hush_format_command() {
 risks_backup_mount_command() {
 	# src/backup_mount_command.sh
 
-	PENDRIVE="${args[backup_device]}"
+	pendrive="${args[backup_device]}"
 
 	# If we already have a device mounted as backup, fail.
 	if ls -1 /dev/mapper/"${BACKUP_MAPPER}" &> /dev/null; then
@@ -3209,7 +3529,7 @@ risks_backup_mount_command() {
 	fi
 
 	_verbose "Opening LUKS pendrive"
-	sudo cryptsetup open --type luks "$PENDRIVE" "$BACKUP_MAPPER"
+	sudo cryptsetup open --type luks "$pendrive" "$BACKUP_MAPPER"
 	_catch "Failed to open LUKS pendrive. Aborting"
 	sudo mount /dev/mapper/"${BACKUP_MAPPER}" "$BACKUP_MOUNT_DIR"
 
@@ -3246,23 +3566,23 @@ risks_backup_format_command() {
 	# Easily cleanup, format, luks-encrypt and filesystem setup for a USB drive
 	# to be used as a backup medium for risks data.
 
-	PENDRIVE="${args[device]}"
+	pendrive="${args[device]}"
 
 	_message "Formatting and encrypting backup drive"
 
 	# Data cleanup
 	_verbose "Overwriting drive data"
-	sudo dd if=/dev/urandom of="${PENDRIVE}" bs=1M status=progress && sync
+	sudo dd if=/dev/urandom of="${pendrive}" bs=1M status=progress && sync
 
 	# Encryption setup
 	_message "Setting up LUKS on drive"
 	sudo cryptsetup -v -q -y --cipher aes-xts-plain64 --key-size 512 \
-			--hash sha512 --iter-time 5000 --use-random luksFormat "${PENDRIVE}"
+			--hash sha512 --iter-time 5000 --use-random luksFormat "${pendrive}"
 	_catch "Failed to setup LUKS filesystem on backup drive"
 
 	# Filesystem setup
 	mkdir "${BACKUP_MOUNT_DIR}" &> /dev/null
-	sudo cryptsetup open --type luks "${PENDRIVE}" "${BACKUP_MAPPER}"
+	sudo cryptsetup open --type luks "${pendrive}" "${BACKUP_MAPPER}"
 
 	_catch "Failed to open backup LUKS filesystem"
 
@@ -3300,11 +3620,16 @@ risks_backup_format_command() {
 risks_backup_identity_command() {
 	# src/backup_identity_command.sh
 
-	local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
+	local backup_graveyard          # Where the graveyard root directory is in the backup drive
+	local identity_graveyard        # The full path to the identity system graveyard.
+	local identity_graveyard_backup # Full path to identity graveyard backup
+	local identity_dir              # The encrypted graveyard directory for the identity
+
+	backup_graveyard="${BACKUP_MOUNT_DIR}/graveyard"
 
 	# Ensure a backup is mounted
 	if ! is_luks_mapper_present "$BACKUP_MAPPER" ; then
-			_failure "No mounted backup medium found. Mount one with risks backup mount </dev/device>"
+			_failure "No mounted backup medium found. Mount one with 'risks backup mount </dev/device>'"
 	fi
 
 	# Ensure we have an active identity, which will be detected in this call
@@ -3314,15 +3639,21 @@ risks_backup_identity_command() {
 			_failure "This command requires an identity to be active"
 	fi
 
-	local IDENTITY_GRAVEYARD_PATH IDENTITY_BACKUP_GRAVEYARD_PATH GRAVEYARD_DIRECTORY_ENC
+	identity_dir=$(_encrypt_filename "$IDENTITY")
+	identity_graveyard="${GRAVEYARD}/${identity_dir}"
+	identity_graveyard_backup="${backup_graveyard}/${identity_dir}"
 
-	GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
-	IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
-	IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
+	# Always check that the identity has its own backup directory set up,
+	# because backup is not mandatory at identity creation time.
+	if [[ ! -e "$identity_graveyard_backup" ]]; then
+			_message "Setting graveyard backup for this identity"
+			_run setup_identity_backup
+			_catch "Failed to setup identity backup graveyard"
+	fi
 
 	_message "Backing up current identity data and hush partition"
 
-	echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$IDENTITY_BACKUP_GRAVEYARD_PATH" --quiet
+	echo "$FILE_ENCRYPTION_KEY" | _run sudo fscrypt unlock "$identity_graveyard_backup" --quiet
 
 	# Backup the GPG coffin for this identity
 	_verbose "Backing GPG"
@@ -3331,19 +3662,19 @@ risks_backup_identity_command() {
 
 	# Graveyard backup for this identity.
 	_verbose "Backing graveyard files"
-	_run sudo chattr -i "${IDENTITY_BACKUP_GRAVEYARD_PATH}"/* \
+	_run sudo chattr -i "${identity_graveyard_backup}"/* \
 			|| _verbose "No files in backup/graveyard for which to change immutability properties"
-	_run cp -fR "${IDENTITY_GRAVEYARD_PATH}"/* "${IDENTITY_BACKUP_GRAVEYARD_PATH}"
+	_run cp -fR "${identity_graveyard}"/* "${identity_graveyard_backup}"
 	_catch "Failed to copy graveyard files to backup medium"
 	_verbose "Making graveyard backup files immutable"
 
 	# Testing the full backup
 
 	_verbose "Printing directory tree in identity backup graveyard"
-	_verbose "$(tree "$IDENTITY_BACKUP_GRAVEYARD_PATH")"
+	_verbose "$(tree "$identity_graveyard_backup")"
 
 	# We don't need the identity backup graveyard anymore, lock it
-	_run sudo fscrypt lock "${IDENTITY_BACKUP_GRAVEYARD_PATH}"
+	_run sudo fscrypt lock "${identity_graveyard_backup}"
 
 	# And backup hush, since it has new content
 	risks_backup_hush_command
@@ -3380,7 +3711,7 @@ risks_backup_hush_command() {
 risks_create_identity_command() {
 	# src/create_identity_command.sh
 
-	local name identity expiry pendrive pendrive_error email
+	local name identity expiry pendrive email
 
 	# Base identity parameters, set globally.
 	name="${args[name]}"
@@ -3389,8 +3720,8 @@ risks_create_identity_command() {
 	identity="${name// /_}"
 	email="${args[email]}"
 
-	# Base filesystem parameters
-	pendrive="${args[backup_device]}"
+	# Backup is optional
+	pendrive="${args[--backup]}"
 
 	# Pre-run checks =============================================================
 
@@ -3398,13 +3729,6 @@ risks_create_identity_command() {
 	# unaccessible or might risk ending in a dangling state.
 	if _identity_active ; then
 			_failure "An identity seems to be active. Cannot safely create a new one."
-	fi
-
-	# Check the path to the backup drive is a LUKS device.
-	pendrive_error=$(validate_device "$pendrive")
-	if [[ -n $pendrive_error ]]; then
-
-			_failure "Device file $pendrive seems not to be a LUKS filesystem."
 	fi
 
 	# Check the hush device is, if mounted, on a read-only state at this point.
@@ -3485,21 +3809,30 @@ risks_create_identity_command() {
 	_run new_tomb "$SIGNAL_TOMB_LABEL" 20
 
 	#
-	_in_section 'backup' && _message "Setting identity backup and making initial one"
+	if [[ -n "$pendrive" ]]; then
+			# Check the path to the backup drive is a LUKS device.
+			# pendrive_error=$(validate_device "$pendrive")
+			# if [[ -n $pendrive_error ]]; then
 
-	risks_backup_mount_command
-	_catch "failed to decrypt and mount backup drive"
+			#     _failure "Device file $pendrive seems not to be a LUKS filesystem."
+			# fi
 
-	# Some setup is needed for this identity to have access to its backup
-	_verbose "Setting graveyard backup for this identity"
-	_run setup_identity_backup
-	_catch "Failed to setup identity backup graveyard"
+			_in_section 'backup' && _message "Setting identity backup and making initial one"
 
-	# And then actually back it up
-	risks_backup_identity_command
-	_catch "Failed to correctly backup data"
+			risks_backup_mount_command
+			_catch "failed to decrypt and mount backup drive"
 
-	risks_backup_umount_command
+			# Some setup is needed for this identity to have access to its backup
+			_verbose "Setting graveyard backup for this identity"
+			_run setup_identity_backup
+			_catch "Failed to setup identity backup graveyard"
+
+			# And then actually back it up
+			risks_backup_identity_command
+			_catch "Failed to correctly backup data"
+
+			risks_backup_umount_command
+	fi
 
 
 	echo && _success "risks" "Identity generation complete." && echo
@@ -3510,8 +3843,8 @@ risks_create_identity_command() {
 risks_create_tomb_command() {
 	# src/create_tomb_command.sh
 
-	LABEL="${args[tomb_name]}"
-	SIZE="${args[size]}"
+	label="${args[tomb_name]}"
+	size="${args[size]}"
 
 	# We need the hush device, on which to save the key
 	if ! is_luks_mapper_present "${SDCARD_ENC_PART_MAPPER}" ; then
@@ -3520,7 +3853,7 @@ risks_create_tomb_command() {
 
 	_set_identity "${args[identity]}"
 
-	_message "Creating tomb $LABEL with size ${SIZE}M"
+	_message "Creating tomb $label with size ${size}M"
 
 	# This new key is also the one provided when using gpgpass command.
 	GPG_PASS=$(get_passphrase "$GPG_TOMB_LABEL")
@@ -3528,7 +3861,7 @@ risks_create_tomb_command() {
 	_warning "GPG passphrase copied to clipboard with one-time use only"
 	_message -n "Copy it in the coming GPG prompt when creating the tomb.\n"
 
-	_run new_tomb "$LABEL" "$SIZE"
+	_run new_tomb "$label" "$size"
 	_catch "Failed to create tomb"
 
 	_message "Done creating tomb."
@@ -3740,7 +4073,7 @@ risks_gpgpass_command() {
 	# this is used when some commands need both the passphrase as an input
 	# to decrypt something (like files) and the user needs them for GPG prompts
 
-	declare TIMEOUT
+	declare timeout
 
 	# Identity is optionality specified as an argument
 	_set_identity "${args[identity]}"
@@ -3754,14 +4087,14 @@ risks_gpgpass_command() {
 	# work when pasted in further GPG passphrase prompts.
 	GPG_PASS=$(get_passphrase "$GPG_TOMB_LABEL")
 
-	TIMEOUT="${args[--timeout]-$GPGPASS_TIMEOUT}"
+	timeout="${args[--timeout]-$GPGPASS_TIMEOUT}"
 
 	echo -n "$GPG_PASS" | xclip -selection clipboard
-	( sleep "$TIMEOUT"; echo -n "" | xclip -selection clipboard;) &
+	( sleep "$timeout"; echo -n "" | xclip -selection clipboard;) &
 
 	_message "The passphrase has been saved in clipboard"
 	_message "Press CTRL+SHIFT+C to share the clipboard with another qube."
-	_message "Local clipboard will be erased is $TIMEOUT seconds"
+	_message "Local clipboard will be erased is $timeout seconds"
 
 }
 
@@ -3769,25 +4102,27 @@ risks_gpgpass_command() {
 risks_load_command() {
 	# src/load_command.sh
 
-	RESOURCE="${args[resource]}"   # Resource is a tomb file (root directory) in ~/.tomb
-	DEST_VM="${args[dest_vm]}"
+	local resource dest_vm source_dir
+
+	resource="${args[resource]}"   # Resource is a tomb file (root directory) in ~/.tomb
+	dest_vm="${args[dest_vm]}"
 
 	_set_identity "${args[identity]}"
 
 	# Open the related tomb for the tool
 
-	_run open_tomb "$RESOURCE"
+	_run open_tomb "$resource"
 	_catch "Failed to open tomb"
 
 	# Get the source directory, and copy the files to the VM
-	_message "Loading data in tomb $RESOURCE to VM $DEST_VM"
-	local source_dir="${HOME}/.tomb/${RESOURCE}"
-	_message "$(qvm-copy-to-vm "$DEST_VM" "${source_dir}/"'*')"
+	_message "Loading data in tomb $resource to VM $dest_vm"
+	source_dir="${HOME}/.tomb/${resource}"
+	_message "$(qvm-copy-to-vm "$dest_vm" "${source_dir}/"'*')"
 
 	# And close tomb if asked to
 	if [[ "${args[--close-tomb]}" -eq 1 ]]; then
 			_message "Closing tomb"
-			_run close_tomb "$RESOURCE"
+			_run close_tomb "$resource"
 	fi
 
 }
@@ -3796,38 +4131,38 @@ risks_load_command() {
 risks_save_command() {
 	# src/save_command.sh
 
-	SOURCE_VM="${args[source_vm]}"
+	local source_vm resource source_dir dest_dir
 
-	RESOURCE="${args[resource]}"   # Resource is a tomb file (root directory) in ~/.tomb
+	source_vm="${args[source_vm]}"
+
+	resource="${args[resource]}"   # Resource is a tomb file (root directory) in ~/.tomb
 
 	_set_identity "${args[identity]}"
-
-	local source_dir dest_dir
 
 	# Make the source directory
 
 	# Don't do anything if the directory does not exist
-	source_dir="${HOME}/QubesIncoming/${SOURCE_VM}"
+	source_dir="${HOME}/QubesIncoming/${source_vm}"
 	if [[ ! -d $source_dir ]]; then
-			_failure "No QubesIncoming directory found for $SOURCE_VM"
+			_failure "No QubesIncoming directory found for $source_vm"
 	fi
 
 	# Open the related tomb for the tool
 
-	_run open_tomb "$RESOURCE"
+	_run open_tomb "$resource"
 	_catch "Failed to open tomb"
 
 	# And make the destination directory
-	dest_dir="${HOME}/.tomb/${RESOURCE}"
+	dest_dir="${HOME}/.tomb/${resource}"
 
 	# Or move the data from the directory to the tomb directory
-	_message "Moving data to tomb $RESOURCE directory"
+	_message "Moving data to tomb $resource directory"
 	mv "${source_dir}/"'*' "$dest_dir"
 
 	# And close tomb if asked to
 	if [[ "${args[--close-tomb]}" -eq 1 ]]; then
 			_message "Closing tomb"
-			_run close_tomb "$RESOURCE"
+			_run close_tomb "$resource"
 	fi
 
 }
@@ -3835,28 +4170,28 @@ risks_save_command() {
 # :command.function
 risks_kv_set_command() {
 	# src/kv_set_command.sh
-	KEY="${args[key]}"
-	VALUE="${args[value]}"
+	key="${args[key]}"
+	value="${args[value]}"
 
-	kvset "${KEY}" "${VALUE}"
+	kvset "${key}" "${value}"
 
 }
 
 # :command.function
 risks_kv_get_command() {
 	# src/kv_get_command.sh
-	KEY="${args[key]}"
+	key="${args[key]}"
 
-	kvget "${KEY}"
+	kvget "${key}"
 
 }
 
 # :command.function
 risks_kv_unset_command() {
 	# src/kv_unset_command.sh
-	KEY="${args[key]}"
+	key="${args[key]}"
 
-	kvdel "${KEY}"
+	kvdel "${key}"
 
 }
 
@@ -3875,6 +4210,57 @@ risks_kv_clean_command() {
 	_message "Clearing all keys for the store"
 
 	kvclear
+
+}
+
+# :command.function
+risks_config_set_command() {
+	# src/config_set_command.sh
+
+	local key value
+
+	key="${args[key]}"
+	value="${args[value]}"
+
+	config_set "$key" "$value"
+
+}
+
+# :command.function
+risks_config_get_command() {
+	# src/config_get_command.sh
+
+	local key
+
+	key="${args[key]}"
+
+	config_get "$key"
+
+}
+
+# :command.function
+risks_config_unset_command() {
+	# src/config_unset_command.sh
+
+	local key
+
+	key="${args[key]}"
+
+	config_set "$key" ""
+
+}
+
+# :command.function
+risks_config_list_command() {
+	# src/config_list_command.sh
+	config_show
+
+}
+
+# :command.function
+risks_config_keys_command() {
+	# src/config_keys_command.sh
+	config_keys
 
 }
 
@@ -3902,14 +4288,6 @@ parse_requirements() {
 		;;
 
 	esac
-
-	# :command.environment_variables_filter
-	export SDCARD_ENC_PART="${SDCARD_ENC_PART:-/dev/hush}"
-	export SDCARD_ENC_PART_MAPPER="${SDCARD_ENC_PART_MAPPER:-hush}"
-	export SDCARD_QUIET="${SDCARD_QUIET:-0}"
-	export HUSH_DIR="${HUSH_DIR:-/home/user/.hush}"
-	export GRAVEYARD="${GRAVEYARD:-/home/user/.graveyard}"
-	export BACKUP_MAPPER="${BACKUP_MAPPER:-pendev}"
 
 	# :command.dependencies_filter
 	if ! [[ -x "$(command -v wipe)" ]]; then
@@ -4026,6 +4404,13 @@ parse_requirements() {
 		action="kv"
 		shift
 		risks_kv_parse_requirements "$@"
+		shift $#
+		;;
+
+	config )
+		action="config"
+		shift
+		risks_config_parse_requirements "$@"
 		shift $#
 		;;
 
@@ -4874,6 +5259,14 @@ risks_create_identity_parse_requirements() {
 			shift
 			;;
 
+		# :flag.case
+		--backup | -b )
+
+			# :flag.case_no_arg
+			args[--backup]=1
+			shift
+			;;
+
 		-?* )
 			printf "invalid option: %s\n" "$key"
 			exit 1
@@ -4894,15 +5287,6 @@ risks_create_identity_parse_requirements() {
 
 				args[expiry_date]=$1
 				shift
-			elif [[ -z ${args[backup_device]+x} ]]; then
-				# :argument.validations
-				if [[ -n $(validate_device "$1") ]]; then
-					printf "validation error in %s:\n%s\n" "BACKUP_DEVICE" "$(validate_device "$1")"
-					exit 1
-				fi
-
-				args[backup_device]=$1
-				shift
 			else
 				printf "invalid argument: %s\n" "$key"
 				exit 1
@@ -4915,19 +5299,15 @@ risks_create_identity_parse_requirements() {
 
 	# :command.required_args_filter
 	if [[ -z ${args[name]+x} ]]; then
-		printf "missing required argument: NAME\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: NAME\nusage: risks create identity NAME EMAIL EXPIRY_DATE [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[email]+x} ]]; then
-		printf "missing required argument: EMAIL\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: EMAIL\nusage: risks create identity NAME EMAIL EXPIRY_DATE [options]\n"
 		exit 1
 	fi
 	if [[ -z ${args[expiry_date]+x} ]]; then
-		printf "missing required argument: EXPIRY_DATE\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
-		exit 1
-	fi
-	if [[ -z ${args[backup_device]+x} ]]; then
-		printf "missing required argument: BACKUP_DEVICE\nusage: risks create identity NAME EMAIL EXPIRY_DATE BACKUP_DEVICE [options]\n"
+		printf "missing required argument: EXPIRY_DATE\nusage: risks create identity NAME EMAIL EXPIRY_DATE [options]\n"
 		exit 1
 	fi
 
@@ -5767,6 +6147,330 @@ risks_kv_clean_parse_requirements() {
 }
 
 # :command.parse_requirements
+risks_config_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action=${1:-}
+
+	case $action in
+	-* )
+		;;
+
+	set )
+		action="set"
+		shift
+		risks_config_set_parse_requirements "$@"
+		shift $#
+		;;
+
+	get )
+		action="get"
+		shift
+		risks_config_get_parse_requirements "$@"
+		shift $#
+		;;
+
+	unset )
+		action="unset"
+		shift
+		risks_config_unset_parse_requirements "$@"
+		shift $#
+		;;
+
+	list )
+		action="list"
+		shift
+		risks_config_list_parse_requirements "$@"
+		shift $#
+		;;
+
+	keys )
+		action="keys"
+		shift
+		risks_config_keys_parse_requirements "$@"
+		shift $#
+		;;
+
+	# :command.command_fallback
+	"" )
+		risks_config_usage
+		exit 1
+		;;
+
+	* )
+		printf "invalid command: %s\n" "$action"
+		exit 1
+		;;
+
+	esac
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risks_config_set_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_set_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="config set"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[key]+x} ]]; then
+
+				args[key]=$1
+				shift
+			elif [[ -z ${args[value]+x} ]]; then
+
+				args[value]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[key]+x} ]]; then
+		printf "missing required argument: KEY\nusage: risks config set KEY VALUE\n"
+		exit 1
+	fi
+	if [[ -z ${args[value]+x} ]]; then
+		printf "missing required argument: VALUE\nusage: risks config set KEY VALUE\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risks_config_get_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_get_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="config get"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[key]+x} ]]; then
+
+				args[key]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[key]+x} ]]; then
+		printf "missing required argument: KEY\nusage: risks config get KEY\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risks_config_unset_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_unset_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="config unset"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			if [[ -z ${args[key]+x} ]]; then
+
+				args[key]=$1
+				shift
+			else
+				printf "invalid argument: %s\n" "$key"
+				exit 1
+			fi
+
+			;;
+
+		esac
+	done
+
+	# :command.required_args_filter
+	if [[ -z ${args[key]+x} ]]; then
+		printf "missing required argument: KEY\nusage: risks config unset KEY\n"
+		exit 1
+	fi
+
+}
+
+# :command.parse_requirements
+risks_config_list_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_list_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="config list"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
+risks_config_keys_parse_requirements() {
+	# :command.fixed_flags_filter
+	case "${1:-}" in
+	--help | -h )
+		long_usage=yes
+		risks_config_keys_usage
+		exit
+		;;
+
+	esac
+
+	# :command.command_filter
+	action="config keys"
+
+	# :command.parse_requirements_while
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		case "$key" in
+
+		-?* )
+			printf "invalid option: %s\n" "$key"
+			exit 1
+			;;
+
+		* )
+			# :command.parse_requirements_case
+			# :command.parse_requirements_case_simple
+			printf "invalid argument: %s\n" "$key"
+			exit 1
+
+			;;
+
+		esac
+	done
+
+}
+
+# :command.parse_requirements
 risks_identity_parse_requirements() {
 	# :command.fixed_flags_filter
 	case "${1:-}" in
@@ -5820,6 +6524,17 @@ initialize() {
 	# Remove verbose errors when * don't yield any match in ZSH
 	setopt +o nomatch
 
+	# The generated script makes use of BASH_REMATCH, set compat for ZSH
+	setopt BASH_REMATCH
+
+	# Default filesystem settings from configuration file ----------------------------------------------
+	typeset -gr SDCARD_ENC_PART="$(config_get SDCARD_ENC_PART)"
+	typeset -gr SDCARD_ENC_PART_MAPPER="$(config_get SDCARD_ENC_PART_MAPPER)"
+	typeset -gr SDCARD_QUIET="$(config_get SDCARD_QUIET)"
+	typeset -gr BACKUP_MAPPER="$(config_get BACKUP_MAPPER)"
+	typeset -gr HUSH_DIR="$(config_get HUSH_DIR)"
+	typeset -gr GRAVEYARD="$(config_get GRAVEYARD)"
+
 	# Default tombs and corresponding mount points (CONSTANTS) .........................................
 	typeset -gr GPG_TOMB_LABEL="GPG"          # Stores an identity GPG private keys. Seldom opened
 	typeset -gr SSH_TOMB_LABEL="ssh"          # Stores SSH keypairs
@@ -5827,16 +6542,18 @@ initialize() {
 	typeset -gr PASS_TOMB_LABEL="pass"        # Holds the password store data
 	typeset -gr SIGNAL_TOMB_LABEL="signal"    # Holds data for Signal messenger (contacts, keys, configs, etc)
 
+	typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
+
 	# Other default security-related default directories/names .........................................
 	typeset -gr RAMDISK="${HOME}/.gnupg"      # Actually not a tomb mount point: used by coffin
+	typeset -gr BACKUP_MOUNT_DIR="/tmp/pendrive"
 
-	typeset -gr RISKS_IDENTITY_FILE="${HOME}/.identity"      # Currently unlocked identity stored in file
 	typeset -gr DEFAULT_KV_USER_DIR="$HOME/.tomb/mgmt/db/"   # Path to key=value store within mgmnt tomb
 
 	typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
-	typeset -gr BACKUP_MOUNT_DIR="/tmp/pendrive"
 
-	typeset -gr FILE_ENCRYPTION="file_encryption_key" # Simply used as site name in spectre call.
+	typeset -rg RISKS_DIR="${HOME}/.risks"                         # Directory where risk stores its state
+	typeset -rg RISKS_IDENTITY_FILE="${RISK_DIR}/.identity"        # Currently unlocked identity stored in file
 
 	# Sensitive & and recurring variables used by program ..............................................
 	typeset -gH IDENTITY
@@ -6093,6 +6810,54 @@ run() {
 			risks_kv_clean_usage
 		else
 			risks_kv_clean_command
+		fi
+
+	elif [[ $action == "config" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_usage
+		else
+			risks_config_command
+		fi
+
+	elif [[ $action == "config set" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_set_usage
+		else
+			risks_config_set_command
+		fi
+
+	elif [[ $action == "config get" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_get_usage
+		else
+			risks_config_get_command
+		fi
+
+	elif [[ $action == "config unset" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_unset_usage
+		else
+			risks_config_unset_command
+		fi
+
+	elif [[ $action == "config list" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_list_usage
+		else
+			risks_config_list_command
+		fi
+
+	elif [[ $action == "config keys" ]]; then
+		if [[ ${args[--help]:-} ]]; then
+			long_usage=yes
+			risks_config_keys_usage
+		else
+			risks_config_keys_command
 		fi
 
 	elif [[ $action == "identity" ]]; then
