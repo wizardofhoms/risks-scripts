@@ -6,13 +6,15 @@
 create_messenger_vm ()
 {
     local msg="${1}-msg"
-    local netvm="${2-$RISK_DEFAULT_NETVM}"
+    local netvm="${2-$(config_get DEFAULT_NETVM)}"
     local gw_label="${3-orange}"
 
-    local -a create_command
-    create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$WHONIX_WS_TEMPLATE")
+    local ws_template="$(config_get WHONIX_WS_TEMPLATE)"
 
-    _message "Creating messaging VM (name: $msg / netvm: $netvm / template: $WHONIX_WS_TEMPLATE)"
+    local -a create_command
+    create_command+=(qvm-create --property netvm="$netvm" --label "$gw_label" --template "$ws_template")
+
+    _message "Creating messaging VM (name: $msg / netvm: $netvm / template: $ws_template)"
 }
 
 # very similar to create_messenger_vm , except that we clone 
@@ -21,7 +23,7 @@ clone_messenger_vm ()
 {
     local msg="${1}-msg"
     local gw_clone="$2"
-    local netvm="${3-$RISK_DEFAULT_NETVM}"
+    local netvm="${3-$(config_get DEFAULT_NETVM)}"
     local gw_label="${4-orange}"
 
     create_command+=(qvm-clone "${gw_clone}" "${msg}")

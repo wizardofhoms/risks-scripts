@@ -3,9 +3,9 @@
 create_vpn_gateway ()
 {
     local gw="${1}"
-    local netvm="${2:=$DEFAULT_NETVM}"
+    local netvm="${2-$(config_get DEFAULT_NETVM)}"
     local gw_label="${3:=blue}"
-    local template="${4:=$VPN_TEMPLATE}"
+    local template="${4:=$(config_get VPN_TEMPLATE)}"
 
     _verbose "VPN gateway properties (name: $gw / netvm: $netvm / template: $template)"
     qvm-create --property netvm="$netvm" --label "$gw_label" --template "$template"
@@ -20,7 +20,7 @@ create_vpn_gateway ()
 clone_vpn_gateway ()
 {
     local gw="${1}"
-    local netvm="${2:=$DEFAULT_NETVM}"
+    local netvm="${2-$(config_get DEFAULT_NETVM)}"
     local gw_label="${3:=blue}"
     local gw_clone="$4"
 

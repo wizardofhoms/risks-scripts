@@ -1,8 +1,8 @@
 
 local block vm
 
-block="${args[device]-$SDCARD_BLOCK}"
-vm="${args[vault_vm]-$VAULT_VM}"
+block="${args[device]-$(config_get SDCARD_BLOCK)}"
+vm="${args[vault_vm]-$(config_get VAULT_VM)}"
 
 # First unmount the hush device in vault
 _qrun "$vm" risks hush umount

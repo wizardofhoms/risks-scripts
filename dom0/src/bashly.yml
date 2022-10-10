@@ -2,35 +2,6 @@ name: risk
 help: RISKS Dom0 management application
 version: 0.1.0
 
-environment_variables:
-# Usage
-- name: SDCARD_BLOCK 
-  help: "Qubes path to hush device, such as 'dom0:mmcblk01', or 'sys-usb:sda2', etc" 
-- name: BACKUP_BLOCK 
-  help: "Qubes path to backup device, such as 'sys-usb:sdb1'" 
-
-# Infrastructure
-  # Templates
-- name: RISK_VPN_TEMPLATE
-  help: "Default TemplateVM to use for VPN VMs"
-  default: sys-vpn
-- name: RISK_SPLIT_BROWSER_TEMPLATE
-  help: "Default template to use for split-browser backend"
-  # AppVMs
-- name: RISK_WHONIX_WS
-  help: "Default Whonix Workstation AppVM to use for identity client machine"
-- name: RISK_VPN_VM
-  help: "Default AppVM to use for cloning new VPN qubes"
-- name: RISK_SPLIT_BROWSER
-  help: "Default AppVM to clone for split-browser backend"
-  # Others
-- name: RISK_DEFAULT_NETVM
-  help: "Default VM to use as a firewall VM, to which either Tor or VPN gateways are bound"
-  default: sys-firewall
-- name: VAULT_VM
-  help: "Default vault VM"
-  default: vault
-
 commands:
   # Drives/partitions
 - import: src/hush_commands.yml

@@ -1,4 +1,7 @@
 
+local vault_vm="$(config_get VAULT_VM)"
+local default_netvm="$(config_get DEFAULT_NETVM)"
+
 # Base identity parameters, set globally.
 local name="${args[name]}"
 local expiry="${args[expiry_date]}"
@@ -12,7 +15,7 @@ _set_identity "${args[identity]}"
 
 # First open the identity, because we might need its credentials and stuff
 # The identity argument is here, so this command has the arguments it needs
-active_identity=$(qvm-run --pass-io "$VAULT_VM" 'cat .identity' 2>/dev/null)
+active_identity=$(qvm-run --pass-io "$vault_vm" 'cat .identity' 2>/dev/null)
 if [[ -n $active_identity ]]; then
     # It might be the same
     if [[ $active_identity != "$IDENTITY" ]]; then
@@ -41,17 +44,17 @@ echo "$vm_name" > "${IDENTITY_DIR}/vm_label"
 _message "Using label '$label' as VM default label"
 
 # Prepare the root NetVM for this identity
-local netvm="${DEFAULT_NETVM}"
+local netvm="${default_netvm}"
 
 # Create identity in vault =================================================
 
 # Simply pass the arguments to the vault
 _message "Creating identity in vault"
-_qrun "$VAULT_VM" risks create identity "$name" "$email" "$expiry" "$pendrive"
+_qrun "$vault_vm" risks create identity "$name" "$email" "$expiry" "$pendrive"
 _catch "Failed to create identity in vault"
 
 # Then, open it
-_qrun "$VAULT_VM" risks open identity "$name"
+_qrun "$vault_vm" risks open identity "$name"
 _catch "Failed to open identity in vault"
 
 # Network VMs ==============================================================
