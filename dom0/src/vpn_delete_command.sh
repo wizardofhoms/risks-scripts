@@ -21,6 +21,27 @@ fi
 
 _message "Deleting gateway VM $name"
 
+# If the VPN was the default NetVM for the identity,
+# update the NetVM to Whonix.
+netvm="$(cat "${IDENTITY_DIR}/net_vm")"
+if [[ $netvm == "$name" ]]; then
+    _warning "Gateway $name is the default NetVM for identity clients !"
+
+    # Check if we have a TOR gateway
+    local tor_gw
+
+    if [[ -n $tor_gw ]]; then
+        _message -n "Updating the default identity NetVM to $tor_gw"
+    else
+        _message -n "The identity has no default NetVM anymore, please set it."
+    fi
+fi
+
+# Check if there are some existing VMs that use this gateway as NetVM,
+# and change their netVM to None: this is unpractical, especially for
+# those that might be up, but it's better than assigning a new netVM
+# despite this presenting a security risk.
+
 # Delete without asking to confirm
 echo "y" | _run qvm-remove "$name"
 _catch "Failed to delete (fully or partially) VM $name"
@@ -29,5 +50,6 @@ _catch "Failed to delete (fully or partially) VM $name"
 sed -i /"$name"/d "${IDENTITY_DIR}/autostart_vms"
 # And remove from proxy VMs 
 sed -i /"$name"/d "${IDENTITY_DIR}/proxy_vms"
+
 
 _message "Deleted $name"

@@ -19,9 +19,8 @@ config_init() {
 ; RISKS Dom0 Configuration file
 
 ; You can either edit this file in place, set values
-; through the 'risk config' command, or reload it with
-; 'risk config reload'.
-;
+; through the 'risk config' command.
+ 
 ; Default Templates =============================================== #
 
 ; Default Whonix Workstation TemplateVM for TOR clients
