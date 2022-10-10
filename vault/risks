@@ -6510,7 +6510,7 @@ risks_identity_parse_requirements() {
 
 # :command.initialize
 initialize() {
-	version="0.1.0"
+	version="4b7de8c37f9f66e67be31fbe6ac13dfeb3247cda"
 	long_usage=''
 	
 
@@ -6526,6 +6526,29 @@ initialize() {
 
 	# The generated script makes use of BASH_REMATCH, set compat for ZSH
 	setopt BASH_REMATCH
+
+	# Use colors unless told not to
+	{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
+
+	#----------------------------#
+
+	# Don't run as root
+	if [[ $EUID -eq 0 ]]; then
+		 echo "This script must be run as user"
+		 exit 2
+	fi
+
+	# Configuration file -------------------------------------------------------------------------------
+	#
+	# Directory where risk stores its state
+	typeset -rg RISKS_DIR="${HOME}/.risks"
+
+	# Create the risk directory if needed
+	[[ -e $RISKS_DIR ]] || \
+			{ mkdir -p $RISKS_DIR && _message "Creating RISKS directory in $RISKS_DIR" }
+
+	# Write the default configuration if it does not exist.
+	config_init
 
 	# Default filesystem settings from configuration file ----------------------------------------------
 	typeset -gr SDCARD_ENC_PART="$(config_get SDCARD_ENC_PART)"
@@ -6552,7 +6575,6 @@ initialize() {
 
 	typeset -gr RISKS_SCRIPTS_INSTALL_PATH="${HUSH_DIR}/.risks-scripts" # Path to risks bin in the hush
 
-	typeset -rg RISKS_DIR="${HOME}/.risks"                         # Directory where risk stores its state
 	typeset -rg RISKS_IDENTITY_FILE="${RISK_DIR}/.identity"        # Currently unlocked identity stored in file
 
 	# Sensitive & and recurring variables used by program ..............................................
@@ -6566,17 +6588,6 @@ initialize() {
 	# Password-store
 	export PASSWORD_STORE_ENABLE_EXTENSIONS=true
 	export PASSWORD_STORE_GENERATED_LENGTH=20
-
-	#----------------------------#
-
-	# Don't run as root
-	if [[ $EUID -eq 0 ]]; then
-		 echo "This script must be run as user"
-		 exit 2
-	fi
-
-	# Use colors unless told not to
-	{ ! option_is_set --no-color } && { autoload -Uz colors && colors }
 
 }
 
