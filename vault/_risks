@@ -25,6 +25,7 @@ _risks()
             (load)      _load ;;
             (save)      _save ;;
             (kv)        _kv ;;
+            (config) _config ;;
         esac
     else
         local -a subcmds
@@ -40,6 +41,7 @@ _risks()
             'load:Copy some resource to a VM where to use it (completed)'
             'save:Move some data coming from another VM to a (tomb) directory'
             'kv:Manage the small key=value store used by other commands/functions'
+            'config:Manage the global risk configuration settings from the CLI'
         )
 
         _describe -t commands 'commands' subcmds
@@ -47,6 +49,46 @@ _risks()
 }
 
 # Subcomands ==================================================================================
+
+# Completes the commands for config
+_config_commands ()
+{
+    local -a subcmds 
+    subcmds=(
+        'set:Set a key in the configuration file'
+        'unset:Unset a key in the configuration file (becomes empty)'
+        'get:Show the value of a key in the configuration'
+        'list:Show all keys in the configuration'
+    )
+
+    _describe -t commands 'config commands' subcmds && ret=0
+}
+
+# Completion dispatcher for config subcommand
+_config ()
+{
+    local ret=1
+    local line state
+    _arguments -C \
+        "1: :_config_commands" \
+        "*::arg:->args" \
+        && ret=0
+
+    # And depending on the kv subcommand entered, complete accordingly
+    case $state in
+        args)
+            case $line[1] in
+            set)
+                _arguments -C "1:key:_config_keys" \
+                "2:variable:" \
+                && ret=0 
+            ;;
+            get|unset)
+                _arguments -C "1:key:_config_keys" && ret=0 # TODO complete existing keys ?"
+            ;;
+            esac
+    esac
+}
 
 # Completes the commands for hush, without parameters
 _hush_commands () 
@@ -396,6 +438,14 @@ _open_stores ()
     done
 
     _alternative "open_tombs:other open tombs:(${tomb_names[@]})"
+}
+
+# Returns the keys found in the risk global configuration
+_config_keys ()
+{
+    local keys
+    keys=( $(risk config keys) )
+    _arguments -C "1:configuration keys:($keys)"
 }
 
 
