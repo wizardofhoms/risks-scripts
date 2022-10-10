@@ -15,15 +15,15 @@ commands:
       - name: expiry_date
         required: true
         help: Human readable, or GPG-compliant expiry duration to use for the GPG subkeys (eg. '1 year', '1 week', etc)
-      - name: backup_device
-        required: true
-        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
-        validate: device
     flags:
       - &verbose
         long: --verbose
         short: -v
         help: "Show verbose logging"
+      - long : --backup
+        short: -b
+        help: "Device file of the backup drive (must be a whole drive without a partition number, eg. /dev/sdb)"
+        validate: device
       # - &log
       #   long: --log
       #   short: -l

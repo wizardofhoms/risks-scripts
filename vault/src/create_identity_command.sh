@@ -1,5 +1,5 @@
 
-local name identity expiry pendrive pendrive_error email
+local name identity expiry pendrive email
 
 # Base identity parameters, set globally.
 name="${args[name]}"
@@ -8,8 +8,8 @@ expiry="${args[expiry_date]}"
 identity="${name// /_}"
 email="${args[email]}"
 
-# Base filesystem parameters
-pendrive="${args[backup_device]}"
+# Backup is optional
+pendrive="${args[--backup]}"
 
 # Pre-run checks =============================================================
 
@@ -17,12 +17,6 @@ pendrive="${args[backup_device]}"
 # unaccessible or might risk ending in a dangling state.
 if _identity_active ; then
     _failure "An identity seems to be active. Cannot safely create a new one."
-fi
-
-# Check the path to the backup drive is a LUKS device.
-pendrive_error=$(validate_device "$pendrive")
-if [[ -n $pendrive_error ]]; then 
-    _failure "Device file $pendrive seems not to be a LUKS filesystem."
 fi
 
 # Check the hush device is, if mounted, on a read-only state at this point.
@@ -104,21 +98,29 @@ _run new_tomb "$SIGNAL_TOMB_LABEL" 20
 
 ## Backup
 #
-_in_section 'backup' && _message "Setting identity backup and making initial one"
+if [[ -n "$pendrive" ]]; then
+    # Check the path to the backup drive is a LUKS device.
+    # pendrive_error=$(validate_device "$pendrive")
+    # if [[ -n $pendrive_error ]]; then 
+    #     _failure "Device file $pendrive seems not to be a LUKS filesystem."
+    # fi
 
-risks_backup_mount_command
-_catch "failed to decrypt and mount backup drive"
+    _in_section 'backup' && _message "Setting identity backup and making initial one"
 
-# Some setup is needed for this identity to have access to its backup
-_verbose "Setting graveyard backup for this identity"
-_run setup_identity_backup
-_catch "Failed to setup identity backup graveyard"
+    risks_backup_mount_command
+    _catch "failed to decrypt and mount backup drive"
 
-# And then actually back it up
-risks_backup_identity_command
-_catch "Failed to correctly backup data"
+    # Some setup is needed for this identity to have access to its backup
+    _verbose "Setting graveyard backup for this identity"
+    _run setup_identity_backup
+    _catch "Failed to setup identity backup graveyard"
 
-risks_backup_umount_command
+    # And then actually back it up
+    risks_backup_identity_command
+    _catch "Failed to correctly backup data"
+
+    risks_backup_umount_command
+fi
 
 ## 10 - ALL DONE 
 echo && _success "risks" "Identity generation complete." && echo

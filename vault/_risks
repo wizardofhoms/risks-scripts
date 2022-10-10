@@ -174,6 +174,7 @@ _create_identity ()
     local line state
     _arguments -C \
         "${_flags_base[@]}" \
+        '(-b --backup)'{-b,--backup}'[Device file of the backup drive (whole drive without partition number, eg. /dev/sdb)]:path to backup device:_path_files -W /dev -g "xvd*" -P /dev/' \
         "2: :->name" \
         "3:arg:->recipient" \
         "4:arg:->duration" \
@@ -188,9 +189,6 @@ _create_identity ()
             ;;
         duration)
             _message "quoted, human readable expiry duration for GPG keys" 
-            ;;
-        backup)
-            _arguments '*:path to backup device file:_path_files -W /dev -g "xvd*" -P /dev/' && ret=0
             ;;
     esac
 }

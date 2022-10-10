@@ -23,7 +23,7 @@ setup_identity_backup ()
 }
 
 # backup_identity_gpg simply copies the raw coffin file in the graveyard backup directory root,
-# since like on the OS graveyard, one must access it without having access to the graveyard in
+# since like on the system graveyard, one must access it without having access to the graveyard in
 # the first place.
 backup_identity_gpg () 
 {

@@ -3,7 +3,7 @@ local BACKUP_GRAVEYARD_ROOT="${BACKUP_MOUNT_DIR}/graveyard"
 
 # Ensure a backup is mounted
 if ! is_luks_mapper_present "$BACKUP_MAPPER" ; then
-    _failure "No mounted backup medium found. Mount one with risks backup mount </dev/device>"
+    _failure "No mounted backup medium found. Mount one with 'risks backup mount </dev/device>'"
 fi
 
 # Ensure we have an active identity, which will be detected in this call
@@ -18,6 +18,14 @@ local IDENTITY_GRAVEYARD_PATH IDENTITY_BACKUP_GRAVEYARD_PATH GRAVEYARD_DIRECTORY
 GRAVEYARD_DIRECTORY_ENC=$(_encrypt_filename "$IDENTITY")
 IDENTITY_GRAVEYARD_PATH="${GRAVEYARD}/${GRAVEYARD_DIRECTORY_ENC}"
 IDENTITY_BACKUP_GRAVEYARD_PATH="${BACKUP_GRAVEYARD_ROOT}/${GRAVEYARD_DIRECTORY_ENC}"
+
+# Always check that the identity has its own backup directory set up,
+# because backup is not mandatory at identity creation time.
+if [[ ! -e "$IDENTITY_BACKUP_GRAVEYARD_PATH" ]]; then
+    _message "Setting graveyard backup for this identity"
+    _run setup_identity_backup
+    _catch "Failed to setup identity backup graveyard"
+fi
 
 _message "Backing up current identity data and hush partition"
 
